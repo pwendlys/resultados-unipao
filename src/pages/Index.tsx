@@ -1,12 +1,37 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { useState } from 'react';
+import Navigation from '@/components/layout/Navigation';
+import Dashboard from '@/components/dashboard/Dashboard';
+import UploadExtrato from '@/components/upload/UploadExtrato';
+import Categorization from '@/components/categorization/Categorization';
 
 const Index = () => {
+  const [currentPage, setCurrentPage] = useState('dashboard');
+
+  const renderCurrentPage = () => {
+    switch (currentPage) {
+      case 'dashboard':
+        return <Dashboard />;
+      case 'upload':
+        return <UploadExtrato />;
+      case 'categorization':
+        return <Categorization />;
+      case 'reports':
+        return <div className="p-8 text-center text-muted-foreground">Página de Relatórios DRE em desenvolvimento</div>;
+      case 'settings':
+        return <div className="p-8 text-center text-muted-foreground">Página de Configurações em desenvolvimento</div>;
+      default:
+        return <Dashboard />;
+    }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      <Navigation currentPage={currentPage} onPageChange={setCurrentPage} />
+      
+      <main className="lg:ml-64 p-6">
+        {renderCurrentPage()}
+      </main>
     </div>
   );
 };
