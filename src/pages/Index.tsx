@@ -13,7 +13,7 @@ const Index = () => {
       case 'dashboard':
         return <Dashboard />;
       case 'upload':
-        return <UploadExtrato />;
+        return <UploadExtrato onNavigateToPage={setCurrentPage} />;
       case 'categorization':
         return <Categorization />;
       case 'reports':

@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,7 +20,11 @@ import { cn } from '@/lib/utils';
 import { useExtratos, useExtratosActions, useTransactionsActions } from '@/hooks/useSupabaseData';
 import { parseCSV, generateSampleCSV } from '@/utils/csvProcessor';
 
-const UploadExtrato = () => {
+interface UploadExtratoProps {
+  onNavigateToPage?: (page: string) => void;
+}
+
+const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [period, setPeriod] = useState('');
@@ -123,6 +126,8 @@ const UploadExtrato = () => {
     setIsProcessing(true);
 
     try {
+      let hasProcessedTransactions = false;
+
       for (const file of files) {
         // Criar registro do extrato
         const extratoData = {
@@ -155,6 +160,8 @@ const UploadExtrato = () => {
               status: 'processado',
               transactions_count: transactions.length
             });
+
+            hasProcessedTransactions = true;
 
             toast({
               title: "Sucesso",
@@ -194,6 +201,17 @@ const UploadExtrato = () => {
       setPeriod('');
       setBank('');
       setNotes('');
+
+      // Navegar para categorização se houver transações processadas
+      if (hasProcessedTransactions && onNavigateToPage) {
+        setTimeout(() => {
+          onNavigateToPage('categorization');
+          toast({
+            title: "Redirecionando",
+            description: "Direcionando para a categorização das transações importadas.",
+          });
+        }, 1000);
+      }
       
     } catch (error) {
       toast({
@@ -433,7 +451,11 @@ const UploadExtrato = () => {
                       <Eye className="h-4 w-4" />
                     </Button>
                     {extrato.status === 'processado' && (
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => onNavigateToPage && onNavigateToPage('categorization')}
+                      >
                         Categorizar
                       </Button>
                     )}
