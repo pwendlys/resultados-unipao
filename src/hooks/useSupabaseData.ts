@@ -67,6 +67,8 @@ export const useTransactions = () => {
       if (error) throw error;
       return data as Transaction[];
     },
+    staleTime: 0, // Sempre buscar dados frescos
+    refetchOnMount: true, // Refetch ao montar o componente
   });
 };
 
@@ -132,16 +134,24 @@ export const useTransactionsActions = () => {
 
   const createTransactions = useMutation({
     mutationFn: async (transactions: Omit<Transaction, 'id' | 'created_at' | 'updated_at'>[]) => {
+      console.log('Creating transactions:', transactions.length);
       const { data, error } = await supabase
         .from('transactions')
         .insert(transactions)
         .select();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating transactions:', error);
+        throw error;
+      }
+      console.log('Transactions created successfully:', data.length);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Invalidating transactions query after creating', data.length, 'transactions');
+      // Invalidar ambas as queries para garantir atualização
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.refetchQueries({ queryKey: ['transactions'] });
     },
   });
 

@@ -146,13 +146,17 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
         // Processar transações se for CSV
         if (file.name.endsWith('.csv') || file.type === 'text/csv') {
           try {
+            console.log('Processing CSV file:', file.name);
             const transactions = await processCSVFile(file);
             const transactionsWithExtrato = transactions.map(t => ({
               ...t,
               extrato_id: extrato.id
             }));
 
+            console.log('Creating transactions in database:', transactionsWithExtrato.length);
+            // Aguardar a criação das transações
             await createTransactions.mutateAsync(transactionsWithExtrato);
+            console.log('Transactions created successfully');
 
             // Atualizar status do extrato
             await updateExtrato.mutateAsync({
@@ -168,6 +172,7 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
               description: `Arquivo ${file.name} processado com ${transactions.length} transações.`,
             });
           } catch (error) {
+            console.error('Error processing CSV:', error);
             await updateExtrato.mutateAsync({
               id: extrato.id,
               status: 'erro'
@@ -204,16 +209,19 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
 
       // Navegar para categorização se houver transações processadas
       if (hasProcessedTransactions && onNavigateToPage) {
+        console.log('Navigating to categorization with processed transactions');
+        // Aguardar um pouco mais para garantir que as queries foram atualizadas
         setTimeout(() => {
           onNavigateToPage('categorization');
           toast({
             title: "Redirecionando",
             description: "Direcionando para a categorização das transações importadas.",
           });
-        }, 1000);
+        }, 2000); // Aumentado para 2 segundos
       }
       
     } catch (error) {
+      console.error('Error in handleProcessFiles:', error);
       toast({
         title: "Erro",
         description: `Erro ao processar arquivos: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,

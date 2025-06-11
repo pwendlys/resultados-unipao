@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,9 +36,20 @@ const Categorization = () => {
   const [pendingUpdates, setPendingUpdates] = useState<Map<string, { category: string; status: string }>>(new Map());
 
   const { toast } = useToast();
-  const { data: transactions = [], isLoading: transactionsLoading } = useTransactions();
+  const { data: transactions = [], isLoading: transactionsLoading, refetch: refetchTransactions } = useTransactions();
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
   const { updateTransaction, bulkUpdateTransactions } = useTransactionsActions();
+
+  // Adicionar effect para refetch quando o componente monta
+  useEffect(() => {
+    console.log('Categorization component mounted, refetching transactions');
+    refetchTransactions();
+  }, [refetchTransactions]);
+
+  // Adicionar log quando as transações mudam
+  useEffect(() => {
+    console.log('Transactions loaded in Categorization:', transactions.length);
+  }, [transactions]);
 
   const categoriasSaida = categories.filter(c => c.type === 'saida').map(c => c.name);
   const categoriasEntrada = categories.filter(c => c.type === 'entrada').map(c => c.name);
