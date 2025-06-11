@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +19,6 @@ import {
   PieChart, 
   Pie, 
   Cell,
-  ResponsiveContainer,
   LineChart,
   Line
 } from 'recharts';
@@ -31,38 +30,102 @@ import {
   Calendar,
   Download
 } from 'lucide-react';
+import { useExtratos, useTransactions } from '@/hooks/useSupabaseData';
 
 const Dashboard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('mensal');
 
-  // Dados mockados para demonstração
-  const financialData = {
-    totalReceitas: 125000,
-    totalDespesas: 89500,
-    lucroLiquido: 35500,
-    margem: 28.4
-  };
+  const { data: extratos = [] } = useExtratos();
+  const { data: transactions = [] } = useTransactions();
 
-  const receitasPorCategoria = [
-    { name: 'Mensalidades', value: 85000, color: 'hsl(140 40% 55%)' },
-    { name: 'Taxa Administrativa', value: 40000, color: 'hsl(45 93% 47%)' }
-  ];
+  // Calcular dados financeiros a partir das transações reais
+  const financialData = useMemo(() => {
+    const entradas = transactions.filter(t => t.type === 'entrada');
+    const saidas = transactions.filter(t => t.type === 'saida');
+    
+    const totalReceitas = entradas.reduce((sum, t) => sum + Number(t.amount), 0);
+    const totalDespesas = saidas.reduce((sum, t) => sum + Number(t.amount), 0);
+    const lucroLiquido = totalReceitas - totalDespesas;
+    const margem = totalReceitas > 0 ? (lucroLiquido / totalReceitas) * 100 : 0;
 
-  const despesasPorCategoria = [
-    { name: 'Folha de Pagamento', value: 45000, color: 'hsl(0 84.2% 60.2%)' },
-    { name: 'Aluguel', value: 15000, color: 'hsl(47.9 95.8% 53.1%)' },
-    { name: 'Serviços de Terceiros', value: 12000, color: 'hsl(221.2 83.2% 53.3%)' },
-    { name: 'Vale Transporte', value: 8500, color: 'hsl(142 76% 36%)' },
-    { name: 'Encargos Sociais', value: 9000, color: 'hsl(262.1 83.3% 57.8%)' }
-  ];
+    return {
+      totalReceitas,
+      totalDespesas,
+      lucroLiquido,
+      margem
+    };
+  }, [transactions]);
 
-  const evoluçaoMensal = [
-    { mes: 'Jan', receitas: 120000, despesas: 85000 },
-    { mes: 'Fev', receitas: 115000, despesas: 88000 },
-    { mes: 'Mar', receitas: 125000, despesas: 89500 },
-    { mes: 'Abr', receitas: 130000, despesas: 92000 },
-    { mes: 'Mai', receitas: 128000, despesas: 90000 }
-  ];
+  // Agrupar receitas por categoria
+  const receitasPorCategoria = useMemo(() => {
+    const entradas = transactions.filter(t => t.type === 'entrada' && t.category);
+    const grouped = entradas.reduce((acc, t) => {
+      const category = t.category || 'Sem Categoria';
+      acc[category] = (acc[category] || 0) + Number(t.amount);
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(grouped).map(([name, value], index) => ({
+      name,
+      value,
+      color: index === 0 ? 'hsl(140 40% 55%)' : 'hsl(45 93% 47%)'
+    }));
+  }, [transactions]);
+
+  // Agrupar despesas por categoria
+  const despesasPorCategoria = useMemo(() => {
+    const saidas = transactions.filter(t => t.type === 'saida' && t.category);
+    const grouped = saidas.reduce((acc, t) => {
+      const category = t.category || 'Sem Categoria';
+      acc[category] = (acc[category] || 0) + Number(t.amount);
+      return acc;
+    }, {} as Record<string, number>);
+
+    const colors = [
+      'hsl(0 84.2% 60.2%)',
+      'hsl(47.9 95.8% 53.1%)',
+      'hsl(221.2 83.2% 53.3%)',
+      'hsl(142 76% 36%)',
+      'hsl(262.1 83.3% 57.8%)'
+    ];
+
+    return Object.entries(grouped).map(([name, value], index) => ({
+      name,
+      value,
+      color: colors[index % colors.length]
+    }));
+  }, [transactions]);
+
+  // Evolução mensal (simulada - seria necessário agrupar por mês real)
+  const evoluçaoMensal = useMemo(() => {
+    // Agrupar transações por mês
+    const monthlyData = transactions.reduce((acc, t) => {
+      const date = new Date(t.date);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      
+      if (!acc[monthKey]) {
+        acc[monthKey] = { receitas: 0, despesas: 0 };
+      }
+      
+      if (t.type === 'entrada') {
+        acc[monthKey].receitas += Number(t.amount);
+      } else {
+        acc[monthKey].despesas += Number(t.amount);
+      }
+      
+      return acc;
+    }, {} as Record<string, { receitas: number; despesas: number }>);
+
+    // Converter para array e ordenar
+    return Object.entries(monthlyData)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-5) // Últimos 5 meses
+      .map(([month, data]) => ({
+        mes: new Date(month + '-01').toLocaleDateString('pt-BR', { month: 'short' }),
+        receitas: data.receitas,
+        despesas: data.despesas
+      }));
+  }, [transactions]);
 
   const chartConfig = {
     receitas: {
@@ -150,7 +213,7 @@ const Dashboard = () => {
             <div className="text-2xl font-bold text-primary">
               R$ {financialData.totalReceitas.toLocaleString('pt-BR')}
             </div>
-            <p className="text-xs text-muted-foreground">+12% em relação ao mês anterior</p>
+            <p className="text-xs text-muted-foreground">Baseado em dados reais</p>
           </CardContent>
         </Card>
 
@@ -163,7 +226,7 @@ const Dashboard = () => {
             <div className="text-2xl font-bold text-destructive">
               R$ {financialData.totalDespesas.toLocaleString('pt-BR')}
             </div>
-            <p className="text-xs text-muted-foreground">+5% em relação ao mês anterior</p>
+            <p className="text-xs text-muted-foreground">Baseado em dados reais</p>
           </CardContent>
         </Card>
 
@@ -173,10 +236,10 @@ const Dashboard = () => {
             <DollarSign className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">
+            <div className={`text-2xl font-bold ${financialData.lucroLiquido >= 0 ? 'text-primary' : 'text-destructive'}`}>
               R$ {financialData.lucroLiquido.toLocaleString('pt-BR')}
             </div>
-            <p className="text-xs text-muted-foreground">Margem de {financialData.margem}%</p>
+            <p className="text-xs text-muted-foreground">Margem de {financialData.margem.toFixed(1)}%</p>
           </CardContent>
         </Card>
 
@@ -186,8 +249,8 @@ const Dashboard = () => {
             <FileText className="h-4 w-4 text-secondary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">8</div>
-            <p className="text-xs text-muted-foreground">Este mês</p>
+            <div className="text-2xl font-bold">{extratos.length}</div>
+            <p className="text-xs text-muted-foreground">{transactions.length} transações</p>
           </CardContent>
         </Card>
       </div>
@@ -201,27 +264,33 @@ const Dashboard = () => {
             <CardDescription>Comparativo de receitas e despesas</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-[300px]">
-              <LineChart data={evoluçaoMensal}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="mes" />
-                <YAxis />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <ChartLegend content={<ChartLegendContent />} />
-                <Line 
-                  type="monotone" 
-                  dataKey="receitas" 
-                  stroke="var(--color-receitas)" 
-                  strokeWidth={2}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="despesas" 
-                  stroke="var(--color-despesas)" 
-                  strokeWidth={2}
-                />
-              </LineChart>
-            </ChartContainer>
+            {evoluçaoMensal.length > 0 ? (
+              <ChartContainer config={chartConfig} className="h-[300px]">
+                <LineChart data={evoluçaoMensal}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="mes" />
+                  <YAxis />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <ChartLegend content={<ChartLegendContent />} />
+                  <Line 
+                    type="monotone" 
+                    dataKey="receitas" 
+                    stroke="var(--color-receitas)" 
+                    strokeWidth={2}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="despesas" 
+                    stroke="var(--color-despesas)" 
+                    strokeWidth={2}
+                  />
+                </LineChart>
+              </ChartContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                Não há dados suficientes para exibir o gráfico
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -232,25 +301,31 @@ const Dashboard = () => {
             <CardDescription>Por categoria</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={receitasChartConfig} className="h-[300px]">
-              <PieChart>
-                <Pie
-                  data={receitasPorCategoria}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {receitasPorCategoria.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <ChartTooltip content={<ChartTooltipContent />} />
-              </PieChart>
-            </ChartContainer>
+            {receitasPorCategoria.length > 0 ? (
+              <ChartContainer config={receitasChartConfig} className="h-[300px]">
+                <PieChart>
+                  <Pie
+                    data={receitasPorCategoria}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {receitasPorCategoria.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                </PieChart>
+              </ChartContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                Nenhuma receita categorizada encontrada
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -262,15 +337,21 @@ const Dashboard = () => {
           <CardDescription>Principais gastos do período</CardDescription>
         </CardHeader>
         <CardContent>
-          <ChartContainer config={despesasChartConfig} className="h-[300px]">
-            <BarChart data={despesasPorCategoria}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="value" fill="hsl(0 84.2% 60.2%)" />
-            </BarChart>
-          </ChartContainer>
+          {despesasPorCategoria.length > 0 ? (
+            <ChartContainer config={despesasChartConfig} className="h-[300px]">
+              <BarChart data={despesasPorCategoria}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="value" fill="hsl(0 84.2% 60.2%)" />
+              </BarChart>
+            </ChartContainer>
+          ) : (
+            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              Nenhuma despesa categorizada encontrada
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -281,29 +362,35 @@ const Dashboard = () => {
           <CardDescription>Acompanhe o processamento dos arquivos</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 border rounded-lg">
-              <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-primary" />
-                <div>
-                  <p className="font-medium">Extrato Março 2024</p>
-                  <p className="text-sm text-muted-foreground">Banco do Brasil - Conta Corrente</p>
+          {extratos.length > 0 ? (
+            <div className="space-y-4">
+              {extratos.slice(0, 5).map((extrato) => (
+                <div key={extrato.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Calendar className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="font-medium">{extrato.name}</p>
+                      <p className="text-sm text-muted-foreground">{extrato.bank} - {extrato.period}</p>
+                    </div>
+                  </div>
+                  <Badge 
+                    className={
+                      extrato.status === 'processado' ? 'bg-primary' : 
+                      extrato.status === 'processando' ? 'bg-secondary' : 
+                      'bg-destructive'
+                    }
+                  >
+                    {extrato.status === 'processado' ? 'Processado' : 
+                     extrato.status === 'processando' ? 'Processando' : 'Erro'}
+                  </Badge>
                 </div>
-              </div>
-              <Badge className="bg-primary">Processado</Badge>
+              ))}
             </div>
-            
-            <div className="flex items-center justify-between p-4 border rounded-lg">
-              <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-secondary" />
-                <div>
-                  <p className="font-medium">Extrato Abril 2024</p>
-                  <p className="text-sm text-muted-foreground">Caixa Econômica - Poupança</p>
-                </div>
-              </div>
-              <Badge variant="outline">Pendente Categorização</Badge>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              Nenhum extrato processado ainda
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>
