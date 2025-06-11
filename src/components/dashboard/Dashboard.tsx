@@ -75,6 +75,40 @@ const Dashboard = () => {
     }
   };
 
+  const receitasChartConfig = {
+    mensalidades: {
+      label: "Mensalidades",
+      color: "hsl(140 40% 55%)"
+    },
+    taxaAdministrativa: {
+      label: "Taxa Administrativa",
+      color: "hsl(45 93% 47%)"
+    }
+  };
+
+  const despesasChartConfig = {
+    folhaPagamento: {
+      label: "Folha de Pagamento",
+      color: "hsl(0 84.2% 60.2%)"
+    },
+    aluguel: {
+      label: "Aluguel",
+      color: "hsl(47.9 95.8% 53.1%)"
+    },
+    servicosTerceiros: {
+      label: "Serviços de Terceiros",
+      color: "hsl(221.2 83.2% 53.3%)"
+    },
+    valeTransporte: {
+      label: "Vale Transporte",
+      color: "hsl(142 76% 36%)"
+    },
+    encargosSociais: {
+      label: "Encargos Sociais",
+      color: "hsl(262.1 83.3% 57.8%)"
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -198,27 +232,25 @@ const Dashboard = () => {
             <CardDescription>Por categoria</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={receitasPorCategoria}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {receitasPorCategoria.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+            <ChartContainer config={receitasChartConfig} className="h-[300px]">
+              <PieChart>
+                <Pie
+                  data={receitasPorCategoria}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {receitasPorCategoria.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <ChartTooltip content={<ChartTooltipContent />} />
+              </PieChart>
+            </ChartContainer>
           </CardContent>
         </Card>
       </div>
@@ -230,7 +262,7 @@ const Dashboard = () => {
           <CardDescription>Principais gastos do período</CardDescription>
         </CardHeader>
         <CardContent>
-          <ChartContainer config={chartConfig} className="h-[300px]">
+          <ChartContainer config={despesasChartConfig} className="h-[300px]">
             <BarChart data={despesasPorCategoria}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
