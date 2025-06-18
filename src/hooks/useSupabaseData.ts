@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -156,7 +155,44 @@ export const useExtratosActions = () => {
     },
   });
 
-  return { createExtrato, updateExtrato };
+  const deleteExtrato = useMutation({
+    mutationFn: async (id: string) => {
+      console.log('Deleting extrato:', id);
+      
+      // Primeiro deletar todas as transações relacionadas
+      const { error: transactionsError } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('extrato_id', id);
+      
+      if (transactionsError) {
+        console.error('Error deleting transactions:', transactionsError);
+        throw transactionsError;
+      }
+      
+      // Depois deletar o extrato
+      const { data, error } = await supabase
+        .from('extratos')
+        .delete()
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error deleting extrato:', error);
+        throw error;
+      }
+      console.log('Extrato deleted successfully:', data);
+      return data;
+    },
+    onSuccess: (data) => {
+      console.log('Invalidating queries after deleting extrato:', data.id);
+      queryClient.invalidateQueries({ queryKey: ['extratos'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+    },
+  });
+
+  return { createExtrato, updateExtrato, deleteExtrato };
 };
 
 // Hook para mutações de transações

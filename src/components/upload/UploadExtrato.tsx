@@ -16,6 +16,17 @@ import {
   Eye,
   Download
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { useExtratos, useExtratosActions, useTransactionsActions } from '@/hooks/useSupabaseData';
 import { parseCSV, generateSampleCSV } from '@/utils/csvProcessor';
@@ -35,7 +46,7 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
   
   const { toast } = useToast();
   const { data: extratos = [], isLoading } = useExtratos();
-  const { createExtrato, updateExtrato } = useExtratosActions();
+  const { createExtrato, updateExtrato, deleteExtrato } = useExtratosActions();
   const { createTransactions } = useTransactionsActions();
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -341,6 +352,23 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
     }
   };
 
+  const handleDeleteExtrato = async (extratoId: string, extratoName: string) => {
+    try {
+      await deleteExtrato.mutateAsync(extratoId);
+      toast({
+        title: "Sucesso",
+        description: `Extrato "${extratoName}" foi excluído com sucesso.`,
+      });
+    } catch (error) {
+      console.error('Error deleting extrato:', error);
+      toast({
+        title: "Erro",
+        description: `Erro ao excluir extrato: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -541,6 +569,31 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
                         Categorizar
                       </Button>
                     )}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir Extrato</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Tem certeza que deseja excluir o extrato "{extrato.name}"? 
+                            Esta ação também removerá todas as transações relacionadas e não pode ser desfeita.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDeleteExtrato(extrato.id, extrato.name)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               ))}
