@@ -84,6 +84,7 @@ export type Database = {
           description: string
           extrato_id: string | null
           id: string
+          observacao: string | null
           status: string
           suggested: boolean | null
           type: string
@@ -97,6 +98,7 @@ export type Database = {
           description: string
           extrato_id?: string | null
           id?: string
+          observacao?: string | null
           status?: string
           suggested?: boolean | null
           type: string
@@ -110,6 +112,7 @@ export type Database = {
           description?: string
           extrato_id?: string | null
           id?: string
+          observacao?: string | null
           status?: string
           suggested?: boolean | null
           type?: string

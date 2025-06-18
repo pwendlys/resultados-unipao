@@ -27,6 +27,7 @@ export interface Transaction {
   category?: string;
   status: 'pendente' | 'categorizado';
   suggested: boolean;
+  observacao?: string;
   created_at: string;
   updated_at: string;
 }
