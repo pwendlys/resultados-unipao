@@ -24,54 +24,133 @@ export const parseXLSX = (file: File): Promise<ParsedTransaction[]> => {
         
         const transactions: ParsedTransaction[] = [];
         
-        // Pular o cabeçalho (primeira linha) e processar dados
-        for (let i = 1; i < jsonData.length; i++) {
+        // Processar dados do extrato bancário
+        for (let i = 0; i < jsonData.length; i++) {
           const row = jsonData[i] as any[];
           
           console.log(`Processing row ${i}:`, row);
           
-          // Verificar se a linha tem dados suficientes
-          if (!row || row.length < 3) {
-            console.log(`Skipping row ${i} - insufficient data`);
+          // Verificar se a linha tem dados suficientes e se tem uma data válida
+          if (!row || row.length < 4) {
+            console.log(`Skipping row ${i} - insufficient columns`);
             continue;
           }
           
           const dateValue = row[0];
-          const descriptionValue = row[1];
-          const amountValue = row[2];
+          const documentValue = row[1];
+          const descriptionValue = row[2];
+          const amountValue = row[3];
           
-          // Verificar se os valores essenciais existem
-          if (!dateValue || !descriptionValue || (amountValue === undefined || amountValue === null)) {
-            console.log(`Skipping row ${i} - missing essential data:`, { dateValue, descriptionValue, amountValue });
+          // Pular linhas de cabeçalho ou linhas vazias
+          if (!dateValue || dateValue === 'DATA' || dateValue === 'EXTRATO CONTA CORRENTE') {
+            console.log(`Skipping row ${i} - header or empty date`);
             continue;
           }
           
-          const date = String(dateValue).trim();
-          const description = String(descriptionValue).trim();
+          // Pular linhas com saldo do dia ou saldo anterior
+          if (typeof descriptionValue === 'string' && 
+              (descriptionValue.includes('SALDO DO DIA') || 
+               descriptionValue.includes('SALDO ANTERIOR') || 
+               descriptionValue.includes('SALDO BLOQUEADO'))) {
+            console.log(`Skipping row ${i} - saldo line`);
+            continue;
+          }
           
-          // Processar o valor monetário
-          let amount: number;
-          if (typeof amountValue === 'number') {
-            amount = amountValue;
+          // Verificar se temos uma data válida
+          const dateStr = String(dateValue).trim();
+          if (!dateStr || dateStr === '' || !dateStr.match(/\d{1,2}\/\d{1,2}\/\d{4}/)) {
+            console.log(`Skipping row ${i} - invalid date format:`, dateStr);
+            continue;
+          }
+          
+          // Verificar se temos um valor válido
+          if (!amountValue || amountValue === '') {
+            console.log(`Skipping row ${i} - no amount value`);
+            continue;
+          }
+          
+          const amountStr = String(amountValue).trim();
+          
+          // Extrair valor numérico e tipo (C para crédito, D para débito)
+          let amount: number = 0;
+          let type: 'entrada' | 'saida' = 'entrada';
+          
+          // Padrões para valores: "- 50,00 D", "2.504,21 C", etc.
+          const creditMatch = amountStr.match(/([\d.,]+)\s*C$/);
+          const debitMatch = amountStr.match(/-?\s*([\d.,]+)\s*D$/);
+          const negativeMatch = amountStr.match(/^-\s*([\d.,]+)/);
+          
+          if (creditMatch) {
+            // Valor de crédito (entrada)
+            const numStr = creditMatch[1].replace(/\./g, '').replace(',', '.');
+            amount = parseFloat(numStr);
+            type = 'entrada';
+          } else if (debitMatch) {
+            // Valor de débito (saída)
+            const numStr = debitMatch[1].replace(/\./g, '').replace(',', '.');
+            amount = parseFloat(numStr);
+            type = 'saida';
+          } else if (negativeMatch) {
+            // Valor negativo (saída)
+            const numStr = negativeMatch[1].replace(/\./g, '').replace(',', '.');
+            amount = parseFloat(numStr);
+            type = 'saida';
           } else {
-            const amountStr = String(amountValue).replace(',', '.').replace(/[^\d.-]/g, '');
-            amount = parseFloat(amountStr);
+            // Tentar extrair número simples
+            const numStr = amountStr.replace(/[^\d.,-]/g, '').replace(/\./g, '').replace(',', '.');
+            amount = parseFloat(numStr);
+            if (isNaN(amount)) {
+              console.log(`Skipping row ${i} - could not parse amount:`, amountStr);
+              continue;
+            }
+            // Se negativo, é saída
+            type = amount < 0 ? 'saida' : 'entrada';
+            amount = Math.abs(amount);
           }
           
-          // Verificar se conseguimos um número válido
-          if (isNaN(amount)) {
-            console.log(`Skipping row ${i} - invalid amount:`, amountValue);
+          if (isNaN(amount) || amount <= 0) {
+            console.log(`Skipping row ${i} - invalid amount:`, amount);
             continue;
           }
           
-          // Determinar tipo baseado no valor (negativo = saída, positivo = entrada)
-          const type: 'entrada' | 'saida' = amount >= 0 ? 'entrada' : 'saida';
+          // Construir descrição completa
+          let fullDescription = String(descriptionValue || '').trim();
+          
+          // Para extratos bancários, podemos ter descrição adicional nas próximas linhas
+          // Vamos verificar se as próximas linhas contêm informações adicionais
+          let additionalInfo = [];
+          for (let j = i + 1; j < Math.min(i + 5, jsonData.length); j++) {
+            const nextRow = jsonData[j] as any[];
+            if (nextRow && nextRow.length >= 3 && 
+                (!nextRow[0] || nextRow[0] === '') && 
+                (!nextRow[1] || nextRow[1] === '') && 
+                nextRow[2] && String(nextRow[2]).trim() !== '') {
+              const additionalDesc = String(nextRow[2]).trim();
+              if (additionalDesc && 
+                  !additionalDesc.includes('SALDO') && 
+                  !additionalDesc.match(/\d{3}\.\d{3}\.\d{3}-\d{2}/) && // CPF
+                  !additionalDesc.match(/\*\*\*\.\d{3}\.\d{3}-\*\*/) && // CPF mascarado
+                  additionalDesc.length > 3) {
+                additionalInfo.push(additionalDesc);
+              }
+            } else {
+              break;
+            }
+          }
+          
+          if (additionalInfo.length > 0) {
+            fullDescription = `${fullDescription} - ${additionalInfo.join(' - ')}`;
+          }
+          
+          if (!fullDescription || fullDescription.trim() === '') {
+            fullDescription = `${documentValue || 'Transação'} - ${dateStr}`;
+          }
           
           const transaction = {
-            date: formatDate(date),
-            description: description,
-            amount: Math.abs(amount),
-            type
+            date: formatDate(dateStr),
+            description: fullDescription,
+            amount: amount,
+            type: type
           };
           
           console.log(`Transaction ${i} created:`, transaction);
