@@ -19,6 +19,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useExtratos, useExtratosActions, useTransactionsActions } from '@/hooks/useSupabaseData';
 import { parseCSV, generateSampleCSV } from '@/utils/csvProcessor';
+import { parseXLSX, generateSampleXLSX } from '@/utils/xlsxProcessor';
 
 interface UploadExtratoProps {
   onNavigateToPage?: (page: string) => void;
@@ -57,7 +58,9 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
       const validFiles = droppedFiles.filter(file => 
         file.type === 'application/pdf' || 
         file.type === 'text/csv' || 
-        file.name.endsWith('.csv')
+        file.name.endsWith('.csv') ||
+        file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+        file.name.endsWith('.xlsx')
       );
       setFiles(prev => [...prev, ...validFiles]);
     }
@@ -69,7 +72,9 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
       const validFiles = selectedFiles.filter(file => 
         file.type === 'application/pdf' || 
         file.type === 'text/csv' || 
-        file.name.endsWith('.csv')
+        file.name.endsWith('.csv') ||
+        file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+        file.name.endsWith('.xlsx')
       );
       setFiles(prev => [...prev, ...validFiles]);
     }
@@ -112,6 +117,33 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
     });
   };
 
+  const processXLSXFile = async (file: File): Promise<any[]> => {
+    try {
+      const transactions = await parseXLSX(file);
+      return transactions.map(t => ({
+        date: t.date,
+        description: t.description,
+        amount: t.amount,
+        type: t.type,
+        category: '',
+        status: 'pendente',
+        suggested: false
+      }));
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const getFileType = (file: File): string => {
+    if (file.name.endsWith('.xlsx') || file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+      return 'xlsx';
+    }
+    if (file.name.endsWith('.csv') || file.type === 'text/csv') {
+      return 'csv';
+    }
+    return 'pdf';
+  };
+
   const handleProcessFiles = async () => {
     if (files.length === 0) return;
     if (!period || !bank) {
@@ -129,13 +161,15 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
       let hasProcessedTransactions = false;
 
       for (const file of files) {
+        const fileType = getFileType(file);
+        
         // Criar registro do extrato
         const extratoData = {
           name: file.name,
           size: formatFileSize(file.size),
           period,
           bank,
-          file_type: file.name.endsWith('.csv') ? 'csv' : 'pdf',
+          file_type: fileType,
           status: 'processando',
           transactions_count: 0,
           notes: notes || undefined
@@ -143,18 +177,24 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
 
         const extrato = await createExtrato.mutateAsync(extratoData);
 
-        // Processar transações se for CSV
-        if (file.name.endsWith('.csv') || file.type === 'text/csv') {
+        // Processar transações se for CSV ou XLSX
+        if (fileType === 'csv' || fileType === 'xlsx') {
           try {
-            console.log('Processing CSV file:', file.name);
-            const transactions = await processCSVFile(file);
+            console.log(`Processing ${fileType.toUpperCase()} file:`, file.name);
+            
+            let transactions;
+            if (fileType === 'csv') {
+              transactions = await processCSVFile(file);
+            } else {
+              transactions = await processXLSXFile(file);
+            }
+            
             const transactionsWithExtrato = transactions.map(t => ({
               ...t,
               extrato_id: extrato.id
             }));
 
             console.log('Creating transactions in database:', transactionsWithExtrato.length);
-            // Aguardar a criação das transações
             await createTransactions.mutateAsync(transactionsWithExtrato);
             console.log('Transactions created successfully');
 
@@ -172,7 +212,7 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
               description: `Arquivo ${file.name} processado com ${transactions.length} transações.`,
             });
           } catch (error) {
-            console.error('Error processing CSV:', error);
+            console.error(`Error processing ${fileType.toUpperCase()}:`, error);
             await updateExtrato.mutateAsync({
               id: extrato.id,
               status: 'erro'
@@ -185,7 +225,7 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
             });
           }
         } else {
-          // Para PDFs, simular processamento (implementar OCR futuramente)
+          // Para PDFs, simular processamento
           setTimeout(async () => {
             await updateExtrato.mutateAsync({
               id: extrato.id,
@@ -210,14 +250,13 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
       // Navegar para categorização se houver transações processadas
       if (hasProcessedTransactions && onNavigateToPage) {
         console.log('Navigating to categorization with processed transactions');
-        // Aguardar um pouco mais para garantir que as queries foram atualizadas
         setTimeout(() => {
           onNavigateToPage('categorization');
           toast({
             title: "Redirecionando",
             description: "Direcionando para a categorização das transações importadas.",
           });
-        }, 2000); // Aumentado para 2 segundos
+        }, 2000);
       }
       
     } catch (error) {
@@ -243,6 +282,10 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const downloadSampleXLSX = () => {
+    generateSampleXLSX();
   };
 
   const getStatusIcon = (status: string) => {
@@ -277,7 +320,7 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
       <div>
         <h1 className="text-3xl font-bold">Upload de Extratos</h1>
         <p className="text-muted-foreground">
-          Faça upload dos extratos bancários em PDF ou CSV para processamento automático
+          Faça upload dos extratos bancários em PDF, CSV ou XLSX para processamento automático
         </p>
       </div>
 
@@ -286,15 +329,19 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
         <CardHeader>
           <CardTitle>Novo Extrato</CardTitle>
           <CardDescription>
-            Selecione ou arraste arquivos PDF ou CSV de extratos bancários
+            Selecione ou arraste arquivos PDF, CSV ou XLSX de extratos bancários
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Sample CSV Download */}
-          <div className="flex justify-end">
+          {/* Sample Files Download */}
+          <div className="flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={downloadSampleCSV}>
               <Download className="h-4 w-4 mr-2" />
-              Baixar Exemplo CSV
+              Exemplo CSV
+            </Button>
+            <Button variant="outline" size="sm" onClick={downloadSampleXLSX}>
+              <Download className="h-4 w-4 mr-2" />
+              Exemplo XLSX
             </Button>
           </div>
 
@@ -313,7 +360,7 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
           >
             <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-semibold mb-2">
-              Arraste seus arquivos PDF ou CSV aqui
+              Arraste seus arquivos PDF, CSV ou XLSX aqui
             </h3>
             <p className="text-muted-foreground mb-4">
               ou clique para selecionar arquivos
@@ -326,13 +373,13 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
                 id="file-upload"
                 type="file"
                 multiple
-                accept=".pdf,.csv"
+                accept=".pdf,.csv,.xlsx"
                 className="hidden"
                 onChange={handleFileChange}
               />
             </Label>
             <p className="text-xs text-muted-foreground mt-2">
-              Arquivos PDF e CSV são aceitos
+              Arquivos PDF, CSV e XLSX são aceitos
             </p>
           </div>
 
@@ -349,7 +396,7 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <span>{formatFileSize(file.size)}</span>
                         <Badge variant="outline" className="text-xs">
-                          {file.name.endsWith('.csv') ? 'CSV' : 'PDF'}
+                          {getFileType(file).toUpperCase()}
                         </Badge>
                       </div>
                     </div>
