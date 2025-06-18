@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Select,
@@ -33,7 +34,7 @@ const Categorization = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [pendingUpdates, setPendingUpdates] = useState<Map<string, { category: string; status: string }>>(new Map());
+  const [pendingUpdates, setPendingUpdates] = useState<Map<string, { category: string; status: string; observacao?: string }>>(new Map());
 
   const { toast } = useToast();
   const { data: transactions = [], isLoading: transactionsLoading, refetch: refetchTransactions } = useTransactions();
@@ -58,7 +59,17 @@ const Categorization = () => {
     const status = category ? 'categorizado' : 'pendente';
     setPendingUpdates(prev => {
       const newUpdates = new Map(prev);
-      newUpdates.set(id, { category, status });
+      const existing = newUpdates.get(id) || {};
+      newUpdates.set(id, { ...existing, category, status });
+      return newUpdates;
+    });
+  };
+
+  const updateTransactionObservacao = (id: string, observacao: string) => {
+    setPendingUpdates(prev => {
+      const newUpdates = new Map(prev);
+      const existing = newUpdates.get(id) || { category: '', status: 'pendente' };
+      newUpdates.set(id, { ...existing, observacao });
       return newUpdates;
     });
   };
@@ -88,7 +99,9 @@ const Categorization = () => {
       if (t.status === 'pendente' && !t.category) {
         const suggested = getSuggestedCategory(t.description, t.type);
         if (suggested) {
+          const existing = newUpdates.get(t.id) || {};
           newUpdates.set(t.id, {
+            ...existing,
             category: suggested,
             status: 'categorizado'
           });
@@ -118,10 +131,15 @@ const Categorization = () => {
       const updates = Array.from(pendingUpdates.entries()).map(([id, data]) => ({
         id,
         category: data.category,
-        status: data.status
+        status: data.status,
+        observacao: data.observacao
       }));
 
-      await bulkUpdateTransactions.mutateAsync(updates);
+      // Atualizar transações uma por uma para incluir observação
+      for (const update of updates) {
+        await updateTransaction.mutateAsync(update);
+      }
+      
       setPendingUpdates(new Map());
       
       toast({
@@ -145,6 +163,11 @@ const Categorization = () => {
   const getTransactionStatus = (transaction: Transaction): string => {
     const pending = pendingUpdates.get(transaction.id);
     return pending?.status || transaction.status;
+  };
+
+  const getTransactionObservacao = (transaction: Transaction): string => {
+    const pending = pendingUpdates.get(transaction.id);
+    return pending?.observacao || transaction.observacao || '';
   };
 
   const filteredTransactions = transactions.filter(t => {
@@ -289,7 +312,7 @@ const Categorization = () => {
         <CardHeader>
           <CardTitle>Transações</CardTitle>
           <CardDescription>
-            Clique em uma transação para categorizar ou alterar a categoria
+            Clique em uma transação para categorizar ou alterar a categoria e adicionar observações
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -298,89 +321,108 @@ const Categorization = () => {
               Nenhuma transação encontrada. Faça upload de um extrato primeiro.
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {filteredTransactions.map((transaction) => {
                 const currentCategory = getTransactionCategory(transaction);
                 const currentStatus = getTransactionStatus(transaction);
+                const currentObservacao = getTransactionObservacao(transaction);
                 const hasPendingChanges = pendingUpdates.has(transaction.id);
                 
                 return (
                   <div
                     key={transaction.id}
                     className={cn(
-                      "flex items-center justify-between p-4 border rounded-lg transition-colors",
+                      "border rounded-lg p-4 space-y-3 transition-colors",
                       currentStatus === 'pendente' 
                         ? "border-secondary/50 bg-secondary/5" 
                         : "border-border hover:bg-muted/50",
                       hasPendingChanges && "ring-2 ring-primary/20 bg-primary/5"
                     )}
                   >
-                    <div className="flex items-center gap-4 flex-1">
-                      {/* Type Icon */}
-                      {transaction.type === 'entrada' ? (
-                        <ArrowUpCircle className="h-6 w-6 text-primary" />
-                      ) : (
-                        <ArrowDownCircle className="h-6 w-6 text-destructive" />
-                      )}
-                      
-                      {/* Transaction Info */}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-medium">{transaction.description}</p>
-                          {transaction.suggested && (
-                            <Badge variant="outline" className="text-xs">
-                              Sugerido
-                            </Badge>
-                          )}
-                          {hasPendingChanges && (
-                            <Badge variant="outline" className="text-xs bg-primary/10">
-                              Alterado
-                            </Badge>
-                          )}
+                    {/* Transaction Header */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4 flex-1">
+                        {/* Type Icon */}
+                        {transaction.type === 'entrada' ? (
+                          <ArrowUpCircle className="h-6 w-6 text-primary" />
+                        ) : (
+                          <ArrowDownCircle className="h-6 w-6 text-destructive" />
+                        )}
+                        
+                        {/* Transaction Info */}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium">{transaction.description}</p>
+                            {transaction.suggested && (
+                              <Badge variant="outline" className="text-xs">
+                                Sugerido
+                              </Badge>
+                            )}
+                            {hasPendingChanges && (
+                              <Badge variant="outline" className="text-xs bg-primary/10">
+                                Alterado
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">{transaction.date}</p>
                         </div>
-                        <p className="text-sm text-muted-foreground">{transaction.date}</p>
+                        
+                        {/* Amount */}
+                        <div className="text-right">
+                          <p className={cn(
+                            "font-bold",
+                            transaction.type === 'entrada' ? "text-primary" : "text-destructive"
+                          )}>
+                            {transaction.type === 'entrada' ? '+' : '-'} R$ {Math.abs(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
                       </div>
-                      
-                      {/* Amount */}
-                      <div className="text-right">
-                        <p className={cn(
-                          "font-bold",
-                          transaction.type === 'entrada' ? "text-primary" : "text-destructive"
-                        )}>
-                          {transaction.type === 'entrada' ? '+' : '-'} R$ {Math.abs(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </p>
+
+                      {/* Status */}
+                      <div className="ml-4">
+                        {currentStatus === 'categorizado' ? (
+                          <CheckCircle className="h-5 w-5 text-primary" />
+                        ) : (
+                          <Clock className="h-5 w-5 text-secondary" />
+                        )}
                       </div>
                     </div>
 
-                    {/* Category Selection */}
-                    <div className="ml-4 min-w-[200px]">
-                      <Select 
-                        value={currentCategory} 
-                        onValueChange={(value) => updateTransactionCategory(transaction.id, value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecionar categoria" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {transaction.type === 'entrada' 
-                            ? categoriasEntrada.map(cat => (
-                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                              ))
-                            : categoriasSaida.map(cat => (
-                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                              ))
-                          }
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {/* Category and Observation Fields */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Category Selection */}
+                      <div>
+                        <Label className="text-sm font-medium">Categoria</Label>
+                        <Select 
+                          value={currentCategory} 
+                          onValueChange={(value) => updateTransactionCategory(transaction.id, value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecionar categoria" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {transaction.type === 'entrada' 
+                              ? categoriasEntrada.map(cat => (
+                                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                ))
+                              : categoriasSaida.map(cat => (
+                                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                ))
+                            }
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                    {/* Status */}
-                    <div className="ml-4">
-                      {currentStatus === 'categorizado' ? (
-                        <CheckCircle className="h-5 w-5 text-primary" />
-                      ) : (
-                        <Clock className="h-5 w-5 text-secondary" />
-                      )}
+                      {/* Observation Field */}
+                      <div>
+                        <Label className="text-sm font-medium">Observação</Label>
+                        <Textarea
+                          placeholder="Adicione uma observação..."
+                          value={currentObservacao}
+                          onChange={(e) => updateTransactionObservacao(transaction.id, e.target.value)}
+                          className="min-h-[40px] resize-none"
+                        />
+                      </div>
                     </div>
                   </div>
                 );
