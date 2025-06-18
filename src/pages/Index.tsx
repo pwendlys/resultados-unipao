@@ -4,6 +4,8 @@ import Navigation from '@/components/layout/Navigation';
 import Dashboard from '@/components/dashboard/Dashboard';
 import UploadExtrato from '@/components/upload/UploadExtrato';
 import Categorization from '@/components/categorization/Categorization';
+import Settings from '@/components/settings/Settings';
+import Reports from '@/components/reports/Reports';
 
 const Index = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -17,9 +19,9 @@ const Index = () => {
       case 'categorization':
         return <Categorization />;
       case 'reports':
-        return <div className="p-8 text-center text-muted-foreground">Página de Relatórios DRE em desenvolvimento</div>;
+        return <Reports />;
       case 'settings':
-        return <div className="p-8 text-center text-muted-foreground">Página de Configurações em desenvolvimento</div>;
+        return <Settings />;
       default:
         return <Dashboard />;
     }

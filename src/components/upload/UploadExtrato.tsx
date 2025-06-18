@@ -196,6 +196,9 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
         };
 
         const extrato = await createExtrato.mutateAsync(extratoData);
+        if (!extrato) {
+          throw new Error('Erro ao criar extrato');
+        }
         console.log('Extrato created with ID:', extrato.id);
 
         // Processar transações se for CSV ou XLSX

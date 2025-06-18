@@ -9,7 +9,119 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      categories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      extratos: {
+        Row: {
+          bank: string
+          created_at: string
+          file_type: string
+          id: string
+          name: string
+          notes: string | null
+          period: string
+          size: string
+          status: string
+          transactions_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          bank: string
+          created_at?: string
+          file_type?: string
+          id?: string
+          name: string
+          notes?: string | null
+          period: string
+          size: string
+          status?: string
+          transactions_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          bank?: string
+          created_at?: string
+          file_type?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          period?: string
+          size?: string
+          status?: string
+          transactions_count?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount: number
+          category: string | null
+          created_at: string
+          date: string
+          description: string
+          extrato_id: string | null
+          id: string
+          status: string
+          suggested: boolean | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category?: string | null
+          created_at?: string
+          date: string
+          description: string
+          extrato_id?: string | null
+          id?: string
+          status?: string
+          suggested?: boolean | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          created_at?: string
+          date?: string
+          description?: string
+          extrato_id?: string | null
+          id?: string
+          status?: string
+          suggested?: boolean | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_extrato_id_fkey"
+            columns: ["extrato_id"]
+            isOneToOne: false
+            referencedRelation: "extratos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

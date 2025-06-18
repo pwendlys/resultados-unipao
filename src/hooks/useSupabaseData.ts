@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -28,13 +29,6 @@ export interface Transaction {
   suggested: boolean;
   created_at: string;
   updated_at: string;
-}
-
-export interface Category {
-  id: string;
-  name: string;
-  type: 'entrada' | 'saida';
-  created_at: string;
 }
 
 // Hook para extratos
@@ -83,27 +77,6 @@ export const useTransactions = () => {
   });
 };
 
-// Hook para categorias
-export const useCategories = () => {
-  return useQuery({
-    queryKey: ['categories'],
-    queryFn: async () => {
-      console.log('Fetching categories from database...');
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .order('name');
-      
-      if (error) {
-        console.error('Error fetching categories:', error);
-        throw error;
-      }
-      console.log('Categories fetched:', data?.length || 0);
-      return data as Category[];
-    },
-  });
-};
-
 // Hook para mutações de extratos
 export const useExtratosActions = () => {
   const queryClient = useQueryClient();
@@ -125,9 +98,11 @@ export const useExtratosActions = () => {
       return data;
     },
     onSuccess: (data) => {
-      console.log('Invalidating extratos queries after creating extrato:', data.id);
-      queryClient.invalidateQueries({ queryKey: ['extratos'] });
-      queryClient.refetchQueries({ queryKey: ['extratos'] });
+      if (data) {
+        console.log('Invalidating extratos queries after creating extrato:', data.id);
+        queryClient.invalidateQueries({ queryKey: ['extratos'] });
+        queryClient.refetchQueries({ queryKey: ['extratos'] });
+      }
     },
   });
 
@@ -149,9 +124,11 @@ export const useExtratosActions = () => {
       return data;
     },
     onSuccess: (data) => {
-      console.log('Invalidating extratos queries after updating extrato:', data.id);
-      queryClient.invalidateQueries({ queryKey: ['extratos'] });
-      queryClient.refetchQueries({ queryKey: ['extratos'] });
+      if (data) {
+        console.log('Invalidating extratos queries after updating extrato:', data.id);
+        queryClient.invalidateQueries({ queryKey: ['extratos'] });
+        queryClient.refetchQueries({ queryKey: ['extratos'] });
+      }
     },
   });
 
@@ -186,9 +163,11 @@ export const useExtratosActions = () => {
       return data;
     },
     onSuccess: (data) => {
-      console.log('Invalidating queries after deleting extrato:', data.id);
-      queryClient.invalidateQueries({ queryKey: ['extratos'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      if (data) {
+        console.log('Invalidating queries after deleting extrato:', data.id);
+        queryClient.invalidateQueries({ queryKey: ['extratos'] });
+        queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      }
     },
   });
 
@@ -211,15 +190,17 @@ export const useTransactionsActions = () => {
         console.error('Error creating transactions:', error);
         throw error;
       }
-      console.log('Transactions created successfully:', data.length);
+      console.log('Transactions created successfully:', data?.length || 0);
       return data;
     },
     onSuccess: (data) => {
-      console.log('Invalidating transactions queries after creating', data.length, 'transactions');
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.refetchQueries({ queryKey: ['transactions'] });
-      // Também invalidar extratos pois o count pode ter mudado
-      queryClient.invalidateQueries({ queryKey: ['extratos'] });
+      if (data) {
+        console.log('Invalidating transactions queries after creating', data.length, 'transactions');
+        queryClient.invalidateQueries({ queryKey: ['transactions'] });
+        queryClient.refetchQueries({ queryKey: ['transactions'] });
+        // Também invalidar extratos pois o count pode ter mudado
+        queryClient.invalidateQueries({ queryKey: ['extratos'] });
+      }
     },
   });
 
@@ -241,8 +222,10 @@ export const useTransactionsActions = () => {
       return data;
     },
     onSuccess: (data) => {
-      console.log('Invalidating transactions queries after updating transaction:', data.id);
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      if (data) {
+        console.log('Invalidating transactions queries after updating transaction:', data.id);
+        queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      }
     },
   });
 
