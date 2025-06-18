@@ -20,35 +20,68 @@ export const parseXLSX = (file: File): Promise<ParsedTransaction[]> => {
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
         
+        console.log('XLSX raw data:', jsonData);
+        
         const transactions: ParsedTransaction[] = [];
         
-        // Pular o cabeçalho (primeira linha)
+        // Pular o cabeçalho (primeira linha) e processar dados
         for (let i = 1; i < jsonData.length; i++) {
           const row = jsonData[i] as any[];
           
+          console.log(`Processing row ${i}:`, row);
+          
           // Verificar se a linha tem dados suficientes
-          if (row.length < 3) continue;
+          if (!row || row.length < 3) {
+            console.log(`Skipping row ${i} - insufficient data`);
+            continue;
+          }
           
-          const date = row[0] ? String(row[0]) : '';
-          const description = row[1] ? String(row[1]) : '';
-          const amount = parseFloat(String(row[2] || '0').replace(',', '.'));
+          const dateValue = row[0];
+          const descriptionValue = row[1];
+          const amountValue = row[2];
           
-          // Pular linhas vazias ou inválidas
-          if (!date || !description || isNaN(amount)) continue;
+          // Verificar se os valores essenciais existem
+          if (!dateValue || !descriptionValue || (amountValue === undefined || amountValue === null)) {
+            console.log(`Skipping row ${i} - missing essential data:`, { dateValue, descriptionValue, amountValue });
+            continue;
+          }
+          
+          const date = String(dateValue).trim();
+          const description = String(descriptionValue).trim();
+          
+          // Processar o valor monetário
+          let amount: number;
+          if (typeof amountValue === 'number') {
+            amount = amountValue;
+          } else {
+            const amountStr = String(amountValue).replace(',', '.').replace(/[^\d.-]/g, '');
+            amount = parseFloat(amountStr);
+          }
+          
+          // Verificar se conseguimos um número válido
+          if (isNaN(amount)) {
+            console.log(`Skipping row ${i} - invalid amount:`, amountValue);
+            continue;
+          }
           
           // Determinar tipo baseado no valor (negativo = saída, positivo = entrada)
           const type: 'entrada' | 'saida' = amount >= 0 ? 'entrada' : 'saida';
           
-          transactions.push({
+          const transaction = {
             date: formatDate(date),
-            description: description.trim(),
+            description: description,
             amount: Math.abs(amount),
             type
-          });
+          };
+          
+          console.log(`Transaction ${i} created:`, transaction);
+          transactions.push(transaction);
         }
         
+        console.log('Total transactions extracted:', transactions.length);
         resolve(transactions);
       } catch (error) {
+        console.error('Error processing XLSX:', error);
         reject(new Error(`Erro ao processar arquivo XLSX: ${error instanceof Error ? error.message : 'Erro desconhecido'}`));
       }
     };
@@ -63,9 +96,10 @@ export const parseXLSX = (file: File): Promise<ParsedTransaction[]> => {
 
 const formatDate = (dateValue: any): string => {
   try {
-    // Se já está no formato correto
-    if (typeof dateValue === 'string' && dateValue.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-      return dateValue;
+    // Se já está no formato correto DD/MM/YYYY
+    if (typeof dateValue === 'string' && dateValue.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+      const parts = dateValue.split('/');
+      return `${parts[0].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[2]}`;
     }
     
     // Se é um número (data do Excel)
@@ -74,7 +108,22 @@ const formatDate = (dateValue: any): string => {
       return `${String(date.d).padStart(2, '0')}/${String(date.m).padStart(2, '0')}/${date.y}`;
     }
     
-    // Tentar converter outros formatos
+    // Tentar converter outros formatos de string
+    if (typeof dateValue === 'string') {
+      // Formato DD-MM-YYYY ou DD.MM.YYYY
+      if (dateValue.match(/^\d{1,2}[-\.]\d{1,2}[-\.]\d{4}$/)) {
+        const parts = dateValue.split(/[-\.]/);
+        return `${parts[0].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[2]}`;
+      }
+      
+      // Formato YYYY-MM-DD
+      if (dateValue.match(/^\d{4}-\d{1,2}-\d{1,2}$/)) {
+        const parts = dateValue.split('-');
+        return `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
+      }
+    }
+    
+    // Tentar converter usando Date
     const date = new Date(dateValue);
     if (!isNaN(date.getTime())) {
       return date.toLocaleDateString('pt-BR');
@@ -82,7 +131,8 @@ const formatDate = (dateValue: any): string => {
     
     // Fallback para string
     return String(dateValue);
-  } catch {
+  } catch (error) {
+    console.log('Error formatting date:', dateValue, error);
     return String(dateValue);
   }
 };

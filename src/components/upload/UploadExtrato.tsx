@@ -119,8 +119,11 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
 
   const processXLSXFile = async (file: File): Promise<any[]> => {
     try {
+      console.log('Starting XLSX processing for file:', file.name);
       const transactions = await parseXLSX(file);
-      return transactions.map(t => ({
+      console.log('XLSX processing completed, transactions found:', transactions.length);
+      
+      const processedTransactions = transactions.map(t => ({
         date: t.date,
         description: t.description,
         amount: t.amount,
@@ -129,7 +132,11 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
         status: 'pendente',
         suggested: false
       }));
+      
+      console.log('Processed transactions for database:', processedTransactions);
+      return processedTransactions;
     } catch (error) {
+      console.error('Error in processXLSXFile:', error);
       throw error;
     }
   };
@@ -159,9 +166,11 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
 
     try {
       let hasProcessedTransactions = false;
+      let totalTransactionsProcessed = 0;
 
       for (const file of files) {
         const fileType = getFileType(file);
+        console.log(`Processing file: ${file.name} (type: ${fileType})`);
         
         // Criar registro do extrato
         const extratoData = {
@@ -176,6 +185,7 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
         };
 
         const extrato = await createExtrato.mutateAsync(extratoData);
+        console.log('Extrato created with ID:', extrato.id);
 
         // Processar transações se for CSV ou XLSX
         if (fileType === 'csv' || fileType === 'xlsx') {
@@ -189,28 +199,45 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
               transactions = await processXLSXFile(file);
             }
             
-            const transactionsWithExtrato = transactions.map(t => ({
-              ...t,
-              extrato_id: extrato.id
-            }));
+            console.log(`Extracted ${transactions.length} transactions from ${file.name}`);
+            
+            if (transactions.length > 0) {
+              const transactionsWithExtrato = transactions.map(t => ({
+                ...t,
+                extrato_id: extrato.id
+              }));
 
-            console.log('Creating transactions in database:', transactionsWithExtrato.length);
-            await createTransactions.mutateAsync(transactionsWithExtrato);
-            console.log('Transactions created successfully');
+              console.log('Creating transactions in database:', transactionsWithExtrato.length);
+              await createTransactions.mutateAsync(transactionsWithExtrato);
+              console.log('Transactions created successfully in database');
 
-            // Atualizar status do extrato
-            await updateExtrato.mutateAsync({
-              id: extrato.id,
-              status: 'processado',
-              transactions_count: transactions.length
-            });
+              totalTransactionsProcessed += transactions.length;
+              hasProcessedTransactions = true;
 
-            hasProcessedTransactions = true;
+              // Atualizar status do extrato
+              await updateExtrato.mutateAsync({
+                id: extrato.id,
+                status: 'processado',
+                transactions_count: transactions.length
+              });
 
-            toast({
-              title: "Sucesso",
-              description: `Arquivo ${file.name} processado com ${transactions.length} transações.`,
-            });
+              toast({
+                title: "Sucesso",
+                description: `Arquivo ${file.name} processado com ${transactions.length} transações.`,
+              });
+            } else {
+              console.log('No transactions found in file:', file.name);
+              await updateExtrato.mutateAsync({
+                id: extrato.id,
+                status: 'erro'
+              });
+              
+              toast({
+                title: "Aviso",
+                description: `Nenhuma transação encontrada no arquivo ${file.name}.`,
+                variant: "destructive",
+              });
+            }
           } catch (error) {
             console.error(`Error processing ${fileType.toUpperCase()}:`, error);
             await updateExtrato.mutateAsync({
@@ -248,15 +275,15 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
       setNotes('');
 
       // Navegar para categorização se houver transações processadas
-      if (hasProcessedTransactions && onNavigateToPage) {
-        console.log('Navigating to categorization with processed transactions');
+      if (hasProcessedTransactions && totalTransactionsProcessed > 0 && onNavigateToPage) {
+        console.log(`Navigating to categorization with ${totalTransactionsProcessed} processed transactions`);
         setTimeout(() => {
           onNavigateToPage('categorization');
           toast({
             title: "Redirecionando",
-            description: "Direcionando para a categorização das transações importadas.",
+            description: `Direcionando para a categorização de ${totalTransactionsProcessed} transações importadas.`,
           });
-        }, 2000);
+        }, 1500);
       }
       
     } catch (error) {
