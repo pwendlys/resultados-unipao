@@ -32,6 +32,7 @@ export type Database = {
       }
       extratos: {
         Row: {
+          account_type: string
           bank: string
           created_at: string
           file_type: string
@@ -45,6 +46,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_type?: string
           bank: string
           created_at?: string
           file_type?: string
@@ -58,6 +60,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_type?: string
           bank?: string
           created_at?: string
           file_type?: string

@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -13,6 +12,7 @@ export interface Extrato {
   status: string;
   transactions_count: number;
   notes?: string;
+  account_type: 'BOLETOS' | 'MENSALIDADES E TX ADM' | 'APORTE E JOIA';
   created_at: string;
   updated_at: string;
 }
@@ -54,6 +54,34 @@ export const useExtratos = () => {
   });
 };
 
+// Hook para extratos filtrados por tipo de conta
+export const useExtratosByAccount = (accountType?: string) => {
+  return useQuery({
+    queryKey: ['extratos', accountType],
+    queryFn: async () => {
+      console.log('Fetching extratos by account type:', accountType);
+      let query = supabase
+        .from('extratos')
+        .select('*');
+      
+      if (accountType && accountType !== 'ALL') {
+        query = query.eq('account_type', accountType);
+      }
+      
+      const { data, error } = await query.order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching extratos by account:', error);
+        throw error;
+      }
+      console.log('Extratos fetched by account:', data?.length || 0);
+      return data as Extrato[];
+    },
+    staleTime: 0,
+    refetchOnMount: true,
+  });
+};
+
 // Hook para transações
 export const useTransactions = () => {
   return useQuery({
@@ -70,6 +98,48 @@ export const useTransactions = () => {
         throw error;
       }
       console.log('Transactions fetched:', data?.length || 0);
+      return data as Transaction[];
+    },
+    staleTime: 0,
+    refetchOnMount: true,
+  });
+};
+
+// Hook para transações filtradas por tipo de conta
+export const useTransactionsByAccount = (accountType?: string) => {
+  return useQuery({
+    queryKey: ['transactions', accountType],
+    queryFn: async () => {
+      console.log('Fetching transactions by account type:', accountType);
+      
+      if (!accountType || accountType === 'ALL') {
+        const { data, error } = await supabase
+          .from('transactions')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          console.error('Error fetching all transactions:', error);
+          throw error;
+        }
+        return data as Transaction[];
+      }
+      
+      // Buscar transações por tipo de conta através dos extratos
+      const { data, error } = await supabase
+        .from('transactions')
+        .select(`
+          *,
+          extratos!inner(account_type)
+        `)
+        .eq('extratos.account_type', accountType)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching transactions by account:', error);
+        throw error;
+      }
+      console.log('Transactions fetched by account:', data?.length || 0);
       return data as Transaction[];
     },
     staleTime: 0,

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Upload, 
@@ -14,7 +15,8 @@ import {
   AlertCircle,
   Trash2,
   Eye,
-  Download
+  Download,
+  Building2
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -36,11 +38,32 @@ interface UploadExtratoProps {
   onNavigateToPage?: (page: string) => void;
 }
 
+type AccountType = 'BOLETOS' | 'MENSALIDADES E TX ADM' | 'APORTE E JOIA';
+
+const ACCOUNT_TYPES: { value: AccountType; label: string; description: string }[] = [
+  {
+    value: 'BOLETOS',
+    label: 'Boletos',
+    description: 'Boletos e pagamentos das mercadorias'
+  },
+  {
+    value: 'MENSALIDADES E TX ADM',
+    label: 'Mensalidades e Tx Adm',
+    description: 'Mensalidades de taxas administrativas e despesas da cooperativa'
+  },
+  {
+    value: 'APORTE E JOIA',
+    label: 'Aporte e Joia',
+    description: 'Aporte e joia dos cooperados e investimentos da cooperativa'
+  }
+];
+
 const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [period, setPeriod] = useState('');
   const [bank, setBank] = useState('');
+  const [accountType, setAccountType] = useState<AccountType | ''>('');
   const [notes, setNotes] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   
@@ -164,10 +187,10 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
 
   const handleProcessFiles = async () => {
     if (files.length === 0) return;
-    if (!period || !bank) {
+    if (!period || !bank || !accountType) {
       toast({
         title: "Erro",
-        description: "Por favor, preencha o período e o banco.",
+        description: "Por favor, preencha o período, banco e tipo de conta.",
         variant: "destructive",
       });
       return;
@@ -189,6 +212,7 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
           size: formatFileSize(file.size),
           period,
           bank,
+          account_type: accountType as AccountType,
           file_type: fileType,
           status: 'processando',
           transactions_count: 0,
@@ -286,6 +310,7 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
       setFiles([]);
       setPeriod('');
       setBank('');
+      setAccountType('');
       setNotes('');
 
       // Navegar para categorização se houver transações processadas
@@ -353,6 +378,21 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
       default:
         return <Badge variant="outline">Pendente</Badge>;
     }
+  };
+
+  const getAccountTypeBadge = (accountType: string) => {
+    const account = ACCOUNT_TYPES.find(type => type.value === accountType);
+    const colors = {
+      'BOLETOS': 'bg-blue-100 text-blue-800',
+      'MENSALIDADES E TX ADM': 'bg-orange-100 text-orange-800',
+      'APORTE E JOIA': 'bg-green-100 text-green-800'
+    };
+    
+    return (
+      <Badge className={`${colors[accountType as AccountType] || 'bg-gray-100 text-gray-800'} text-xs`}>
+        {account?.label || accountType}
+      </Badge>
+    );
   };
 
   const handleDeleteExtrato = async (extratoId: string, extratoName: string) => {
@@ -493,6 +533,33 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
             </div>
           </div>
 
+          {/* Account Type Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="account-type">Tipo de Conta *</Label>
+            <Select value={accountType} onValueChange={(value: AccountType) => setAccountType(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o tipo de conta">
+                  {accountType && (
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4" />
+                      {ACCOUNT_TYPES.find(type => type.value === accountType)?.label}
+                    </div>
+                  )}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {ACCOUNT_TYPES.map((account) => (
+                  <SelectItem key={account.value} value={account.value}>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{account.label}</span>
+                      <span className="text-sm text-muted-foreground">{account.description}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="notes">Observações (Opcional)</Label>
             <Textarea
@@ -506,7 +573,7 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
 
           <Button 
             className="w-full bg-primary hover:bg-primary/90"
-            disabled={files.length === 0 || isProcessing || !period || !bank}
+            disabled={files.length === 0 || isProcessing || !period || !bank || !accountType}
             onClick={handleProcessFiles}
           >
             {isProcessing ? 'Processando...' : `Processar Extrato${files.length > 1 ? 's' : ''}`}
@@ -544,6 +611,7 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
                         <Badge variant="outline" className="text-xs">
                           {extrato.file_type.toUpperCase()}
                         </Badge>
+                        {getAccountTypeBadge(extrato.account_type)}
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
