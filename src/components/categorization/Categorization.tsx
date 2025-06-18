@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,7 +35,7 @@ const Categorization = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [pendingUpdates, setPendingUpdates] = useState<Map<string, { category: string; status: string; observacao?: string }>>(new Map());
+  const [pendingUpdates, setPendingUpdates] = useState<Map<string, { category: string; status: 'pendente' | 'categorizado'; observacao?: string }>>(new Map());
 
   const { toast } = useToast();
   const { data: transactions = [], isLoading: transactionsLoading, refetch: refetchTransactions } = useTransactions();
@@ -56,7 +57,7 @@ const Categorization = () => {
   const categoriasEntrada = categories.filter(c => c.type === 'entrada').map(c => c.name);
 
   const updateTransactionCategory = (id: string, category: string) => {
-    const status = category ? 'categorizado' : 'pendente';
+    const status: 'pendente' | 'categorizado' = category ? 'categorizado' : 'pendente';
     setPendingUpdates(prev => {
       const newUpdates = new Map(prev);
       const existing = newUpdates.get(id) || {};
@@ -68,7 +69,7 @@ const Categorization = () => {
   const updateTransactionObservacao = (id: string, observacao: string) => {
     setPendingUpdates(prev => {
       const newUpdates = new Map(prev);
-      const existing = newUpdates.get(id) || { category: '', status: 'pendente' };
+      const existing = newUpdates.get(id) || { category: '', status: 'pendente' as const };
       newUpdates.set(id, { ...existing, observacao });
       return newUpdates;
     });
@@ -103,7 +104,7 @@ const Categorization = () => {
           newUpdates.set(t.id, {
             ...existing,
             category: suggested,
-            status: 'categorizado'
+            status: 'categorizado' as const
           });
         }
       }
