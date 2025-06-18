@@ -24,10 +24,10 @@ import {
 import { cn } from '@/lib/utils';
 import { 
   useTransactions, 
-  useCategories, 
   useTransactionsActions,
   Transaction 
 } from '@/hooks/useSupabaseData';
+import { useCategories } from '@/hooks/useCategories';
 
 const Categorization = () => {
   const [searchTerm, setSearchTerm] = useState('');
