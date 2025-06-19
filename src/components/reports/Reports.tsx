@@ -45,6 +45,7 @@ const ACCOUNT_TYPES: { value: AccountType; label: string; description: string }[
 
 const Reports = () => {
   const [selectedAccount, setSelectedAccount] = useState<AccountType>('ALL');
+  const [isExporting, setIsExporting] = useState(false);
   const { data: transactions = [], isLoading: transactionsLoading } = useTransactionsByAccount(selectedAccount);
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
   const { toast } = useToast();
@@ -71,8 +72,22 @@ const Reports = () => {
   const totalExits = exitCategories.reduce((sum, c) => sum + c.total, 0);
   const netResult = totalEntries - totalExits;
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
+    if (isExporting) return;
+    
     try {
+      setIsExporting(true);
+      console.log('Iniciando exportação PDF...');
+      
+      if (!transactions || transactions.length === 0) {
+        toast({
+          title: "Nenhuma Transação Encontrada",
+          description: "Não há transações para gerar o relatório.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const reportData = {
         selectedAccount: ACCOUNT_TYPES.find(type => type.value === selectedAccount)?.label || selectedAccount,
         entryCategories,
@@ -84,7 +99,9 @@ const Reports = () => {
         allTransactions: transactions
       };
 
-      generateDREReport(reportData);
+      console.log('Dados do relatório preparados:', reportData);
+      
+      await generateDREReport(reportData);
       
       toast({
         title: "PDF Gerado com Sucesso",
@@ -97,6 +114,8 @@ const Reports = () => {
         description: "Ocorreu um erro ao gerar o relatório. Tente novamente.",
         variant: "destructive",
       });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -144,9 +163,12 @@ const Reports = () => {
             Demonstrativo do Resultado do Exercício por categorias
           </p>
         </div>
-        <Button onClick={handleExportPDF}>
+        <Button 
+          onClick={handleExportPDF}
+          disabled={isExporting || transactionsLoading || categoriesLoading}
+        >
           <Download className="h-4 w-4 mr-2" />
-          Exportar PDF
+          {isExporting ? 'Gerando PDF...' : 'Exportar PDF'}
         </Button>
       </div>
 
