@@ -12,7 +12,7 @@ export interface Extrato {
   status: string;
   transactions_count: number;
   notes?: string;
-  account_type: 'BOLETOS' | 'MENSALIDADES E TX ADM' | 'APORTE E JOIA';
+  account_type: 'BOLETOS' | 'MENSALIDADES E TX ADM' | 'APORTE E JOIA' | 'Cora';
   created_at: string;
   updated_at: string;
 }

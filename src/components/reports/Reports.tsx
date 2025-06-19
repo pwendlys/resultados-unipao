@@ -18,7 +18,7 @@ import { useCategories } from '@/hooks/useCategories';
 import { generateDREReport } from '@/utils/pdfGenerator';
 import { useToast } from '@/hooks/use-toast';
 
-type AccountType = 'BOLETOS' | 'MENSALIDADES E TX ADM' | 'APORTE E JOIA' | 'ALL';
+type AccountType = 'BOLETOS' | 'MENSALIDADES E TX ADM' | 'APORTE E JOIA' | 'Cora' | 'ALL';
 
 const ACCOUNT_TYPES: { value: AccountType; label: string; description: string }[] = [
   {
@@ -40,6 +40,11 @@ const ACCOUNT_TYPES: { value: AccountType; label: string; description: string }[
     value: 'APORTE E JOIA',
     label: 'Aporte e Joia',
     description: 'Aporte e joia dos cooperados e investimentos da cooperativa'
+  },
+  {
+    value: 'Cora',
+    label: 'Cora',
+    description: 'Conta bancária Cora'
   }
 ];
 
@@ -132,7 +137,8 @@ const Reports = () => {
       'ALL': 'bg-gray-100 text-gray-800',
       'BOLETOS': 'bg-blue-100 text-blue-800',
       'MENSALIDADES E TX ADM': 'bg-orange-100 text-orange-800',
-      'APORTE E JOIA': 'bg-green-100 text-green-800'
+      'APORTE E JOIA': 'bg-green-100 text-green-800',
+      'Cora': 'bg-purple-100 text-purple-800'
     };
     
     return (
