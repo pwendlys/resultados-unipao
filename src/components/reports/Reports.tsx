@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +15,8 @@ import {
 } from 'lucide-react';
 import { useTransactionsByAccount } from '@/hooks/useSupabaseData';
 import { useCategories } from '@/hooks/useCategories';
+import { generateDREReport } from '@/utils/pdfGenerator';
+import { useToast } from '@/hooks/use-toast';
 
 type AccountType = 'BOLETOS' | 'MENSALIDADES E TX ADM' | 'APORTE E JOIA' | 'ALL';
 
@@ -46,6 +47,7 @@ const Reports = () => {
   const [selectedAccount, setSelectedAccount] = useState<AccountType>('ALL');
   const { data: transactions = [], isLoading: transactionsLoading } = useTransactionsByAccount(selectedAccount);
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
+  const { toast } = useToast();
 
   const categorizedTransactions = transactions.filter(t => t.status === 'categorizado');
   
@@ -68,6 +70,35 @@ const Reports = () => {
   const totalEntries = entryCategories.reduce((sum, c) => sum + c.total, 0);
   const totalExits = exitCategories.reduce((sum, c) => sum + c.total, 0);
   const netResult = totalEntries - totalExits;
+
+  const handleExportPDF = () => {
+    try {
+      const reportData = {
+        selectedAccount: ACCOUNT_TYPES.find(type => type.value === selectedAccount)?.label || selectedAccount,
+        entryCategories,
+        exitCategories,
+        totalEntries,
+        totalExits,
+        netResult,
+        categorizedTransactions,
+        allTransactions: transactions
+      };
+
+      generateDREReport(reportData);
+      
+      toast({
+        title: "PDF Gerado com Sucesso",
+        description: "O relatório DRE foi exportado e baixado.",
+      });
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast({
+        title: "Erro ao Gerar PDF",
+        description: "Ocorreu um erro ao gerar o relatório. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -113,7 +144,7 @@ const Reports = () => {
             Demonstrativo do Resultado do Exercício por categorias
           </p>
         </div>
-        <Button>
+        <Button onClick={handleExportPDF}>
           <Download className="h-4 w-4 mr-2" />
           Exportar PDF
         </Button>
