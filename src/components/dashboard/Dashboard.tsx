@@ -3,6 +3,8 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
   ChartContainer, 
   ChartTooltip, 
@@ -27,21 +29,63 @@ import {
   TrendingDown, 
   DollarSign, 
   FileText,
-  Calendar,
+  Calendar as CalendarIcon,
   Download
 } from 'lucide-react';
 import { useExtratos, useTransactions } from '@/hooks/useSupabaseData';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 const Dashboard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('mensal');
+  const [customDateRange, setCustomDateRange] = useState<{
+    from: Date | undefined;
+    to: Date | undefined;
+  }>({
+    from: undefined,
+    to: undefined,
+  });
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const { data: extratos = [] } = useExtratos();
-  const { data: transactions = [] } = useTransactions();
+  const { data: allTransactions = [] } = useTransactions();
 
-  // Calcular dados financeiros a partir das transações reais
+  // Filtrar transações baseado no período selecionado
+  const filteredTransactions = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    return allTransactions.filter(transaction => {
+      const transactionDate = new Date(transaction.date);
+      
+      switch (selectedPeriod) {
+        case 'diario':
+          return transactionDate >= today;
+          
+        case 'semanal':
+          const weekAgo = new Date(today);
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          return transactionDate >= weekAgo;
+          
+        case 'mensal':
+          const monthAgo = new Date(today);
+          monthAgo.setMonth(monthAgo.getMonth() - 1);
+          return transactionDate >= monthAgo;
+          
+        case 'personalizado':
+          if (!customDateRange.from || !customDateRange.to) return true;
+          return transactionDate >= customDateRange.from && transactionDate <= customDateRange.to;
+          
+        default:
+          return true;
+      }
+    });
+  }, [allTransactions, selectedPeriod, customDateRange]);
+
+  // Calcular dados financeiros a partir das transações filtradas
   const financialData = useMemo(() => {
-    const entradas = transactions.filter(t => t.type === 'entrada');
-    const saidas = transactions.filter(t => t.type === 'saida');
+    const entradas = filteredTransactions.filter(t => t.type === 'entrada');
+    const saidas = filteredTransactions.filter(t => t.type === 'saida');
     
     const totalReceitas = entradas.reduce((sum, t) => sum + Number(t.amount), 0);
     const totalDespesas = saidas.reduce((sum, t) => sum + Number(t.amount), 0);
@@ -54,11 +98,11 @@ const Dashboard = () => {
       lucroLiquido,
       margem
     };
-  }, [transactions]);
+  }, [filteredTransactions]);
 
-  // Agrupar receitas por categoria
+  // Agrupar receitas por categoria (com dados filtrados)
   const receitasPorCategoria = useMemo(() => {
-    const entradas = transactions.filter(t => t.type === 'entrada' && t.category);
+    const entradas = filteredTransactions.filter(t => t.type === 'entrada' && t.category);
     const grouped = entradas.reduce((acc, t) => {
       const category = t.category || 'Sem Categoria';
       acc[category] = (acc[category] || 0) + Number(t.amount);
@@ -70,11 +114,11 @@ const Dashboard = () => {
       value,
       color: index === 0 ? 'hsl(140 40% 55%)' : 'hsl(45 93% 47%)'
     }));
-  }, [transactions]);
+  }, [filteredTransactions]);
 
-  // Agrupar despesas por categoria
+  // Agrupar despesas por categoria (com dados filtrados)
   const despesasPorCategoria = useMemo(() => {
-    const saidas = transactions.filter(t => t.type === 'saida' && t.category);
+    const saidas = filteredTransactions.filter(t => t.type === 'saida' && t.category);
     const grouped = saidas.reduce((acc, t) => {
       const category = t.category || 'Sem Categoria';
       acc[category] = (acc[category] || 0) + Number(t.amount);
@@ -94,12 +138,12 @@ const Dashboard = () => {
       value,
       color: colors[index % colors.length]
     }));
-  }, [transactions]);
+  }, [filteredTransactions]);
 
-  // Evolução mensal (simulada - seria necessário agrupar por mês real)
+  // Evolução mensal (com dados filtrados)
   const evoluçaoMensal = useMemo(() => {
     // Agrupar transações por mês
-    const monthlyData = transactions.reduce((acc, t) => {
+    const monthlyData = filteredTransactions.reduce((acc, t) => {
       const date = new Date(t.date);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       
@@ -125,7 +169,21 @@ const Dashboard = () => {
         receitas: data.receitas,
         despesas: data.despesas
       }));
-  }, [transactions]);
+  }, [filteredTransactions]);
+
+  const handlePeriodChange = (period: string) => {
+    setSelectedPeriod(period);
+    if (period === 'personalizado') {
+      setShowDatePicker(true);
+    }
+  };
+
+  const getPeriodLabel = () => {
+    if (selectedPeriod === 'personalizado' && customDateRange.from && customDateRange.to) {
+      return `${format(customDateRange.from, 'dd/MM/yyyy')} - ${format(customDateRange.to, 'dd/MM/yyyy')}`;
+    }
+    return selectedPeriod.charAt(0).toUpperCase() + selectedPeriod.slice(1);
+  };
 
   const chartConfig = {
     receitas: {
@@ -178,22 +236,58 @@ const Dashboard = () => {
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Dashboard Financeiro</h1>
-          <p className="text-muted-foreground">Visão geral do DRE da Cooperativa Unipão</p>
+          <p className="text-muted-foreground">
+            Visão geral do DRE da Cooperativa Unipão - Período: {getPeriodLabel()}
+          </p>
         </div>
         
         <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {['diario', 'semanal', 'mensal', 'personalizado'].map((period) => (
               <Button
                 key={period}
                 variant={selectedPeriod === period ? "default" : "outline"}
                 size="sm"
-                onClick={() => setSelectedPeriod(period)}
+                onClick={() => handlePeriodChange(period)}
               >
-                {period.charAt(0).toUpperCase() + period.slice(1)}
+                {period === 'personalizado' ? 'Personalizado' : period.charAt(0).toUpperCase() + period.slice(1)}
               </Button>
             ))}
           </div>
+          
+          {selectedPeriod === 'personalizado' && (
+            <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <CalendarIcon className="h-4 w-4" />
+                  {customDateRange.from && customDateRange.to 
+                    ? `${format(customDateRange.from, 'dd/MM')} - ${format(customDateRange.to, 'dd/MM')}`
+                    : 'Selecionar período'
+                  }
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="range"
+                  selected={{
+                    from: customDateRange.from,
+                    to: customDateRange.to,
+                  }}
+                  onSelect={(range) => {
+                    setCustomDateRange({
+                      from: range?.from,
+                      to: range?.to,
+                    });
+                    if (range?.from && range?.to) {
+                      setShowDatePicker(false);
+                    }
+                  }}
+                  numberOfMonths={2}
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+          )}
           
           <Button variant="outline" className="gap-2">
             <Download className="h-4 w-4" />
@@ -213,7 +307,9 @@ const Dashboard = () => {
             <div className="text-2xl font-bold text-primary">
               R$ {financialData.totalReceitas.toLocaleString('pt-BR')}
             </div>
-            <p className="text-xs text-muted-foreground">Baseado em dados reais</p>
+            <p className="text-xs text-muted-foreground">
+              {filteredTransactions.filter(t => t.type === 'entrada').length} transações
+            </p>
           </CardContent>
         </Card>
 
@@ -226,7 +322,9 @@ const Dashboard = () => {
             <div className="text-2xl font-bold text-destructive">
               R$ {financialData.totalDespesas.toLocaleString('pt-BR')}
             </div>
-            <p className="text-xs text-muted-foreground">Baseado em dados reais</p>
+            <p className="text-xs text-muted-foreground">
+              {filteredTransactions.filter(t => t.type === 'saida').length} transações
+            </p>
           </CardContent>
         </Card>
 
@@ -250,7 +348,7 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{extratos.length}</div>
-            <p className="text-xs text-muted-foreground">{transactions.length} transações</p>
+            <p className="text-xs text-muted-foreground">{filteredTransactions.length} transações no período</p>
           </CardContent>
         </Card>
       </div>
@@ -288,7 +386,7 @@ const Dashboard = () => {
               </ChartContainer>
             ) : (
               <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                Não há dados suficientes para exibir o gráfico
+                Não há dados suficientes para exibir o gráfico no período selecionado
               </div>
             )}
           </CardContent>
@@ -298,7 +396,7 @@ const Dashboard = () => {
         <Card>
           <CardHeader>
             <CardTitle>Distribuição de Receitas</CardTitle>
-            <CardDescription>Por categoria</CardDescription>
+            <CardDescription>Por categoria no período selecionado</CardDescription>
           </CardHeader>
           <CardContent>
             {receitasPorCategoria.length > 0 ? (
@@ -323,7 +421,7 @@ const Dashboard = () => {
               </ChartContainer>
             ) : (
               <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                Nenhuma receita categorizada encontrada
+                Nenhuma receita categorizada encontrada no período selecionado
               </div>
             )}
           </CardContent>
@@ -334,7 +432,7 @@ const Dashboard = () => {
       <Card>
         <CardHeader>
           <CardTitle>Despesas por Categoria</CardTitle>
-          <CardDescription>Principais gastos do período</CardDescription>
+          <CardDescription>Principais gastos do período selecionado</CardDescription>
         </CardHeader>
         <CardContent>
           {despesasPorCategoria.length > 0 ? (
@@ -349,7 +447,7 @@ const Dashboard = () => {
             </ChartContainer>
           ) : (
             <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-              Nenhuma despesa categorizada encontrada
+              Nenhuma despesa categorizada encontrada no período selecionado
             </div>
           )}
         </CardContent>
@@ -367,7 +465,7 @@ const Dashboard = () => {
               {extratos.slice(0, 5).map((extrato) => (
                 <div key={extrato.id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-center gap-3">
-                    <Calendar className="h-5 w-5 text-primary" />
+                    <CalendarIcon className="h-5 w-5 text-primary" />
                     <div>
                       <p className="font-medium">{extrato.name}</p>
                       <p className="text-sm text-muted-foreground">{extrato.bank} - {extrato.period}</p>
