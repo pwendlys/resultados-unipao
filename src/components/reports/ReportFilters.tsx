@@ -12,7 +12,7 @@ import {
   Building2
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR } from 'date-fns/locale/pt-BR';
 import { cn } from '@/lib/utils';
 
 export type AccountType = 'BOLETOS' | 'MENSALIDADES E TX ADM' | 'APORTE E JOIA' | 'Cora' | 'ALL';
