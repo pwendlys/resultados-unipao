@@ -1,4 +1,5 @@
 
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
@@ -20,16 +21,32 @@ const Reports = () => {
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
   const { toast } = useToast();
 
-  // Filtrar transações por período se as datas foram selecionadas
+  // Filtrar transações por período baseado na data REAL das transações
   const filteredTransactions = transactions.filter(transaction => {
+    // Se não há filtros de data, retorna todas as transações
     if (!dateFrom && !dateTo) return true;
     
     // Converter a data da transação para objeto Date
-    const transactionDate = new Date(transaction.date);
+    // A data vem como string no formato 'DD/MM/YYYY' ou 'YYYY-MM-DD'
+    let transactionDate;
+    try {
+      // Verificar se a data está no formato brasileiro DD/MM/YYYY
+      if (transaction.date.includes('/')) {
+        const [day, month, year] = transaction.date.split('/');
+        transactionDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      } else {
+        // Assumir formato ISO YYYY-MM-DD
+        transactionDate = new Date(transaction.date);
+      }
+    } catch (error) {
+      console.error('Erro ao converter data da transação:', transaction.date, error);
+      return false; // Excluir transações com datas inválidas
+    }
     
     // Resetar o horário para comparação apenas da data
     const transactionDateOnly = new Date(transactionDate.getFullYear(), transactionDate.getMonth(), transactionDate.getDate());
     
+    // Aplicar filtros de data
     if (dateFrom && dateTo) {
       const dateFromOnly = new Date(dateFrom.getFullYear(), dateFrom.getMonth(), dateFrom.getDate());
       const dateToOnly = new Date(dateTo.getFullYear(), dateTo.getMonth(), dateTo.getDate());
@@ -48,7 +65,7 @@ const Reports = () => {
   // Filtrar apenas transações categorizadas E do período selecionado
   const categorizedTransactions = filteredTransactions.filter(t => t.status === 'categorizado');
   
-  // Calcular totais por categoria APENAS com transações do período
+  // Calcular totais por categoria APENAS com transações do período filtrado
   const categoryTotals = categories.map(category => {
     const categoryTransactions = categorizedTransactions.filter(t => t.category === category.name);
     const total = categoryTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
@@ -61,7 +78,7 @@ const Reports = () => {
     };
   });
 
-  // Filtrar apenas categorias com valores (total > 0) do período
+  // Filtrar apenas categorias com valores (total > 0) do período selecionado
   const entryCategories = categoryTotals.filter(c => c.type === 'entrada' && c.total > 0);
   const exitCategories = categoryTotals.filter(c => c.type === 'saida' && c.total > 0);
 
@@ -74,7 +91,7 @@ const Reports = () => {
     
     try {
       setIsExporting(true);
-      console.log('Iniciando exportação PDF...');
+      console.log('Iniciando exportação PDF com filtro de período aplicado...');
       
       if (!filteredTransactions || filteredTransactions.length === 0) {
         toast({
@@ -100,13 +117,13 @@ const Reports = () => {
         }
       };
 
-      console.log('Dados do relatório preparados:', reportData);
+      console.log('Dados do relatório preparados com filtro de período:', reportData);
       
       await generateDREReport(reportData);
       
       toast({
         title: "PDF Gerado com Sucesso",
-        description: "O relatório DRE foi exportado e baixado.",
+        description: "O relatório DRE foi exportado com o filtro de período aplicado.",
       });
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
@@ -145,6 +162,16 @@ const Reports = () => {
           <p className="text-muted-foreground">
             Demonstrativo do Resultado do Exercício por categorias
           </p>
+          {(dateFrom || dateTo) && (
+            <p className="text-sm text-blue-600 mt-2">
+              Filtrado por período: {dateFrom && dateTo 
+                ? `${format(dateFrom, 'dd/MM/yyyy')} até ${format(dateTo, 'dd/MM/yyyy')}`
+                : dateFrom 
+                ? `A partir de ${format(dateFrom, 'dd/MM/yyyy')}`
+                : `Até ${format(dateTo!, 'dd/MM/yyyy')}`
+              }
+            </p>
+          )}
         </div>
         <Button 
           onClick={handleExportPDF}
@@ -191,3 +218,4 @@ const Reports = () => {
 };
 
 export default Reports;
+
