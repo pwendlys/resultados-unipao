@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,6 +33,7 @@ import { cn } from '@/lib/utils';
 import { useExtratos, useExtratosActions, useTransactionsActions } from '@/hooks/useSupabaseData';
 import { parseCSV, generateSampleCSV } from '@/utils/csvProcessor';
 import { parseXLSX, generateSampleXLSX } from '@/utils/xlsxProcessor';
+import { parseOFX, generateSampleOFX } from '@/utils/ofxProcessor';
 
 interface UploadExtratoProps {
   onNavigateToPage?: (page: string) => void;
@@ -100,7 +100,9 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
         file.type === 'text/csv' || 
         file.name.endsWith('.csv') ||
         file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-        file.name.endsWith('.xlsx')
+        file.name.endsWith('.xlsx') ||
+        file.name.endsWith('.ofx') ||
+        file.type === 'application/x-ofx'
       );
       setFiles(prev => [...prev, ...validFiles]);
     }
@@ -114,7 +116,9 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
         file.type === 'text/csv' || 
         file.name.endsWith('.csv') ||
         file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-        file.name.endsWith('.xlsx')
+        file.name.endsWith('.xlsx') ||
+        file.name.endsWith('.ofx') ||
+        file.type === 'application/x-ofx'
       );
       setFiles(prev => [...prev, ...validFiles]);
     }
@@ -181,12 +185,46 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
     }
   };
 
+  const processOFXFile = async (file: File): Promise<any[]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const ofxContent = e.target?.result as string;
+          console.log('Starting OFX processing for file:', file.name);
+          const transactions = parseOFX(ofxContent);
+          console.log('OFX processing completed, transactions found:', transactions.length);
+          
+          const processedTransactions = transactions.map(t => ({
+            date: t.date,
+            description: t.description,
+            amount: t.amount,
+            type: t.type,
+            category: '',
+            status: 'pendente',
+            suggested: false
+          }));
+          
+          resolve(processedTransactions);
+        } catch (error) {
+          console.error('Error processing OFX:', error);
+          reject(error);
+        }
+      };
+      reader.onerror = () => reject(new Error('Erro ao ler arquivo OFX'));
+      reader.readAsText(file);
+    });
+  };
+
   const getFileType = (file: File): string => {
     if (file.name.endsWith('.xlsx') || file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
       return 'xlsx';
     }
     if (file.name.endsWith('.csv') || file.type === 'text/csv') {
       return 'csv';
+    }
+    if (file.name.endsWith('.ofx') || file.type === 'application/x-ofx') {
+      return 'ofx';
     }
     return 'pdf';
   };
@@ -231,16 +269,18 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
         }
         console.log('Extrato created with ID:', extrato.id);
 
-        // Processar transações se for CSV ou XLSX
-        if (fileType === 'csv' || fileType === 'xlsx') {
+        // Processar transações se for CSV, XLSX ou OFX
+        if (fileType === 'csv' || fileType === 'xlsx' || fileType === 'ofx') {
           try {
             console.log(`Processing ${fileType.toUpperCase()} file:`, file.name);
             
             let transactions;
             if (fileType === 'csv') {
               transactions = await processCSVFile(file);
-            } else {
+            } else if (fileType === 'xlsx') {
               transactions = await processXLSXFile(file);
+            } else if (fileType === 'ofx') {
+              transactions = await processOFXFile(file);
             }
             
             console.log(`Extracted ${transactions.length} transactions from ${file.name}`);
@@ -319,16 +359,19 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
       setAccountType('');
       setNotes('');
 
-      // Navegar para categorização se houver transações processadas
+      // Navegar para categorização SEMPRE que houver transações processadas
       if (hasProcessedTransactions && totalTransactionsProcessed > 0 && onNavigateToPage) {
         console.log(`Navigating to categorization with ${totalTransactionsProcessed} processed transactions`);
+        
+        toast({
+          title: "Redirecionando",
+          description: `Direcionando para a categorização de ${totalTransactionsProcessed} transações importadas.`,
+        });
+
+        // Redirecionar imediatamente após o processamento
         setTimeout(() => {
           onNavigateToPage('categorization');
-          toast({
-            title: "Redirecionando",
-            description: `Direcionando para a categorização de ${totalTransactionsProcessed} transações importadas.`,
-          });
-        }, 1500);
+        }, 1000);
       }
       
     } catch (error) {
@@ -358,6 +401,10 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
 
   const downloadSampleXLSX = () => {
     generateSampleXLSX();
+  };
+
+  const downloadSampleOFX = () => {
+    generateSampleOFX();
   };
 
   const getStatusIcon = (status: string) => {
@@ -425,7 +472,7 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
       <div>
         <h1 className="text-3xl font-bold">Upload de Extratos</h1>
         <p className="text-muted-foreground">
-          Faça upload dos extratos bancários em PDF, CSV ou XLSX para processamento automático
+          Faça upload dos extratos bancários em PDF, CSV, XLSX ou OFX para processamento automático
         </p>
       </div>
 
@@ -434,7 +481,7 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
         <CardHeader>
           <CardTitle>Novo Extrato</CardTitle>
           <CardDescription>
-            Selecione ou arraste arquivos PDF, CSV ou XLSX de extratos bancários
+            Selecione ou arraste arquivos PDF, CSV, XLSX ou OFX de extratos bancários
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -447,6 +494,10 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
             <Button variant="outline" size="sm" onClick={downloadSampleXLSX}>
               <Download className="h-4 w-4 mr-2" />
               Exemplo XLSX
+            </Button>
+            <Button variant="outline" size="sm" onClick={downloadSampleOFX}>
+              <Download className="h-4 w-4 mr-2" />
+              Exemplo OFX
             </Button>
           </div>
 
@@ -465,7 +516,7 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
           >
             <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-semibold mb-2">
-              Arraste seus arquivos PDF, CSV ou XLSX aqui
+              Arraste seus arquivos PDF, CSV, XLSX ou OFX aqui
             </h3>
             <p className="text-muted-foreground mb-4">
               ou clique para selecionar arquivos
@@ -478,13 +529,13 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
                 id="file-upload"
                 type="file"
                 multiple
-                accept=".pdf,.csv,.xlsx"
+                accept=".pdf,.csv,.xlsx,.ofx"
                 className="hidden"
                 onChange={handleFileChange}
               />
             </Label>
             <p className="text-xs text-muted-foreground mt-2">
-              Arquivos PDF, CSV e XLSX são aceitos
+              Arquivos PDF, CSV, XLSX e OFX são aceitos
             </p>
           </div>
 
