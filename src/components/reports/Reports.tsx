@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
@@ -24,14 +23,22 @@ const Reports = () => {
   const filteredTransactions = transactions.filter(transaction => {
     if (!dateFrom && !dateTo) return true;
     
+    // Converter a data da transação para objeto Date
     const transactionDate = new Date(transaction.date);
     
+    // Resetar o horário para comparação apenas da data
+    const transactionDateOnly = new Date(transactionDate.getFullYear(), transactionDate.getMonth(), transactionDate.getDate());
+    
     if (dateFrom && dateTo) {
-      return transactionDate >= dateFrom && transactionDate <= dateTo;
+      const dateFromOnly = new Date(dateFrom.getFullYear(), dateFrom.getMonth(), dateFrom.getDate());
+      const dateToOnly = new Date(dateTo.getFullYear(), dateTo.getMonth(), dateTo.getDate());
+      return transactionDateOnly >= dateFromOnly && transactionDateOnly <= dateToOnly;
     } else if (dateFrom) {
-      return transactionDate >= dateFrom;
+      const dateFromOnly = new Date(dateFrom.getFullYear(), dateFrom.getMonth(), dateFrom.getDate());
+      return transactionDateOnly >= dateFromOnly;
     } else if (dateTo) {
-      return transactionDate <= dateTo;
+      const dateToOnly = new Date(dateTo.getFullYear(), dateTo.getMonth(), dateTo.getDate());
+      return transactionDateOnly <= dateToOnly;
     }
     
     return true;
