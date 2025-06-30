@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
@@ -44,9 +45,10 @@ const Reports = () => {
     return true;
   });
 
+  // Filtrar apenas transações categorizadas E do período selecionado
   const categorizedTransactions = filteredTransactions.filter(t => t.status === 'categorizado');
   
-  // Calcular totais por categoria
+  // Calcular totais por categoria APENAS com transações do período
   const categoryTotals = categories.map(category => {
     const categoryTransactions = categorizedTransactions.filter(t => t.category === category.name);
     const total = categoryTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
@@ -59,7 +61,7 @@ const Reports = () => {
     };
   });
 
-  // Filtrar apenas categorias com valores (total > 0)
+  // Filtrar apenas categorias com valores (total > 0) do período
   const entryCategories = categoryTotals.filter(c => c.type === 'entrada' && c.total > 0);
   const exitCategories = categoryTotals.filter(c => c.type === 'saida' && c.total > 0);
 
