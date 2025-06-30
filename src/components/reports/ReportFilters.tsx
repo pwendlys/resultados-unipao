@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +11,7 @@ import {
   Building2
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale/pt-BR';
+import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
 export type AccountType = 'BOLETOS' | 'MENSALIDADES E TX ADM' | 'APORTE E JOIA' | 'Cora' | 'ALL';
@@ -176,7 +175,6 @@ export const ReportFilters = ({
                       onSelect={onDateFromChange}
                       initialFocus
                       className="pointer-events-auto"
-                      locale={ptBR}
                     />
                   </PopoverContent>
                 </Popover>
@@ -203,7 +201,6 @@ export const ReportFilters = ({
                       onSelect={onDateToChange}
                       initialFocus
                       className="pointer-events-auto"
-                      locale={ptBR}
                     />
                   </PopoverContent>
                 </Popover>
