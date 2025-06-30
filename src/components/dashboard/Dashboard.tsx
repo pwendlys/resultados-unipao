@@ -56,25 +56,57 @@ const Dashboard = () => {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
     return allTransactions.filter(transaction => {
-      const transactionDate = new Date(transaction.date);
+      // Converter a data da transação para objeto Date
+      // A data vem como string no formato 'DD/MM/YYYY' ou 'YYYY-MM-DD'
+      let transactionDate;
+      try {
+        // Verificar se a data está no formato brasileiro DD/MM/YYYY
+        if (transaction.date.includes('/')) {
+          const [day, month, year] = transaction.date.split('/');
+          transactionDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        } else {
+          // Assumir formato ISO YYYY-MM-DD
+          transactionDate = new Date(transaction.date);
+        }
+      } catch (error) {
+        console.error('Erro ao converter data da transação:', transaction.date, error);
+        return false; // Excluir transações com datas inválidas
+      }
+      
+      // Resetar o horário para comparação apenas da data
+      const transactionDateOnly = new Date(transactionDate.getFullYear(), transactionDate.getMonth(), transactionDate.getDate());
       
       switch (selectedPeriod) {
         case 'diario':
-          return transactionDate >= today;
+          return transactionDateOnly >= today;
           
         case 'semanal':
           const weekAgo = new Date(today);
           weekAgo.setDate(weekAgo.getDate() - 7);
-          return transactionDate >= weekAgo;
+          return transactionDateOnly >= weekAgo;
           
         case 'mensal':
           const monthAgo = new Date(today);
           monthAgo.setMonth(monthAgo.getMonth() - 1);
-          return transactionDate >= monthAgo;
+          return transactionDateOnly >= monthAgo;
           
         case 'personalizado':
-          if (!customDateRange.from || !customDateRange.to) return true;
-          return transactionDate >= customDateRange.from && transactionDate <= customDateRange.to;
+          if (!customDateRange.from && !customDateRange.to) return true;
+          
+          // Aplicar filtros de data personalizada
+          if (customDateRange.from && customDateRange.to) {
+            const dateFromOnly = new Date(customDateRange.from.getFullYear(), customDateRange.from.getMonth(), customDateRange.from.getDate());
+            const dateToOnly = new Date(customDateRange.to.getFullYear(), customDateRange.to.getMonth(), customDateRange.to.getDate());
+            return transactionDateOnly >= dateFromOnly && transactionDateOnly <= dateToOnly;
+          } else if (customDateRange.from) {
+            const dateFromOnly = new Date(customDateRange.from.getFullYear(), customDateRange.from.getMonth(), customDateRange.from.getDate());
+            return transactionDateOnly >= dateFromOnly;
+          } else if (customDateRange.to) {
+            const dateToOnly = new Date(customDateRange.to.getFullYear(), customDateRange.to.getMonth(), customDateRange.to.getDate());
+            return transactionDateOnly <= dateToOnly;
+          }
+          
+          return true;
           
         default:
           return true;
@@ -142,10 +174,23 @@ const Dashboard = () => {
 
   // Evolução mensal (com dados filtrados)
   const evoluçaoMensal = useMemo(() => {
-    // Agrupar transações por mês
+    // Agrupar transações por mês usando as datas reais das transações
     const monthlyData = filteredTransactions.reduce((acc, t) => {
-      const date = new Date(t.date);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      // Converter a data da transação para objeto Date
+      let transactionDate;
+      try {
+        if (t.date.includes('/')) {
+          const [day, month, year] = t.date.split('/');
+          transactionDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        } else {
+          transactionDate = new Date(t.date);
+        }
+      } catch (error) {
+        console.error('Erro ao converter data da transação:', t.date, error);
+        return acc;
+      }
+      
+      const monthKey = `${transactionDate.getFullYear()}-${String(transactionDate.getMonth() + 1).padStart(2, '0')}`;
       
       if (!acc[monthKey]) {
         acc[monthKey] = { receitas: 0, despesas: 0 };
