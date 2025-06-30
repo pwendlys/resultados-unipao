@@ -70,8 +70,9 @@ const Reports = () => {
     };
   });
 
-  const entryCategories = categoryTotals.filter(c => c.type === 'entrada');
-  const exitCategories = categoryTotals.filter(c => c.type === 'saida');
+  // Filtrar apenas categorias com valores (total > 0)
+  const entryCategories = categoryTotals.filter(c => c.type === 'entrada' && c.total > 0);
+  const exitCategories = categoryTotals.filter(c => c.type === 'saida' && c.total > 0);
 
   const totalEntries = entryCategories.reduce((sum, c) => sum + c.total, 0);
   const totalExits = exitCategories.reduce((sum, c) => sum + c.total, 0);
@@ -299,13 +300,13 @@ const Reports = () => {
               )}
             </CardTitle>
             <CardDescription>
-              Entradas por categoria no período
+              Entradas por categoria no período (apenas com valores)
             </CardDescription>
           </CardHeader>
           <CardContent>
             {entryCategories.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                Nenhuma categoria de entrada encontrada
+                Nenhuma categoria de entrada com valores encontrada
               </div>
             ) : (
               <div className="space-y-4">
@@ -354,13 +355,13 @@ const Reports = () => {
               )}
             </CardTitle>
             <CardDescription>
-              Saídas por categoria no período
+              Saídas por categoria no período (apenas com valores)
             </CardDescription>
           </CardHeader>
           <CardContent>
             {exitCategories.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                Nenhuma categoria de saída encontrada
+                Nenhuma categoria de saída com valores encontrada
               </div>
             ) : (
               <div className="space-y-4">
@@ -410,7 +411,7 @@ const Reports = () => {
             )}
           </CardTitle>
           <CardDescription>
-            Demonstrativo consolidado do resultado
+            Demonstrativo consolidado do resultado (apenas categorias com valores)
           </CardDescription>
         </CardHeader>
         <CardContent>
