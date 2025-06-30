@@ -1,13 +1,16 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
   TrendingUp, 
   TrendingDown, 
   DollarSign,
-  Calendar,
+  Calendar as CalendarIcon,
   FileText,
   Download,
   Building2,
@@ -17,6 +20,9 @@ import { useTransactionsByAccount } from '@/hooks/useSupabaseData';
 import { useCategories } from '@/hooks/useCategories';
 import { generateDREReport } from '@/utils/pdfGenerator';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 type AccountType = 'BOLETOS' | 'MENSALIDADES E TX ADM' | 'APORTE E JOIA' | 'Cora' | 'ALL';
 
@@ -50,12 +56,31 @@ const ACCOUNT_TYPES: { value: AccountType; label: string; description: string }[
 
 const Reports = () => {
   const [selectedAccount, setSelectedAccount] = useState<AccountType>('ALL');
+  const [dateFrom, setDateFrom] = useState<Date>();
+  const [dateTo, setDateTo] = useState<Date>();
   const [isExporting, setIsExporting] = useState(false);
   const { data: transactions = [], isLoading: transactionsLoading } = useTransactionsByAccount(selectedAccount);
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
   const { toast } = useToast();
 
-  const categorizedTransactions = transactions.filter(t => t.status === 'categorizado');
+  // Filtrar transações por período se as datas foram selecionadas
+  const filteredTransactions = transactions.filter(transaction => {
+    if (!dateFrom && !dateTo) return true;
+    
+    const transactionDate = new Date(transaction.date);
+    
+    if (dateFrom && dateTo) {
+      return transactionDate >= dateFrom && transactionDate <= dateTo;
+    } else if (dateFrom) {
+      return transactionDate >= dateFrom;
+    } else if (dateTo) {
+      return transactionDate <= dateTo;
+    }
+    
+    return true;
+  });
+
+  const categorizedTransactions = filteredTransactions.filter(t => t.status === 'categorizado');
   
   // Calcular totais por categoria
   const categoryTotals = categories.map(category => {
@@ -85,10 +110,10 @@ const Reports = () => {
       setIsExporting(true);
       console.log('Iniciando exportação PDF...');
       
-      if (!transactions || transactions.length === 0) {
+      if (!filteredTransactions || filteredTransactions.length === 0) {
         toast({
           title: "Nenhuma Transação Encontrada",
-          description: "Não há transações para gerar o relatório.",
+          description: "Não há transações para gerar o relatório no período selecionado.",
           variant: "destructive",
         });
         return;
@@ -102,7 +127,11 @@ const Reports = () => {
         totalExits,
         netResult,
         categorizedTransactions,
-        allTransactions: transactions
+        allTransactions: filteredTransactions,
+        period: {
+          from: dateFrom ? format(dateFrom, 'dd/MM/yyyy') : null,
+          to: dateTo ? format(dateTo, 'dd/MM/yyyy') : null
+        }
       };
 
       console.log('Dados do relatório preparados:', reportData);
@@ -149,6 +178,25 @@ const Reports = () => {
     );
   };
 
+  const clearPeriodFilter = () => {
+    setDateFrom(undefined);
+    setDateTo(undefined);
+  };
+
+  const getPeriodText = () => {
+    if (!dateFrom && !dateTo) return 'Todos os períodos';
+    if (dateFrom && dateTo) {
+      return `${format(dateFrom, 'dd/MM/yyyy')} até ${format(dateTo, 'dd/MM/yyyy')}`;
+    }
+    if (dateFrom) {
+      return `A partir de ${format(dateFrom, 'dd/MM/yyyy')}`;
+    }
+    if (dateTo) {
+      return `Até ${format(dateTo, 'dd/MM/yyyy')}`;
+    }
+    return 'Todos os períodos';
+  };
+
   if (transactionsLoading || categoriesLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -179,48 +227,138 @@ const Reports = () => {
         </Button>
       </div>
 
-      {/* Account Filter */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filtrar por Conta
-          </CardTitle>
-          <CardDescription>
-            Selecione a conta para visualizar o DRE específico
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <Select value={selectedAccount} onValueChange={(value: AccountType) => setSelectedAccount(value)}>
-                <SelectTrigger>
-                  <SelectValue>
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4" />
-                      {ACCOUNT_TYPES.find(type => type.value === selectedAccount)?.label}
-                    </div>
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {ACCOUNT_TYPES.map((account) => (
-                    <SelectItem key={account.value} value={account.value}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{account.label}</span>
-                        <span className="text-sm text-muted-foreground">{account.description}</span>
+      {/* Filters */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Account Filter */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              Filtrar por Conta
+            </CardTitle>
+            <CardDescription>
+              Selecione a conta para visualizar o DRE específico
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <Select value={selectedAccount} onValueChange={(value: AccountType) => setSelectedAccount(value)}>
+                  <SelectTrigger>
+                    <SelectValue>
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4" />
+                        {ACCOUNT_TYPES.find(type => type.value === selectedAccount)?.label}
                       </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ACCOUNT_TYPES.map((account) => (
+                      <SelectItem key={account.value} value={account.value}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{account.label}</span>
+                          <span className="text-sm text-muted-foreground">{account.description}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Conta selecionada:</span>
+                {getAccountBadge(selectedAccount)}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Conta selecionada:</span>
-              {getAccountBadge(selectedAccount)}
+          </CardContent>
+        </Card>
+
+        {/* Period Filter */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CalendarIcon className="h-5 w-5" />
+              Filtrar por Período
+            </CardTitle>
+            <CardDescription>
+              Selecione o período das transações para análise
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Data Inicial</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !dateFrom && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "Selecionar"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={dateFrom}
+                        onSelect={setDateFrom}
+                        initialFocus
+                        className="pointer-events-auto"
+                        locale={ptBR}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Data Final</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !dateTo && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateTo ? format(dateTo, "dd/MM/yyyy") : "Selecionar"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={dateTo}
+                        onSelect={setDateTo}
+                        initialFocus
+                        className="pointer-events-auto"
+                        locale={ptBR}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
+                  Período: {getPeriodText()}
+                </div>
+                {(dateFrom || dateTo) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearPeriodFilter}
+                  >
+                    Limpar Filtro
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -279,7 +417,7 @@ const Reports = () => {
               {categorizedTransactions.length}
             </div>
             <p className="text-xs text-muted-foreground">
-              de {transactions.length} totais
+              de {filteredTransactions.length} no período
             </p>
           </CardContent>
         </Card>
@@ -306,7 +444,7 @@ const Reports = () => {
           <CardContent>
             {entryCategories.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                Nenhuma categoria de entrada com valores encontrada
+                Nenhuma categoria de entrada com valores encontrada no período
               </div>
             ) : (
               <div className="space-y-4">
@@ -361,7 +499,7 @@ const Reports = () => {
           <CardContent>
             {exitCategories.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                Nenhuma categoria de saída com valores encontrada
+                Nenhuma categoria de saída com valores encontrada no período
               </div>
             ) : (
               <div className="space-y-4">

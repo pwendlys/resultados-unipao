@@ -1,4 +1,3 @@
-
 import jsPDF from 'jspdf';
 import { Transaction } from '@/hooks/useSupabaseData';
 
@@ -20,6 +19,10 @@ interface ReportData {
   netResult: number;
   categorizedTransactions: Transaction[];
   allTransactions: Transaction[];
+  period?: {
+    from: string | null;
+    to: string | null;
+  };
 }
 
 const formatCurrency = (value: number) => {
@@ -64,7 +67,25 @@ export const generateDREReport = (data: ReportData) => {
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
     doc.text(`Conta: ${data.selectedAccount}`, margin, yPosition);
-    yPosition += 10;
+    yPosition += 8;
+    
+    // Adicionar informações do período
+    if (data.period && (data.period.from || data.period.to)) {
+      let periodText = 'Período: ';
+      if (data.period.from && data.period.to) {
+        periodText += `${data.period.from} até ${data.period.to}`;
+      } else if (data.period.from) {
+        periodText += `A partir de ${data.period.from}`;
+      } else if (data.period.to) {
+        periodText += `Até ${data.period.to}`;
+      }
+      doc.text(periodText, margin, yPosition);
+      yPosition += 8;
+    } else {
+      doc.text('Período: Todos os períodos', margin, yPosition);
+      yPosition += 8;
+    }
+    
     doc.text(`Data de Geração: ${new Date().toLocaleDateString('pt-BR')}`, margin, yPosition);
     yPosition += 20;
 
@@ -214,7 +235,17 @@ export const generateDREReport = (data: ReportData) => {
     doc.text(`Status: ${data.netResult >= 0 ? 'SUPERÁVIT' : 'DÉFICIT'}`, margin, yPosition);
 
     // Salvar o PDF
-    const fileName = `DRE_${data.selectedAccount.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+    let fileName = `DRE_${data.selectedAccount.replace(/\s+/g, '_')}`;
+    if (data.period && (data.period.from || data.period.to)) {
+      const periodSuffix = data.period.from && data.period.to 
+        ? `_${data.period.from.replace(/\//g, '-')}_a_${data.period.to.replace(/\//g, '-')}`
+        : data.period.from 
+        ? `_a_partir_de_${data.period.from.replace(/\//g, '-')}`
+        : `_ate_${data.period.to?.replace(/\//g, '-')}`;
+      fileName += periodSuffix;
+    }
+    fileName += `_${new Date().toISOString().split('T')[0]}.pdf`;
+    
     doc.save(fileName);
     
     console.log('PDF gerado com sucesso:', fileName);
