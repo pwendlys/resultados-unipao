@@ -1,5 +1,3 @@
-
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
@@ -123,7 +121,7 @@ const Reports = () => {
       
       toast({
         title: "PDF Gerado com Sucesso",
-        description: "O relatório DRE foi exportado com o filtro de período aplicado.",
+        description: "O relatório operacional foi exportado com o filtro de período aplicado.",
       });
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
@@ -158,7 +156,7 @@ const Reports = () => {
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold">Relatórios DRE</h1>
+          <h1 className="text-3xl font-bold">Relatório Operacional Unipão</h1>
           <p className="text-muted-foreground">
             Demonstrativo do Resultado do Exercício por categorias
           </p>
@@ -218,4 +216,3 @@ const Reports = () => {
 };
 
 export default Reports;
-

@@ -104,7 +104,7 @@ export const ReportFilters = ({
             Filtrar por Conta
           </CardTitle>
           <CardDescription>
-            Selecione a conta para visualizar o DRE específico
+            Selecione a conta para visualizar o resultado específico
           </CardDescription>
         </CardHeader>
         <CardContent>

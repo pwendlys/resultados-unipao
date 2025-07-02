@@ -24,7 +24,7 @@ const Navigation = ({ currentPage, onPageChange }: NavigationProps) => {
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'upload', label: 'Upload Extrato', icon: Upload },
     { id: 'categorization', label: 'Categorização', icon: FileText },
-    { id: 'reports', label: 'Relatórios DRE', icon: BarChart3 },
+    { id: 'reports', label: 'Relatórios Unipão', icon: BarChart3 },
     { id: 'settings', label: 'Configurações', icon: Settings },
   ];
 
