@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -25,7 +24,7 @@ const Navigation = ({ currentPage, onPageChange }: NavigationProps) => {
     { id: 'upload', label: 'Upload Extrato', icon: Upload },
     { id: 'categorization', label: 'Categorização', icon: FileText },
     { id: 'reports', label: 'Relatórios Unipão', icon: BarChart3 },
-    { id: 'settings', label: 'Configurações', icon: Settings },
+    { id: 'settings', label: 'Configurações e Compartilhar', icon: Settings },
   ];
 
   return (
