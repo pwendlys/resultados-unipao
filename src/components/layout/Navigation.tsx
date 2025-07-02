@@ -64,7 +64,7 @@ const Navigation = ({ currentPage, onPageChange }: NavigationProps) => {
               className="h-12 w-12 object-contain"
             />
             <div>
-              <h1 className="text-xl font-bold text-primary">DRE Unipão</h1>
+              <h1 className="text-xl font-bold text-primary">Resultados Unipão</h1>
               <p className="text-sm text-muted-foreground">Sistema Financeiro</p>
             </div>
           </div>
