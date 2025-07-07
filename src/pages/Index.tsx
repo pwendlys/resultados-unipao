@@ -6,6 +6,7 @@ import UploadExtrato from '@/components/upload/UploadExtrato';
 import Categorization from '@/components/categorization/Categorization';
 import Settings from '@/components/settings/Settings';
 import Reports from '@/components/reports/Reports';
+import CustomReports from '@/components/custom-reports/CustomReports';
 
 const Index = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -20,6 +21,8 @@ const Index = () => {
         return <Categorization />;
       case 'reports':
         return <Reports />;
+      case 'custom-reports':
+        return <CustomReports />;
       case 'settings':
         return <Settings />;
       default:

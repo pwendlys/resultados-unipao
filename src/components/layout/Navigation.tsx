@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -7,7 +8,8 @@ import {
   Settings, 
   Home,
   Menu,
-  X
+  X,
+  PresentationChart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +26,7 @@ const Navigation = ({ currentPage, onPageChange }: NavigationProps) => {
     { id: 'upload', label: 'Upload Extrato', icon: Upload },
     { id: 'categorization', label: 'Categorização', icon: FileText },
     { id: 'reports', label: 'Relatórios Unipão', icon: BarChart3 },
+    { id: 'custom-reports', label: 'Relatórios Personalizados', icon: PresentationChart },
     { id: 'settings', label: 'Configurações e Compartilhar', icon: Settings },
   ];
 
