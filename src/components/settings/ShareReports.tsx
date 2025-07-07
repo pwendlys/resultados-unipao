@@ -20,7 +20,8 @@ const ShareReports = () => {
 
   const generateShareLink = () => {
     const timestamp = Date.now();
-    const newLink = `${window.location.origin}/relatorios-compartilhados/${timestamp}`;
+    const shareId = `unipao-${timestamp}`;
+    const newLink = `${window.location.origin}/relatorios-compartilhados/${shareId}`;
     
     setShareLink(newLink);
     setLinkCreatedAt(new Date().toLocaleDateString('pt-BR'));
@@ -28,7 +29,7 @@ const ShareReports = () => {
     
     toast({
       title: "Link de compartilhamento criado!",
-      description: "Os cooperados poderão visualizar os relatórios através deste link.",
+      description: "Os cooperados poderão visualizar apenas os relatórios através deste link.",
     });
   };
 
@@ -54,7 +55,7 @@ const ShareReports = () => {
           Compartilhar Relatórios Unipão
         </CardTitle>
         <CardDescription>
-          Gere um link exclusivo para que os cooperados possam visualizar os relatórios operacionais da Unipão. Eles terão acesso apenas para leitura.
+          Gere um link exclusivo para que os cooperados possam visualizar APENAS os relatórios operacionais da Unipão. Eles terão acesso somente à página de relatórios, sem navegação para outras seções.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -69,12 +70,12 @@ const ShareReports = () => {
         {/* Share Link Display */}
         {shareLink && (
           <div className="space-y-4">
-            <h4 className="font-medium text-sm text-muted-foreground">Link Ativo</h4>
+            <h4 className="font-medium text-sm text-muted-foreground">Link Ativo para Cooperados</h4>
             
             <div className="border rounded-lg p-4 space-y-3">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h5 className="font-medium">Relatórios Operacionais Unipão</h5>
+                  <h5 className="font-medium">Acesso Exclusivo aos Relatórios</h5>
                   <p className="text-sm text-muted-foreground">
                     Criado em: {linkCreatedAt}
                   </p>
@@ -106,7 +107,7 @@ const ShareReports = () => {
                   className="flex items-center gap-2"
                 >
                   <ExternalLink className="h-4 w-4" />
-                  Visualizar
+                  Testar Acesso
                 </Button>
               </div>
             </div>
@@ -115,13 +116,14 @@ const ShareReports = () => {
 
         {/* Instructions */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h4 className="font-medium text-blue-900 mb-2">Como funciona:</h4>
+          <h4 className="font-medium text-blue-900 mb-2">Como funciona o acesso compartilhado:</h4>
           <ul className="text-sm text-blue-800 space-y-1">
-            <li>• Gere um link exclusivo para compartilhar com os cooperados</li>
-            <li>• Os cooperados terão acesso apenas aos relatórios operacionais</li>
+            <li>• O link dá acesso APENAS à página de relatórios operacionais</li>
+            <li>• Os cooperados NÃO terão acesso a outras seções do sistema</li>
             <li>• Visualização somente leitura - não podem editar ou modificar dados</li>
-            <li>• O link é seguro e você pode acompanhar quantas visualizações teve</li>
-            <li>• Você pode gerar um novo link a qualquer momento</li>
+            <li>• Interface simplificada especificamente para cooperados</li>
+            <li>• Você pode acompanhar quantas visualizações o link teve</li>
+            <li>• Você pode gerar um novo link a qualquer momento para revogar o anterior</li>
           </ul>
         </div>
       </CardContent>
