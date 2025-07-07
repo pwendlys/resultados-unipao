@@ -158,7 +158,7 @@ export const generateCustomReport = (data: CustomReportData, config: CustomRepor
         return acc;
       }, {} as Record<string, CategoryTotals>);
 
-      const sortedCategories = Object.values(categoryTotals).sort((a, b) => b.total - a.total);
+      const sortedCategories = (Object.values(categoryTotals) as CategoryTotals[]).sort((a, b) => b.total - a.total);
 
       if (config.includeEntries) {
         const entryCategories = sortedCategories.filter(c => c.type === 'entrada');
