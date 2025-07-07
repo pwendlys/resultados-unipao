@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -63,6 +64,9 @@ export const ReportFilters = ({
   onDateToChange,
   onClearPeriodFilter
 }: ReportFiltersProps) => {
+  const [fromPopoverOpen, setFromPopoverOpen] = useState(false);
+  const [toPopoverOpen, setToPopoverOpen] = useState(false);
+
   const getAccountBadge = (accountType: AccountType) => {
     const account = ACCOUNT_TYPES.find(type => type.value === accountType);
     const colors = {
@@ -92,6 +96,18 @@ export const ReportFilters = ({
       return `Até ${format(dateTo, 'dd/MM/yyyy')}`;
     }
     return 'Todos os períodos';
+  };
+
+  const handleFromDateSelect = (date: Date | undefined) => {
+    console.log('Data inicial selecionada:', date);
+    onDateFromChange(date);
+    setFromPopoverOpen(false);
+  };
+
+  const handleToDateSelect = (date: Date | undefined) => {
+    console.log('Data final selecionada:', date);
+    onDateToChange(date);
+    setToPopoverOpen(false);
   };
 
   return (
@@ -155,7 +171,7 @@ export const ReportFilters = ({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Data Inicial</label>
-                <Popover>
+                <Popover open={fromPopoverOpen} onOpenChange={setFromPopoverOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -163,6 +179,7 @@ export const ReportFilters = ({
                         "w-full justify-start text-left font-normal",
                         !dateFrom && "text-muted-foreground"
                       )}
+                      onClick={() => setFromPopoverOpen(true)}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "Selecionar"}
@@ -172,7 +189,7 @@ export const ReportFilters = ({
                     <Calendar
                       mode="single"
                       selected={dateFrom}
-                      onSelect={onDateFromChange}
+                      onSelect={handleFromDateSelect}
                       initialFocus
                       className="pointer-events-auto"
                     />
@@ -181,7 +198,7 @@ export const ReportFilters = ({
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Data Final</label>
-                <Popover>
+                <Popover open={toPopoverOpen} onOpenChange={setToPopoverOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -189,6 +206,7 @@ export const ReportFilters = ({
                         "w-full justify-start text-left font-normal",
                         !dateTo && "text-muted-foreground"
                       )}
+                      onClick={() => setToPopoverOpen(true)}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {dateTo ? format(dateTo, "dd/MM/yyyy") : "Selecionar"}
@@ -198,7 +216,7 @@ export const ReportFilters = ({
                     <Calendar
                       mode="single"
                       selected={dateTo}
-                      onSelect={onDateToChange}
+                      onSelect={handleToDateSelect}
                       initialFocus
                       className="pointer-events-auto"
                     />
