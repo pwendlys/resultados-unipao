@@ -21,7 +21,7 @@ const ShareReports = () => {
   const generateShareLink = () => {
     const timestamp = Date.now();
     const shareId = `unipao-${timestamp}`;
-    const newLink = `${window.location.origin}/relatorios-compartilhados/${shareId}`;
+    const newLink = `https://resultados-unipao.lovable.app/relatorios-compartilhados/${shareId}`;
     
     setShareLink(newLink);
     setLinkCreatedAt(new Date().toLocaleDateString('pt-BR'));
