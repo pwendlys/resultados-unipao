@@ -179,7 +179,6 @@ export const ReportFilters = ({
                         "w-full justify-start text-left font-normal",
                         !dateFrom && "text-muted-foreground"
                       )}
-                      onClick={() => setFromPopoverOpen(true)}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "Selecionar"}
@@ -206,7 +205,6 @@ export const ReportFilters = ({
                         "w-full justify-start text-left font-normal",
                         !dateTo && "text-muted-foreground"
                       )}
-                      onClick={() => setToPopoverOpen(true)}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {dateTo ? format(dateTo, "dd/MM/yyyy") : "Selecionar"}
