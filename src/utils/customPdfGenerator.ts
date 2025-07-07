@@ -11,6 +11,13 @@ interface CategoryData {
   transactionCount: number;
 }
 
+interface CategoryTotals {
+  name: string;
+  type: string;
+  total: number;
+  count: number;
+}
+
 interface CustomReportData {
   filteredTransactions: any[];
   categorizedTransactions: any[];
@@ -149,7 +156,7 @@ export const generateCustomReport = (data: CustomReportData, config: CustomRepor
         acc[category].total += Number(transaction.amount);
         acc[category].count += 1;
         return acc;
-      }, {} as Record<string, { name: string; type: string; total: number; count: number }>);
+      }, {} as Record<string, CategoryTotals>);
 
       const sortedCategories = Object.values(categoryTotals).sort((a, b) => b.total - a.total);
 
