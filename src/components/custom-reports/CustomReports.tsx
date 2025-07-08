@@ -6,7 +6,7 @@ import { useTransactions } from '@/hooks/useSupabaseData';
 import { useCategories } from '@/hooks/useCategories';
 import { useToast } from '@/hooks/use-toast';
 import { ReportBuilder } from './ReportBuilder';
-import { ReportPreview } from './ReportPreview';
+import ReportPreview from './ReportPreview';
 import { generateCustomReport } from '@/utils/customPdfGenerator';
 
 export interface CustomReportConfig {
