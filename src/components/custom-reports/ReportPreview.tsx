@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,6 +14,7 @@ import {
 import { CustomReportConfig } from './CustomReports';
 import { format } from 'date-fns';
 import { useState } from 'react';
+import { useSharedReportsActions } from '@/hooks/useSharedReports';
 
 interface CategoryData {
   id: string;
@@ -49,33 +49,46 @@ const formatCurrency = (value: number) => {
 
 const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
   const [shareLink, setShareLink] = useState<string | null>(null);
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const { toast } = useToast();
+  const { createSharedReport } = useSharedReportsActions();
 
-  const generateShareLink = () => {
-    const timestamp = Date.now();
-    const reportId = `custom-report-${timestamp}`;
+  const generateShareLink = async () => {
+    if (isGeneratingLink) return;
     
-    // Criar dados do relatório para armazenar no localStorage
-    const reportData = {
-      id: reportId,
-      config,
-      data,
-      generatedAt: new Date().toISOString(),
-      title: config.reportTitle
-    };
-    
-    // Armazenar no localStorage
-    const existingReports = JSON.parse(localStorage.getItem('sharedReports') || '{}');
-    existingReports[reportId] = reportData;
-    localStorage.setItem('sharedReports', JSON.stringify(existingReports));
-    
-    const newLink = `${window.location.origin}/relatorios-compartilhados/custom/${reportId}`;
-    setShareLink(newLink);
-    
-    toast({
-      title: "Link de compartilhamento criado!",
-      description: "O link foi gerado e pode ser compartilhado com os cooperados.",
-    });
+    try {
+      setIsGeneratingLink(true);
+      const timestamp = Date.now();
+      const shareId = `custom-report-${timestamp}`;
+      
+      // Criar dados do relatório para salvar no Supabase
+      const reportData = {
+        title: config.reportTitle,
+        config,
+        data,
+        share_id: shareId,
+      };
+      
+      // Salvar no Supabase
+      await createSharedReport.mutateAsync(reportData);
+      
+      const newLink = `${window.location.origin}/relatorios-compartilhados/custom/${shareId}`;
+      setShareLink(newLink);
+      
+      toast({
+        title: "Link de compartilhamento criado!",
+        description: "O link foi salvo no banco de dados e pode ser compartilhado com os cooperados.",
+      });
+    } catch (error) {
+      console.error('Erro ao gerar link:', error);
+      toast({
+        title: "Erro ao gerar link",
+        description: "Ocorreu um erro ao salvar o relatório. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingLink(false);
+    }
   };
 
   const copyToClipboard = (url: string) => {
@@ -286,14 +299,18 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
               Compartilhar com Cooperados
             </CardTitle>
             <CardDescription>
-              Gere um link exclusivo para que os cooperados possam visualizar este relatório
+              Gere um link permanente salvo no banco de dados para que os cooperados possam visualizar este relatório
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-4">
-              <Button onClick={generateShareLink} className="flex items-center gap-2">
+              <Button 
+                onClick={generateShareLink} 
+                disabled={isGeneratingLink}
+                className="flex items-center gap-2"
+              >
                 <Share2 className="h-4 w-4" />
-                {shareLink ? 'Gerar Novo Link' : 'Gerar Link de Compartilhamento'}
+                {isGeneratingLink ? 'Gerando Link...' : shareLink ? 'Gerar Novo Link' : 'Gerar Link de Compartilhamento'}
               </Button>
             </div>
 
@@ -327,9 +344,10 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
                 <div className="text-sm text-muted-foreground bg-white p-3 rounded border">
                   <strong>Como funciona:</strong>
                   <ul className="mt-2 space-y-1">
-                    <li>• Link exclusivo para este relatório específico</li>
+                    <li>• Link permanente salvo no banco de dados Supabase</li>
                     <li>• Acesso somente leitura para cooperados</li>
-                    <li>• Dados são salvos localmente no navegador</li>
+                    <li>• Link pode ser enviado para qualquer pessoa</li>
+                    <li>• Dados ficam seguros e sempre disponíveis</li>
                     <li>• Você pode gerar um novo link a qualquer momento</li>
                   </ul>
                 </div>

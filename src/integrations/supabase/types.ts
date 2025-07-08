@@ -80,6 +80,42 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_reports: {
+        Row: {
+          config: Json
+          created_at: string
+          data: Json
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          share_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          config: Json
+          created_at?: string
+          data: Json
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          share_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          data?: Json
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          share_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number

@@ -1,6 +1,4 @@
-
 import { useParams } from 'react-router-dom';
-import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -11,14 +9,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
-
-interface SharedReportData {
-  id: string;
-  config: any;
-  data: any;
-  generatedAt: string;
-  title: string;
-}
+import { useSharedReport } from '@/hooks/useSharedReports';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', {
@@ -29,35 +20,7 @@ const formatCurrency = (value: number) => {
 
 const SharedCustomReport = () => {
   const { reportId } = useParams<{ reportId: string }>();
-  const [reportData, setReportData] = useState<SharedReportData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!reportId) {
-      setError('ID do relatório não fornecido');
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const sharedReports = JSON.parse(localStorage.getItem('sharedReports') || '{}');
-      const report = sharedReports[reportId];
-      
-      if (!report) {
-        setError('Relatório não encontrado ou expirado');
-        setIsLoading(false);
-        return;
-      }
-
-      setReportData(report);
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Erro ao carregar relatório:', error);
-      setError('Erro ao carregar o relatório');
-      setIsLoading(false);
-    }
-  }, [reportId]);
+  const { data: reportData, isLoading, error } = useSharedReport(reportId || '');
 
   if (isLoading) {
     return (
@@ -77,7 +40,7 @@ const SharedCustomReport = () => {
           <AlertCircle className="h-16 w-16 text-destructive mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-destructive mb-4">Relatório Não Encontrado</h1>
           <p className="text-muted-foreground mb-4">
-            {error || 'O relatório solicitado não foi encontrado ou pode ter expirado.'}
+            O relatório solicitado não foi encontrado ou pode ter sido desativado.
           </p>
           <p className="text-sm text-muted-foreground">
             Entre em contato com a administração da Unipão para obter um novo link de acesso.
@@ -142,7 +105,7 @@ const SharedCustomReport = () => {
                 {reportData.title}
               </CardTitle>
               <CardDescription>
-                Gerado em: {format(new Date(reportData.generatedAt), 'dd/MM/yyyy \'às\' HH:mm')}
+                Gerado em: {format(new Date(reportData.created_at), 'dd/MM/yyyy \'às\' HH:mm')}
               </CardDescription>
             </CardHeader>
             <CardContent>
