@@ -5,7 +5,8 @@ import { DateRange } from 'react-day-picker';
 export const filterTransactions = (
   transactions: Transaction[],
   searchTerm: string,
-  dateRange: DateRange | undefined
+  dateRange: DateRange | undefined,
+  showOnlyUncategorized: boolean = false
 ): Transaction[] => {
   return transactions?.filter(transaction => {
     const searchTermLower = searchTerm.toLowerCase();
@@ -31,6 +32,8 @@ export const filterTransactions = (
       transactionDateOnly >= dateRange.from && transactionDateOnly <= dateRange.to
     );
 
-    return matchesSearchTerm && matchesDateRange;
+    const matchesUncategorizedFilter = !showOnlyUncategorized || transaction.status === 'pendente';
+
+    return matchesSearchTerm && matchesDateRange && matchesUncategorizedFilter;
   });
 };

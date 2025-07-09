@@ -1,4 +1,5 @@
 
+import { Checkbox } from '@/components/ui/checkbox';
 import TransactionRow from './TransactionRow';
 import { Transaction } from '@/hooks/useSupabaseData';
 
@@ -7,15 +8,38 @@ interface TransactionTableProps {
   categories: Array<{ id: string; name: string; type: string }>;
   onCategorize: (transactionId: string, category: string, observation?: string) => void;
   onRefresh: () => void;
+  selectedTransactions: Set<string>;
+  onSelectTransaction: (transactionId: string, selected: boolean) => void;
+  onSelectAll: (selected: boolean) => void;
 }
 
-const TransactionTable = ({ transactions, categories, onCategorize, onRefresh }: TransactionTableProps) => {
+const TransactionTable = ({ 
+  transactions, 
+  categories, 
+  onCategorize, 
+  onRefresh,
+  selectedTransactions,
+  onSelectTransaction,
+  onSelectAll
+}: TransactionTableProps) => {
+  const allSelected = transactions.length > 0 && transactions.every(t => selectedTransactions.has(t.id));
+  const someSelected = transactions.some(t => selectedTransactions.has(t.id));
+
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <Checkbox
+                  checked={allSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = someSelected && !allSelected;
+                  }}
+                  onCheckedChange={(checked) => onSelectAll(checked as boolean)}
+                />
+              </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Data
               </th>
@@ -53,6 +77,8 @@ const TransactionTable = ({ transactions, categories, onCategorize, onRefresh }:
                 categories={categories}
                 onCategorize={onCategorize}
                 onRefresh={onRefresh}
+                isSelected={selectedTransactions.has(transaction.id)}
+                onSelect={(selected) => onSelectTransaction(transaction.id, selected)}
               />
             ))}
           </tbody>
