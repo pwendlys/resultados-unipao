@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useTransactionsByAccount } from '@/hooks/useSupabaseData';
 import { useCategories } from '@/hooks/useCategories';
@@ -23,11 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { addDays, format as dateFnsFormat } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import TransactionRow from './TransactionRow';
-
-interface DateRange {
-  from?: Date;
-  to?: Date;
-}
+import { DateRange } from 'react-day-picker';
 
 const Categorization = () => {
   const [selectedAccount, setSelectedAccount] = useState<string>('ALL');
