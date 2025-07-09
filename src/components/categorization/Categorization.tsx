@@ -1,5 +1,7 @@
+
 import { useState, useEffect } from 'react';
-import { useTransactionsByAccount, useCategories } from '@/hooks/useSupabaseData';
+import { useTransactionsByAccount } from '@/hooks/useSupabaseData';
+import { useCategories } from '@/hooks/useCategories';
 import { useTransactionsActions } from '@/hooks/useSupabaseData';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -13,16 +15,14 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Check, X, Copy } from 'lucide-react';
+import { Check, X, Copy, CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
-import { DatePicker } from "@/components/ui/date-picker"
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon } from "@radix-ui/react-icons"
 import { addDays, format as dateFnsFormat } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { TransactionRow } from './TransactionRow';
+import TransactionRow from './TransactionRow';
 
 interface DateRange {
   from?: Date;
@@ -168,6 +168,7 @@ const Categorization = () => {
                 selected={dateRange}
                 onSelect={setDateRange}
                 numberOfMonths={2}
+                className="pointer-events-auto"
               />
             </PopoverContent>
           </Popover>
