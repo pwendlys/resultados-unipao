@@ -2,6 +2,7 @@
 import { Checkbox } from '@/components/ui/checkbox';
 import TransactionRow from './TransactionRow';
 import { Transaction } from '@/hooks/useSupabaseData';
+import { useEffect, useRef } from 'react';
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -24,6 +25,17 @@ const TransactionTable = ({
 }: TransactionTableProps) => {
   const allSelected = transactions.length > 0 && transactions.every(t => selectedTransactions.has(t.id));
   const someSelected = transactions.some(t => selectedTransactions.has(t.id));
+  const checkboxRef = useRef<HTMLButtonElement>(null);
+
+  // Handle indeterminate state manually
+  useEffect(() => {
+    if (checkboxRef.current) {
+      const inputElement = checkboxRef.current.querySelector('input');
+      if (inputElement) {
+        inputElement.indeterminate = someSelected && !allSelected;
+      }
+    }
+  }, [someSelected, allSelected]);
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -33,10 +45,8 @@ const TransactionTable = ({
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 <Checkbox
+                  ref={checkboxRef}
                   checked={allSelected}
-                  ref={(el) => {
-                    if (el) el.indeterminate = someSelected && !allSelected;
-                  }}
                   onCheckedChange={(checked) => onSelectAll(checked as boolean)}
                 />
               </th>

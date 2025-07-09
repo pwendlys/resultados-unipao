@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Transaction } from '@/hooks/useSupabaseData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Select, 
   SelectContent, 
@@ -12,7 +12,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Check, X } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { format } from 'date-fns';
 import AddInterestButton from '@/components/transactions/AddInterestButton';
 
@@ -21,9 +21,18 @@ interface TransactionRowProps {
   categories: Array<{ id: string; name: string; type: string }>;
   onCategorize: (transactionId: string, category: string, observation?: string) => void;
   onRefresh: () => void;
+  isSelected: boolean;
+  onSelect: (selected: boolean) => void;
 }
 
-const TransactionRow = ({ transaction, categories, onCategorize, onRefresh }: TransactionRowProps) => {
+const TransactionRow = ({ 
+  transaction, 
+  categories, 
+  onCategorize, 
+  onRefresh, 
+  isSelected, 
+  onSelect 
+}: TransactionRowProps) => {
   const [selectedCategory, setSelectedCategory] = useState(transaction.category || '');
   const [observation, setObservation] = useState(transaction.observacao || '');
 
@@ -52,6 +61,12 @@ const TransactionRow = ({ transaction, categories, onCategorize, onRefresh }: Tr
 
   return (
     <tr className="border-b">
+      <td className="px-4 py-3 text-sm">
+        <Checkbox
+          checked={isSelected}
+          onCheckedChange={onSelect}
+        />
+      </td>
       <td className="px-4 py-3 text-sm">
         {formatDate(transaction.date)}
       </td>
