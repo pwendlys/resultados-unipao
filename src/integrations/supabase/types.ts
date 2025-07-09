@@ -125,6 +125,7 @@ export type Database = {
           description: string
           extrato_id: string | null
           id: string
+          juros: number | null
           observacao: string | null
           status: string
           suggested: boolean | null
@@ -139,6 +140,7 @@ export type Database = {
           description: string
           extrato_id?: string | null
           id?: string
+          juros?: number | null
           observacao?: string | null
           status?: string
           suggested?: boolean | null
@@ -153,6 +155,7 @@ export type Database = {
           description?: string
           extrato_id?: string | null
           id?: string
+          juros?: number | null
           observacao?: string | null
           status?: string
           suggested?: boolean | null

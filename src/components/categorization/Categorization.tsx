@@ -1,437 +1,304 @@
-
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useTransactionsByAccount, useCategories } from '@/hooks/useSupabaseData';
+import { useTransactionsActions } from '@/hooks/useSupabaseData';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
+  SelectValue
 } from '@/components/ui/select';
-import { 
-  ArrowUpCircle, 
-  ArrowDownCircle, 
-  Search,
-  Filter,
-  CheckCircle,
-  Clock,
-  Save
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { 
-  useTransactions, 
-  useTransactionsActions,
-  Transaction 
-} from '@/hooks/useSupabaseData';
-import { useCategories } from '@/hooks/useCategories';
+import { Badge } from '@/components/ui/badge';
+import { Check, X, Copy } from 'lucide-react';
+import { format } from 'date-fns';
+import { DatePicker } from "@/components/ui/date-picker"
+import { Calendar } from "@/components/ui/calendar"
+import { cn } from "@/lib/utils"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { CalendarIcon } from "@radix-ui/react-icons"
+import { addDays, format as dateFnsFormat } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { TransactionRow } from './TransactionRow';
+
+interface DateRange {
+  from?: Date;
+  to?: Date;
+}
 
 const Categorization = () => {
+  const [selectedAccount, setSelectedAccount] = useState<string>('ALL');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: undefined,
+    to: undefined,
+  });
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [pendingUpdates, setPendingUpdates] = useState<Map<string, { category: string; status: 'pendente' | 'categorizado'; observacao?: string }>>(new Map());
-
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const { data: transactions = [], isLoading, refetch } = useTransactionsByAccount(selectedAccount);
+  const { data: categories = [] } = useCategories();
+  const { updateTransaction } = useTransactionsActions();
   const { toast } = useToast();
-  const { data: transactions = [], isLoading: transactionsLoading, refetch: refetchTransactions } = useTransactions();
-  const { data: categories = [], isLoading: categoriesLoading } = useCategories();
-  const { updateTransaction, bulkUpdateTransactions } = useTransactionsActions();
 
-  // Adicionar effect para refetch quando o componente monta
-  useEffect(() => {
-    console.log('Categorization component mounted, refetching transactions');
-    refetchTransactions();
-  }, [refetchTransactions]);
+  // Filter transactions based on search term and date range
+  const filteredTransactions = transactions?.filter(transaction => {
+    const searchTermLower = searchTerm.toLowerCase();
+    const descriptionLower = transaction.description.toLowerCase();
 
-  // Adicionar log quando as transações mudam
-  useEffect(() => {
-    console.log('Transactions loaded in Categorization:', transactions.length);
-  }, [transactions]);
+    const matchesSearchTerm = descriptionLower.includes(searchTermLower);
 
-  const categoriasSaida = categories.filter(c => c.type === 'saida').map(c => c.name);
-  const categoriasEntrada = categories.filter(c => c.type === 'entrada').map(c => c.name);
-
-  const updateTransactionCategory = (id: string, category: string) => {
-    const status: 'pendente' | 'categorizado' = category ? 'categorizado' : 'pendente';
-    setPendingUpdates(prev => {
-      const newUpdates = new Map(prev);
-      const existing = newUpdates.get(id) || {};
-      newUpdates.set(id, { ...existing, category, status });
-      return newUpdates;
-    });
-  };
-
-  const updateTransactionObservacao = (id: string, observacao: string) => {
-    setPendingUpdates(prev => {
-      const newUpdates = new Map(prev);
-      const existing = newUpdates.get(id) || { category: '', status: 'pendente' as const };
-      newUpdates.set(id, { ...existing, observacao });
-      return newUpdates;
-    });
-  };
-
-  const getSuggestedCategory = (description: string, type: string) => {
-    const desc = description.toLowerCase();
-    
-    if (type === 'saida') {
-      if (desc.includes('maria silva') || desc.includes('joao') || desc.includes('salario') || desc.includes('pagamento')) return 'Folha de Pagamento';
-      if (desc.includes('imobiliaria') || desc.includes('aluguel')) return 'Aluguel';
-      if (desc.includes('eletrica') || desc.includes('agua') || desc.includes('internet') || desc.includes('luz')) return 'Internet/Água/Luz';
-      if (desc.includes('transporte') || desc.includes('vale')) return 'Vale Transporte';
-      if (desc.includes('encargo') || desc.includes('inss') || desc.includes('fgts')) return 'Encargos Sociais';
-      if (desc.includes('servico') || desc.includes('terceiro')) return 'Serviços de Terceiros';
-    } else {
-      if (desc.includes('cooperado')) return 'Mensalidade';
-      if (desc.includes('taxa') || desc.includes('administrativa')) return 'Taxa Administrativa';
-    }
-    
-    return '';
-  };
-
-  const applySuggestions = () => {
-    const newUpdates = new Map(pendingUpdates);
-    
-    transactions.forEach(t => {
-      if (t.status === 'pendente' && !t.category) {
-        const suggested = getSuggestedCategory(t.description, t.type);
-        if (suggested) {
-          const existing = newUpdates.get(t.id) || {};
-          newUpdates.set(t.id, {
-            ...existing,
-            category: suggested,
-            status: 'categorizado' as const
-          });
-        }
-      }
-    });
-    
-    setPendingUpdates(newUpdates);
-    
-    toast({
-      title: "Sugestões Aplicadas",
-      description: `${newUpdates.size} transações com sugestões aplicadas.`,
-    });
-  };
-
-  const saveChanges = async () => {
-    if (pendingUpdates.size === 0) {
-      toast({
-        title: "Nenhuma Alteração",
-        description: "Não há alterações para salvar.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    let transactionDate;
     try {
-      const updates = Array.from(pendingUpdates.entries()).map(([id, data]) => ({
-        id,
-        category: data.category,
-        status: data.status,
-        observacao: data.observacao
-      }));
-
-      // Atualizar transações uma por uma para incluir observação
-      for (const update of updates) {
-        await updateTransaction.mutateAsync(update);
+      if (transaction.date.includes('/')) {
+        const [day, month, year] = transaction.date.split('/');
+        transactionDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      } else {
+        transactionDate = new Date(transaction.date);
       }
-      
-      setPendingUpdates(new Map());
-      
-      toast({
-        title: "Sucesso",
-        description: `${updates.length} transações atualizadas.`,
-      });
     } catch (error) {
-      toast({
-        title: "Erro",
-        description: `Erro ao salvar alterações: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
-        variant: "destructive",
-      });
+      return false;
     }
-  };
 
-  const getTransactionCategory = (transaction: Transaction): string => {
-    const pending = pendingUpdates.get(transaction.id);
-    return pending?.category || transaction.category || '';
-  };
+    const transactionDateOnly = new Date(transactionDate.getFullYear(), transactionDate.getMonth(), transactionDate.getDate());
 
-  const getTransactionStatus = (transaction: Transaction): string => {
-    const pending = pendingUpdates.get(transaction.id);
-    return pending?.status || transaction.status;
-  };
+    const matchesDateRange = !dateRange?.from || !dateRange?.to || (
+      transactionDateOnly >= dateRange.from && transactionDateOnly <= dateRange.to
+    );
 
-  const getTransactionObservacao = (transaction: Transaction): string => {
-    const pending = pendingUpdates.get(transaction.id);
-    return pending?.observacao || transaction.observacao || '';
-  };
-
-  const filteredTransactions = transactions.filter(t => {
-    const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filterType === 'all' || t.type === filterType;
-    const currentStatus = getTransactionStatus(t);
-    const matchesStatus = filterStatus === 'all' || currentStatus === filterStatus;
-    return matchesSearch && matchesType && matchesStatus;
+    return matchesSearchTerm && matchesDateRange;
   });
 
-  const pendingCount = transactions.filter(t => getTransactionStatus(t) === 'pendente').length;
-  const categorizedCount = transactions.filter(t => getTransactionStatus(t) === 'categorizado').length;
+  // Pagination
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentTransactions = filteredTransactions?.slice(indexOfFirstItem, indexOfLastItem);
 
-  if (transactionsLoading || categoriesLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="text-center py-8">
-          <p className="text-muted-foreground">Carregando transações...</p>
-        </div>
-      </div>
-    );
-  }
+  const totalPages = filteredTransactions ? Math.ceil(filteredTransactions.length / itemsPerPage) : 0;
+
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+  };
+
+  const handleCategorize = async (transactionId: string, category: string, observation?: string) => {
+    try {
+      await updateTransaction.mutateAsync({
+        id: transactionId,
+        category: category,
+        status: 'categorizado',
+        observacao: observation,
+      });
+
+      toast({
+        title: "Transação Categorizada",
+        description: "A transação foi categorizada com sucesso.",
+      });
+
+      refetch();
+    } catch (error) {
+      console.error('Erro ao categorizar transação:', error);
+      toast({
+        title: "Erro ao Categorizar",
+        description: "Ocorreu um erro ao categorizar a transação. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold">Categorização de Movimentações</h1>
+          <h1 className="text-3xl font-bold">Categorização de Transações</h1>
           <p className="text-muted-foreground">
-            Categorize as transações extraídas dos extratos bancários
+            Visualize e categorize as transações para gerar relatórios precisos
           </p>
         </div>
-        
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={applySuggestions}>
-            Aplicar Sugestões
-          </Button>
-          <Button 
-            className="bg-primary"
-            onClick={saveChanges}
-            disabled={pendingUpdates.size === 0}
-          >
-            <Save className="h-4 w-4 mr-2" />
-            Salvar Alterações {pendingUpdates.size > 0 && `(${pendingUpdates.size})`}
-          </Button>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Transações</CardTitle>
-            <Filter className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{transactions.length}</div>
-            <p className="text-xs text-muted-foreground">Todas as transações</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Categorizadas</CardTitle>
-            <CheckCircle className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-primary">{categorizedCount}</div>
-            <p className="text-xs text-muted-foreground">
-              {transactions.length > 0 ? ((categorizedCount / transactions.length) * 100).toFixed(0) : 0}% concluído
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
-            <Clock className="h-4 w-4 text-secondary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-secondary">{pendingCount}</div>
-            <p className="text-xs text-muted-foreground">Aguardando categorização</p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filtros</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <Label htmlFor="search">Buscar transação</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="search"
-                  placeholder="Digite descrição, valor ou beneficiário..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            
-            <div>
-              <Label>Tipo</Label>
-              <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="entrada">Entradas</SelectItem>
-                  <SelectItem value="saida">Saídas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Account Type Filter */}
+        <div>
+          <Label htmlFor="accountType">Tipo de Conta</Label>
+          <Select value={selectedAccount} onValueChange={setSelectedAccount}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Todas as Contas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Todas as Contas</SelectItem>
+              <SelectItem value="BOLETOS">Boletos</SelectItem>
+              <SelectItem value="MENSALIDADES E TX ADM">Mensalidades e Taxas Adm</SelectItem>
+              <SelectItem value="APORTE E JOIA">Aporte e Joia</SelectItem>
+              <SelectItem value="Cora">Cora</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
+        {/* Date Range Filter */}
+        <div>
+          <Label>Período</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={"outline"}
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !dateRange?.from || !dateRange.to ? "text-muted-foreground" : undefined
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dateRange?.from && dateRange?.to ? (
+                  <>
+                    {dateFnsFormat(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} - {dateFnsFormat(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}
+                  </>
+                ) : (
+                  <span>Selecionar Período</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="center" side="bottom">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={dateRange?.from}
+                selected={dateRange}
+                onSelect={setDateRange}
+                numberOfMonths={2}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {/* Search Filter */}
+        <div>
+          <Label htmlFor="search">Pesquisar Descrição</Label>
+          <Input
+            type="search"
+            id="search"
+            placeholder="Pesquisar por descrição..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* Transactions Table */}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Data
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Descrição
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Valor
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Juros
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Tipo
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Ações
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Categoria
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Observação
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {currentTransactions?.map((transaction) => (
+                <TransactionRow
+                  key={transaction.id}
+                  transaction={transaction}
+                  categories={categories}
+                  onCategorize={handleCategorize}
+                  onRefresh={refetch}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        <div className="px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+          <div className="flex-1 flex justify-between sm:hidden">
+            <Button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              variant="outline"
+            >
+              Anterior
+            </Button>
+            <Button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              variant="outline"
+            >
+              Próximo
+            </Button>
+          </div>
+          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
             <div>
-              <Label>Status</Label>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="categorizado">Categorizados</SelectItem>
-                  <SelectItem value="pendente">Pendentes</SelectItem>
-                </SelectContent>
-              </Select>
+              <p className="text-sm text-gray-700">
+                Mostrando <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> até <span className="font-medium">{Math.min(currentPage * itemsPerPage, filteredTransactions?.length || 0)}</span> de <span className="font-medium">{filteredTransactions?.length}</span> resultados
+              </p>
+            </div>
+            <div>
+              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <Button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                  variant="outline"
+                >
+                  Anterior
+                </Button>
+                {/* Current: "z-10 bg-indigo-50 border-indigo-500 text-indigo-600", Default: "bg-white border-gray-300 text-gray-500 hover:bg-gray-50" */}
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <Button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    aria-current="page"
+                    className={cn(
+                      "relative inline-flex items-center px-4 py-2 border text-sm font-medium",
+                      currentPage === page
+                        ? "z-10 bg-indigo-50 border-indigo-500 text-indigo-600"
+                        : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                    )}
+                    variant="outline"
+                  >
+                    {page}
+                  </Button>
+                ))}
+                <Button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                  variant="outline"
+                >
+                  Próximo
+                </Button>
+              </nav>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Transactions List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Transações</CardTitle>
-          <CardDescription>
-            Clique em uma transação para categorizar ou alterar a categoria e adicionar observações
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {transactions.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Nenhuma transação encontrada. Faça upload de um extrato primeiro.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredTransactions.map((transaction) => {
-                const currentCategory = getTransactionCategory(transaction);
-                const currentStatus = getTransactionStatus(transaction);
-                const currentObservacao = getTransactionObservacao(transaction);
-                const hasPendingChanges = pendingUpdates.has(transaction.id);
-                
-                return (
-                  <div
-                    key={transaction.id}
-                    className={cn(
-                      "border rounded-lg p-4 space-y-3 transition-colors",
-                      currentStatus === 'pendente' 
-                        ? "border-secondary/50 bg-secondary/5" 
-                        : "border-border hover:bg-muted/50",
-                      hasPendingChanges && "ring-2 ring-primary/20 bg-primary/5"
-                    )}
-                  >
-                    {/* Transaction Header */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4 flex-1">
-                        {/* Type Icon */}
-                        {transaction.type === 'entrada' ? (
-                          <ArrowUpCircle className="h-6 w-6 text-primary" />
-                        ) : (
-                          <ArrowDownCircle className="h-6 w-6 text-destructive" />
-                        )}
-                        
-                        {/* Transaction Info */}
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="font-medium">{transaction.description}</p>
-                            {transaction.suggested && (
-                              <Badge variant="outline" className="text-xs">
-                                Sugerido
-                              </Badge>
-                            )}
-                            {hasPendingChanges && (
-                              <Badge variant="outline" className="text-xs bg-primary/10">
-                                Alterado
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground">{transaction.date}</p>
-                        </div>
-                        
-                        {/* Amount */}
-                        <div className="text-right">
-                          <p className={cn(
-                            "font-bold",
-                            transaction.type === 'entrada' ? "text-primary" : "text-destructive"
-                          )}>
-                            {transaction.type === 'entrada' ? '+' : '-'} R$ {Math.abs(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Status */}
-                      <div className="ml-4">
-                        {currentStatus === 'categorizado' ? (
-                          <CheckCircle className="h-5 w-5 text-primary" />
-                        ) : (
-                          <Clock className="h-5 w-5 text-secondary" />
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Category and Observation Fields */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Category Selection */}
-                      <div>
-                        <Label className="text-sm font-medium">Categoria</Label>
-                        <Select 
-                          value={currentCategory} 
-                          onValueChange={(value) => updateTransactionCategory(transaction.id, value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecionar categoria" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {transaction.type === 'entrada' 
-                              ? categoriasEntrada.map(cat => (
-                                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                ))
-                              : categoriasSaida.map(cat => (
-                                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                ))
-                            }
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Observation Field */}
-                      <div>
-                        <Label className="text-sm font-medium">Observação</Label>
-                        <Textarea
-                          placeholder="Adicione uma observação..."
-                          value={currentObservacao}
-                          onChange={(e) => updateTransactionObservacao(transaction.id, e.target.value)}
-                          className="min-h-[40px] resize-none"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };

@@ -67,10 +67,12 @@ const Reports = () => {
   const categoryTotals = categories.map(category => {
     const categoryTransactions = categorizedTransactions.filter(t => t.category === category.name);
     const total = categoryTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
+    const totalInterest = categoryTransactions.reduce((sum, t) => sum + (Number(t.juros) || 0), 0);
     
     return {
       ...category,
       total,
+      totalInterest,
       transactionCount: categoryTransactions.length,
       transactions: categoryTransactions
     };
@@ -82,6 +84,7 @@ const Reports = () => {
 
   const totalEntries = entryCategories.reduce((sum, c) => sum + c.total, 0);
   const totalExits = exitCategories.reduce((sum, c) => sum + c.total, 0);
+  const totalInterest = categoryTotals.reduce((sum, c) => sum + c.totalInterest, 0);
   const netResult = totalEntries - totalExits;
 
   const handleExportPDF = async () => {
@@ -89,7 +92,7 @@ const Reports = () => {
     
     try {
       setIsExporting(true);
-      console.log('Iniciando exportação PDF com filtro de período aplicado...');
+      console.log('Iniciando exportação PDF com juros incluídos...');
       
       if (!filteredTransactions || filteredTransactions.length === 0) {
         toast({
@@ -106,6 +109,7 @@ const Reports = () => {
         exitCategories,
         totalEntries,
         totalExits,
+        totalInterest,
         netResult,
         categorizedTransactions,
         allTransactions: filteredTransactions,
@@ -115,13 +119,13 @@ const Reports = () => {
         }
       };
 
-      console.log('Dados do relatório preparados com filtro de período:', reportData);
+      console.log('Dados do relatório preparados com juros:', reportData);
       
       await generateDREReport(reportData);
       
       toast({
         title: "PDF Gerado com Sucesso",
-        description: "O relatório operacional foi exportado com o filtro de período aplicado.",
+        description: "O relatório operacional foi exportado com os juros incluídos.",
       });
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
@@ -195,6 +199,7 @@ const Reports = () => {
       <ReportSummaryCards
         totalEntries={totalEntries}
         totalExits={totalExits}
+        totalInterest={totalInterest}
         netResult={netResult}
         categorizedTransactionsCount={categorizedTransactions.length}
         filteredTransactionsCount={filteredTransactions.length}
@@ -208,6 +213,7 @@ const Reports = () => {
         exitCategories={exitCategories}
         totalEntries={totalEntries}
         totalExits={totalExits}
+        totalInterest={totalInterest}
         netResult={netResult}
         selectedAccount={selectedAccount}
       />

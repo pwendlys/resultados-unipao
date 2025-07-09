@@ -28,6 +28,7 @@ export interface Transaction {
   status: 'pendente' | 'categorizado';
   suggested: boolean;
   observacao?: string;
+  juros: number;
   created_at: string;
   updated_at: string;
 }
