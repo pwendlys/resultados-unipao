@@ -1,0 +1,108 @@
+
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
+import { CalendarIcon } from 'lucide-react';
+import { Calendar } from "@/components/ui/calendar"
+import { cn } from "@/lib/utils"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { format as dateFnsFormat } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { DateRange } from 'react-day-picker';
+
+interface CategoryFiltersProps {
+  selectedAccount: string;
+  setSelectedAccount: (account: string) => void;
+  dateRange: DateRange | undefined;
+  setDateRange: (range: DateRange | undefined) => void;
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
+}
+
+const CategoryFilters = ({
+  selectedAccount,
+  setSelectedAccount,
+  dateRange,
+  setDateRange,
+  searchTerm,
+  setSearchTerm
+}: CategoryFiltersProps) => {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Account Type Filter */}
+      <div>
+        <Label htmlFor="accountType">Tipo de Conta</Label>
+        <Select value={selectedAccount} onValueChange={setSelectedAccount}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Todas as Contas" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Todas as Contas</SelectItem>
+            <SelectItem value="BOLETOS">Boletos</SelectItem>
+            <SelectItem value="MENSALIDADES E TX ADM">Mensalidades e Taxas Adm</SelectItem>
+            <SelectItem value="APORTE E JOIA">Aporte e Joia</SelectItem>
+            <SelectItem value="Cora">Cora</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Date Range Filter */}
+      <div>
+        <Label>Período</Label>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant={"outline"}
+              className={cn(
+                "w-full justify-start text-left font-normal",
+                !dateRange?.from || !dateRange.to ? "text-muted-foreground" : undefined
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {dateRange?.from && dateRange?.to ? (
+                <>
+                  {dateFnsFormat(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} - {dateFnsFormat(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}
+                </>
+              ) : (
+                <span>Selecionar Período</span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="center" side="bottom">
+            <Calendar
+              initialFocus
+              mode="range"
+              defaultMonth={dateRange?.from}
+              selected={dateRange}
+              onSelect={setDateRange}
+              numberOfMonths={2}
+              className="pointer-events-auto"
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {/* Search Filter */}
+      <div>
+        <Label htmlFor="search">Pesquisar Descrição</Label>
+        <Input
+          type="search"
+          id="search"
+          placeholder="Pesquisar por descrição..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+    </div>
+  );
+};
+
+export default CategoryFilters;
