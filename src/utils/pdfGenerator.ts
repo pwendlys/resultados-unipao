@@ -226,7 +226,7 @@ export const generateDREReport = (data: ReportData) => {
       yPosition += 20;
     }
 
-    // Detalhamento das Transações - ORDENADAS POR DATA
+    // Detalhamento das Transações - TODAS AS TRANSAÇÕES ORDENADAS POR DATA
     if (data.categorizedTransactions && data.categorizedTransactions.length > 0) {
       checkPageBreak(40);
       doc.setFontSize(14);
@@ -236,18 +236,18 @@ export const generateDREReport = (data: ReportData) => {
       
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(`(Mostrando as primeiras 50 de ${data.categorizedTransactions.length} transações)`, margin, yPosition);
+      doc.text(`(Mostrando todas as ${data.categorizedTransactions.length} transações)`, margin, yPosition);
       yPosition += 15;
 
-      // Ordenar transações por data (ordem crescente) e limitar a 50
-      const sortedTransactions = sortTransactionsByDate(data.categorizedTransactions).slice(0, 50);
+      // Ordenar TODAS as transações por data (ordem crescente)
+      const sortedTransactions = sortTransactionsByDate(data.categorizedTransactions);
       
       sortedTransactions.forEach((transaction, index) => {
         checkPageBreak(25);
-        doc.setFontSize(11);
+        doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
         doc.text(`${index + 1}. ${formatDate(transaction.date)} - ${transaction.type.toUpperCase()}`, margin, yPosition);
-        yPosition += 7;
+        yPosition += 6;
         
         doc.setFont('helvetica', 'normal');
         doc.text(`Valor: ${formatCurrency(Number(transaction.amount))}`, margin + 10, yPosition);
@@ -255,18 +255,18 @@ export const generateDREReport = (data: ReportData) => {
         doc.text(`Categoria: ${transaction.category || 'Sem Categoria'}`, margin + 10, yPosition);
         yPosition += 5;
         
-        const maxDescLength = 80;
+        const maxDescLength = 70;
         const description = (transaction.description || '').substring(0, maxDescLength);
         doc.text(`Descrição: ${description}${transaction.description && transaction.description.length > maxDescLength ? '...' : ''}`, margin + 10, yPosition);
         yPosition += 5;
         
         if (transaction.observacao) {
-          const maxObsLength = 60;
+          const maxObsLength = 50;
           const observation = transaction.observacao.substring(0, maxObsLength);
           doc.text(`Observação: ${observation}${transaction.observacao.length > maxObsLength ? '...' : ''}`, margin + 10, yPosition);
           yPosition += 5;
         }
-        yPosition += 8;
+        yPosition += 6;
       });
     }
 
