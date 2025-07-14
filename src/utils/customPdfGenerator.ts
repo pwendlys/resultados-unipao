@@ -9,6 +9,7 @@ interface CategoryData {
   type: 'entrada' | 'saida';
   total: number;
   transactionCount: number;
+  totalInterest: number;
 }
 
 interface CategoryTotals {
@@ -16,6 +17,7 @@ interface CategoryTotals {
   type: string;
   total: number;
   count: number;
+  totalInterest: number;
 }
 
 interface CustomReportData {
@@ -156,8 +158,13 @@ export const generateCustomReport = (data: CustomReportData, config: CustomRepor
     doc.text(`Data de Geração: ${new Date().toLocaleDateString('pt-BR')}`, margin, yPosition);
     yPosition += 20;
 
+    // Calcular totais de juros
+    const totalInterestEntries = data.entryTransactions.reduce((sum, t) => sum + (Number(t.juros) || 0), 0);
+    const totalInterestExits = data.exitTransactions.reduce((sum, t) => sum + (Number(t.juros) || 0), 0);
+    const totalInterest = totalInterestEntries + totalInterestExits;
+
     // Resumo Executivo
-    checkPageBreak(80);
+    checkPageBreak(100);
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text('RESUMO EXECUTIVO', margin, yPosition);
@@ -171,6 +178,10 @@ export const generateCustomReport = (data: CustomReportData, config: CustomRepor
       yPosition += 8;
       doc.text(`Transações de Entrada: ${data.entryTransactions.length}`, margin + 10, yPosition);
       yPosition += 8;
+      if (totalInterestEntries > 0) {
+        doc.text(`Juros sobre Receitas: ${formatCurrency(totalInterestEntries)}`, margin + 10, yPosition);
+        yPosition += 8;
+      }
     }
     
     if (config.includeExits) {
@@ -178,12 +189,21 @@ export const generateCustomReport = (data: CustomReportData, config: CustomRepor
       yPosition += 8;
       doc.text(`Transações de Saída: ${data.exitTransactions.length}`, margin + 10, yPosition);
       yPosition += 8;
+      if (totalInterestExits > 0) {
+        doc.text(`Juros sobre Despesas: ${formatCurrency(totalInterestExits)}`, margin + 10, yPosition);
+        yPosition += 8;
+      }
     }
     
     if (config.includeEntries && config.includeExits) {
       doc.text(`Resultado Líquido: ${formatCurrency(data.netResult)}`, margin, yPosition);
       yPosition += 8;
       doc.text(`Status: ${data.netResult >= 0 ? 'Superávit' : 'Déficit'}`, margin, yPosition);
+      yPosition += 8;
+    }
+    
+    if (totalInterest > 0) {
+      doc.text(`Total de Juros: ${formatCurrency(totalInterest)}`, margin, yPosition);
       yPosition += 8;
     }
     
@@ -194,7 +214,7 @@ export const generateCustomReport = (data: CustomReportData, config: CustomRepor
 
     // Análise por categorias (se houver transações categorizadas)
     if (data.categorizedTransactions.length > 0) {
-      // Agrupar por categoria
+      // Agrupar por categoria incluindo juros
       const categoryTotals = data.categorizedTransactions.reduce((acc, transaction) => {
         const category = transaction.category || 'Sem Categoria';
         if (!acc[category]) {
@@ -202,10 +222,12 @@ export const generateCustomReport = (data: CustomReportData, config: CustomRepor
             name: category,
             type: transaction.type,
             total: 0,
-            count: 0
+            count: 0,
+            totalInterest: 0
           };
         }
         acc[category].total += Number(transaction.amount);
+        acc[category].totalInterest += Number(transaction.juros) || 0;
         acc[category].count += 1;
         return acc;
       }, {} as Record<string, CategoryTotals>);
@@ -222,7 +244,7 @@ export const generateCustomReport = (data: CustomReportData, config: CustomRepor
           yPosition += 15;
 
           entryCategories.forEach((category) => {
-            checkPageBreak(25);
+            checkPageBreak(30);
             doc.setFontSize(12);
             doc.setFont('helvetica', 'bold');
             doc.text(`${category.name}`, margin, yPosition);
@@ -235,6 +257,10 @@ export const generateCustomReport = (data: CustomReportData, config: CustomRepor
             yPosition += 6;
             doc.text(`Média por transação: ${formatCurrency(category.total / category.count)}`, margin + 10, yPosition);
             yPosition += 6;
+            if (category.totalInterest > 0) {
+              doc.text(`Juros acumulados: ${formatCurrency(category.totalInterest)}`, margin + 10, yPosition);
+              yPosition += 6;
+            }
             if (data.totalEntries > 0) {
               doc.text(`Percentual do total: ${((category.total / data.totalEntries) * 100).toFixed(1)}%`, margin + 10, yPosition);
               yPosition += 6;
@@ -245,6 +271,10 @@ export const generateCustomReport = (data: CustomReportData, config: CustomRepor
           checkPageBreak(15);
           doc.setFont('helvetica', 'bold');
           doc.text(`TOTAL DE RECEITAS: ${formatCurrency(data.totalEntries)}`, margin, yPosition);
+          if (totalInterestEntries > 0) {
+            yPosition += 8;
+            doc.text(`TOTAL DE JUROS EM RECEITAS: ${formatCurrency(totalInterestEntries)}`, margin, yPosition);
+          }
           yPosition += 20;
         }
       }
@@ -259,7 +289,7 @@ export const generateCustomReport = (data: CustomReportData, config: CustomRepor
           yPosition += 15;
 
           exitCategories.forEach((category) => {
-            checkPageBreak(25);
+            checkPageBreak(30);
             doc.setFontSize(12);
             doc.setFont('helvetica', 'bold');
             doc.text(`${category.name}`, margin, yPosition);
@@ -272,6 +302,10 @@ export const generateCustomReport = (data: CustomReportData, config: CustomRepor
             yPosition += 6;
             doc.text(`Média por transação: ${formatCurrency(category.total / category.count)}`, margin + 10, yPosition);
             yPosition += 6;
+            if (category.totalInterest > 0) {
+              doc.text(`Juros acumulados: ${formatCurrency(category.totalInterest)}`, margin + 10, yPosition);
+              yPosition += 6;
+            }
             if (data.totalExits > 0) {
               doc.text(`Percentual do total: ${((category.total / data.totalExits) * 100).toFixed(1)}%`, margin + 10, yPosition);
               yPosition += 6;
@@ -282,6 +316,10 @@ export const generateCustomReport = (data: CustomReportData, config: CustomRepor
           checkPageBreak(15);
           doc.setFont('helvetica', 'bold');
           doc.text(`TOTAL DE DESPESAS: ${formatCurrency(data.totalExits)}`, margin, yPosition);
+          if (totalInterestExits > 0) {
+            yPosition += 8;
+            doc.text(`TOTAL DE JUROS EM DESPESAS: ${formatCurrency(totalInterestExits)}`, margin, yPosition);
+          }
           yPosition += 20;
         }
       }
@@ -304,7 +342,7 @@ export const generateCustomReport = (data: CustomReportData, config: CustomRepor
       const sortedTransactions = sortTransactionsByDate(data.categorizedTransactions);
       
       sortedTransactions.forEach((transaction, index) => {
-        checkPageBreak(25);
+        checkPageBreak(30);
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
         doc.text(`${index + 1}. ${formatDate(transaction.date)} - ${transaction.type.toUpperCase()}`, margin, yPosition);
@@ -313,6 +351,12 @@ export const generateCustomReport = (data: CustomReportData, config: CustomRepor
         doc.setFont('helvetica', 'normal');
         doc.text(`Valor: ${formatCurrency(Number(transaction.amount))}`, margin + 10, yPosition);
         yPosition += 5;
+        
+        if (transaction.juros && Number(transaction.juros) > 0) {
+          doc.text(`Juros: ${formatCurrency(Number(transaction.juros))}`, margin + 10, yPosition);
+          yPosition += 5;
+        }
+        
         doc.text(`Categoria: ${transaction.category || 'Sem Categoria'}`, margin + 10, yPosition);
         yPosition += 5;
         
@@ -344,17 +388,30 @@ export const generateCustomReport = (data: CustomReportData, config: CustomRepor
     if (config.includeEntries) {
       doc.text(`Total de Receitas: ${formatCurrency(data.totalEntries)}`, margin, yPosition);
       yPosition += 12;
+      if (totalInterestEntries > 0) {
+        doc.text(`Juros em Receitas: ${formatCurrency(totalInterestEntries)}`, margin, yPosition);
+        yPosition += 12;
+      }
     }
 
     if (config.includeExits) {
       doc.text(`Total de Despesas: ${formatCurrency(data.totalExits)}`, margin, yPosition);
       yPosition += 12;
+      if (totalInterestExits > 0) {
+        doc.text(`Juros em Despesas: ${formatCurrency(totalInterestExits)}`, margin, yPosition);
+        yPosition += 12;
+      }
     }
 
     if (config.includeEntries && config.includeExits) {
       doc.text(`Resultado Líquido: ${formatCurrency(data.netResult)}`, margin, yPosition);
       yPosition += 12;
       doc.text(`Status: ${data.netResult >= 0 ? 'SUPERÁVIT' : 'DÉFICIT'}`, margin, yPosition);
+      yPosition += 12;
+    }
+
+    if (totalInterest > 0) {
+      doc.text(`Total Geral de Juros: ${formatCurrency(totalInterest)}`, margin, yPosition);
     }
 
     // Gerar nome do arquivo

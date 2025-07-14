@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,8 @@ import {
   FileText,
   Share2,
   Copy,
-  ExternalLink
+  ExternalLink,
+  Calculator
 } from 'lucide-react';
 import { CustomReportConfig } from './CustomReports';
 import { format } from 'date-fns';
@@ -22,6 +24,7 @@ interface CategoryData {
   type: 'entrada' | 'saida';
   total: number;
   transactionCount: number;
+  totalInterest: number;
 }
 
 interface CustomReportData {
@@ -103,7 +106,12 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
     window.open(url, '_blank');
   };
 
-  // Calcular categorias por tipo
+  // Calcular totais de juros
+  const totalInterestEntries = data.entryTransactions.reduce((sum, t) => sum + (Number(t.juros) || 0), 0);
+  const totalInterestExits = data.exitTransactions.reduce((sum, t) => sum + (Number(t.juros) || 0), 0);
+  const totalInterest = totalInterestEntries + totalInterestExits;
+
+  // Calcular categorias por tipo incluindo juros
   const getCategoriesByType = (type: 'entrada' | 'saida') => {
     const categoryTotals = data.categorizedTransactions
       .filter(t => t.type === type)
@@ -114,10 +122,12 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
             name: category,
             type: transaction.type,
             total: 0,
-            count: 0
+            count: 0,
+            totalInterest: 0
           };
         }
         acc[category].total += Number(transaction.amount);
+        acc[category].totalInterest += Number(transaction.juros) || 0;
         acc[category].count += 1;
         return acc;
       }, {} as Record<string, any>);
@@ -168,7 +178,7 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
         </div>
 
         {/* Cards de Resumo */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {config.includeEntries && (
             <Card>
               <CardContent className="p-4">
@@ -177,6 +187,9 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
                     <p className="text-sm text-muted-foreground">Total de Receitas</p>
                     <p className="text-2xl font-bold text-green-600">{formatCurrency(data.totalEntries)}</p>
                     <p className="text-xs text-muted-foreground">{data.entryTransactions.length} transações</p>
+                    {totalInterestEntries > 0 && (
+                      <p className="text-xs text-blue-600">Juros: {formatCurrency(totalInterestEntries)}</p>
+                    )}
                   </div>
                   <TrendingUp className="h-8 w-8 text-green-600" />
                 </div>
@@ -192,6 +205,9 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
                     <p className="text-sm text-muted-foreground">Total de Despesas</p>
                     <p className="text-2xl font-bold text-red-600">{formatCurrency(data.totalExits)}</p>
                     <p className="text-xs text-muted-foreground">{data.exitTransactions.length} transações</p>
+                    {totalInterestExits > 0 && (
+                      <p className="text-xs text-blue-600">Juros: {formatCurrency(totalInterestExits)}</p>
+                    )}
                   </div>
                   <TrendingDown className="h-8 w-8 text-red-600" />
                 </div>
@@ -213,6 +229,23 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
                     </Badge>
                   </div>
                   <DollarSign className="h-8 w-8 text-blue-600" />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {totalInterest > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total de Juros</p>
+                    <p className="text-2xl font-bold text-blue-600">{formatCurrency(totalInterest)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {data.categorizedTransactions.filter(t => (Number(t.juros) || 0) > 0).length} com juros
+                    </p>
+                  </div>
+                  <Calculator className="h-8 w-8 text-blue-600" />
                 </div>
               </CardContent>
             </Card>
@@ -250,6 +283,9 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
                           <div className="text-sm text-muted-foreground">
                             {category.count} transações
                             {data.totalEntries > 0 && ` • ${((category.total / data.totalEntries) * 100).toFixed(1)}%`}
+                            {category.totalInterest > 0 && (
+                              <span className="text-blue-600"> • Juros: {formatCurrency(category.totalInterest)}</span>
+                            )}
                           </div>
                         </div>
                         <div className="text-right">
@@ -277,6 +313,9 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
                           <div className="text-sm text-muted-foreground">
                             {category.count} transações
                             {data.totalExits > 0 && ` • ${((category.total / data.totalExits) * 100).toFixed(1)}%`}
+                            {category.totalInterest > 0 && (
+                              <span className="text-blue-600"> • Juros: {formatCurrency(category.totalInterest)}</span>
+                            )}
                           </div>
                         </div>
                         <div className="text-right">
