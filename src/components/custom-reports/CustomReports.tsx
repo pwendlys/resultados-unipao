@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, FileText, Eye } from 'lucide-react';
-import { useTransactions } from '@/hooks/useSupabaseData';
+import { useTransactionsByAccount } from '@/hooks/useSupabaseData';
 import { useCategories } from '@/hooks/useCategories';
 import { useToast } from '@/hooks/use-toast';
 import { ReportBuilder } from './ReportBuilder';
@@ -32,7 +32,9 @@ const CustomReports = () => {
   const [showPreview, setShowPreview] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  const { data: transactions = [], isLoading: transactionsLoading } = useTransactions();
+  // Usar o hook correto baseado na conta selecionada
+  const selectedAccount = reportConfig.selectedAccounts.length === 1 ? reportConfig.selectedAccounts[0] : 'ALL';
+  const { data: transactions = [], isLoading: transactionsLoading } = useTransactionsByAccount(selectedAccount);
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
   const { toast } = useToast();
 
@@ -42,6 +44,7 @@ const CustomReports = () => {
     try {
       setIsExporting(true);
       console.log('Gerando relatório personalizado:', reportConfig);
+      console.log('Conta selecionada para filtro:', selectedAccount);
       
       const filteredData = getFilteredData();
       
@@ -73,14 +76,10 @@ const CustomReports = () => {
   };
 
   const getFilteredData = () => {
+    console.log('Filtrando dados com configuração:', reportConfig);
+    console.log('Transações recebidas do hook:', transactions.length);
+    
     let filteredTransactions = transactions;
-
-    // Filtrar por contas selecionadas (se alguma foi selecionada)
-    if (reportConfig.selectedAccounts.length > 0) {
-      // Como as transações não têm account_type diretamente, precisamos filtrar através dos extratos
-      // Por enquanto, vamos assumir que todas as transações estão incluídas
-      filteredTransactions = transactions;
-    }
 
     // Filtrar por período
     if (reportConfig.dateFrom || reportConfig.dateTo) {
@@ -94,6 +93,7 @@ const CustomReports = () => {
             transactionDate = new Date(transaction.date);
           }
         } catch (error) {
+          console.error('Erro ao converter data da transação:', transaction.date, error);
           return false;
         }
         
@@ -115,6 +115,8 @@ const CustomReports = () => {
       });
     }
 
+    console.log('Transações após filtro de período:', filteredTransactions.length);
+
     // Filtrar por tipo (entrada/saída)
     if (!reportConfig.includeEntries || !reportConfig.includeExits) {
       filteredTransactions = filteredTransactions.filter(transaction => {
@@ -124,12 +126,16 @@ const CustomReports = () => {
       });
     }
 
+    console.log('Transações após filtro de tipo:', filteredTransactions.length);
+
     // Filtrar por categorias selecionadas
     if (reportConfig.selectedCategories.length > 0) {
       filteredTransactions = filteredTransactions.filter(transaction => 
         transaction.category && reportConfig.selectedCategories.includes(transaction.category)
       );
     }
+
+    console.log('Transações após filtro de categoria:', filteredTransactions.length);
 
     // Calcular totais
     const categorizedTransactions = filteredTransactions.filter(t => t.status === 'categorizado');
@@ -140,6 +146,14 @@ const CustomReports = () => {
     const totalEntries = entryTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
     const totalExits = exitTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
     const netResult = totalEntries - totalExits;
+
+    console.log('Dados finais do relatório:', {
+      filteredTransactions: filteredTransactions.length,
+      categorizedTransactions: categorizedTransactions.length,
+      totalEntries,
+      totalExits,
+      netResult
+    });
 
     return {
       filteredTransactions,
@@ -172,6 +186,11 @@ const CustomReports = () => {
           <p className="text-muted-foreground">
             Crie relatórios operacionais personalizados com critérios específicos
           </p>
+          {selectedAccount !== 'ALL' && (
+            <p className="text-sm text-blue-600 mt-2">
+              Conta selecionada: {selectedAccount}
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
           <Button 
