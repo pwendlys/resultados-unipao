@@ -37,11 +37,63 @@ const formatCurrency = (value: number) => {
 
 const formatDate = (dateString: string) => {
   try {
-    const date = new Date(dateString);
+    let date: Date;
+    
+    // Verificar se a data está no formato brasileiro DD/MM/YYYY
+    if (dateString.includes('/')) {
+      const [day, month, year] = dateString.split('/');
+      date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    } else {
+      // Assumir formato ISO YYYY-MM-DD
+      date = new Date(dateString);
+    }
+    
+    // Verificar se a data é válida
+    if (isNaN(date.getTime())) {
+      console.warn('Data inválida encontrada:', dateString);
+      return dateString; // Retornar string original se não conseguir converter
+    }
+    
     return date.toLocaleDateString('pt-BR');
   } catch (error) {
+    console.error('Erro ao formatar data:', dateString, error);
     return dateString;
   }
+};
+
+// Função para ordenar transações por data (ordem crescente)
+const sortTransactionsByDate = (transactions: any[]): any[] => {
+  return [...transactions].sort((a, b) => {
+    try {
+      let dateA: Date, dateB: Date;
+      
+      // Converter data A
+      if (a.date.includes('/')) {
+        const [day, month, year] = a.date.split('/');
+        dateA = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      } else {
+        dateA = new Date(a.date);
+      }
+      
+      // Converter data B
+      if (b.date.includes('/')) {
+        const [day, month, year] = b.date.split('/');
+        dateB = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      } else {
+        dateB = new Date(b.date);
+      }
+      
+      // Verificar se as datas são válidas
+      if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
+        return 0; // Manter ordem original se houver erro
+      }
+      
+      return dateA.getTime() - dateB.getTime(); // Ordem crescente
+    } catch (error) {
+      console.error('Erro ao comparar datas:', a.date, b.date, error);
+      return 0;
+    }
+  });
 };
 
 export const generateCustomReport = (data: CustomReportData, config: CustomReportConfig) => {
@@ -235,7 +287,7 @@ export const generateCustomReport = (data: CustomReportData, config: CustomRepor
       }
     }
 
-    // Detalhamento das transações (primeiras 50 para não sobrecarregar o PDF)
+    // Detalhamento das transações - TODAS AS TRANSAÇÕES ORDENADAS POR DATA
     if (data.categorizedTransactions.length > 0) {
       checkPageBreak(40);
       doc.setFontSize(14);
@@ -243,38 +295,37 @@ export const generateCustomReport = (data: CustomReportData, config: CustomRepor
       doc.text('DETALHAMENTO DAS TRANSAÇÕES', margin, yPosition);
       yPosition += 10;
       
-      if (data.categorizedTransactions.length > 50) {
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`(Mostrando as primeiras 50 de ${data.categorizedTransactions.length} transações)`, margin, yPosition);
-        yPosition += 15;
-      } else {
-        yPosition += 5;
-      }
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`(Mostrando todas as ${data.categorizedTransactions.length} transações ordenadas por data)`, margin, yPosition);
+      yPosition += 15;
 
-      const transactionsToShow = data.categorizedTransactions.slice(0, 50);
+      // Ordenar TODAS as transações por data (ordem crescente)
+      const sortedTransactions = sortTransactionsByDate(data.categorizedTransactions);
       
-      transactionsToShow.forEach((transaction, index) => {
-        checkPageBreak(20);
+      sortedTransactions.forEach((transaction, index) => {
+        checkPageBreak(25);
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
         doc.text(`${index + 1}. ${formatDate(transaction.date)} - ${transaction.type.toUpperCase()}`, margin, yPosition);
-        yPosition += 5;
+        yPosition += 6;
         
         doc.setFont('helvetica', 'normal');
-        doc.text(`Valor: ${formatCurrency(Number(transaction.amount))}`, margin + 5, yPosition);
-        yPosition += 4;
-        doc.text(`Categoria: ${transaction.category || 'Sem categoria'}`, margin + 5, yPosition);
-        yPosition += 4;
+        doc.text(`Valor: ${formatCurrency(Number(transaction.amount))}`, margin + 10, yPosition);
+        yPosition += 5;
+        doc.text(`Categoria: ${transaction.category || 'Sem Categoria'}`, margin + 10, yPosition);
+        yPosition += 5;
         
-        const description = (transaction.description || '').substring(0, 80);
-        doc.text(`Descrição: ${description}${transaction.description && transaction.description.length > 80 ? '...' : ''}`, margin + 5, yPosition);
-        yPosition += 4;
+        const maxDescLength = 70;
+        const description = (transaction.description || '').substring(0, maxDescLength);
+        doc.text(`Descrição: ${description}${transaction.description && transaction.description.length > maxDescLength ? '...' : ''}`, margin + 10, yPosition);
+        yPosition += 5;
         
         if (transaction.observacao) {
-          const obs = transaction.observacao.substring(0, 60);
-          doc.text(`Obs: ${obs}${transaction.observacao.length > 60 ? '...' : ''}`, margin + 5, yPosition);
-          yPosition += 4;
+          const maxObsLength = 50;
+          const observation = transaction.observacao.substring(0, maxObsLength);
+          doc.text(`Observação: ${observation}${transaction.observacao.length > maxObsLength ? '...' : ''}`, margin + 10, yPosition);
+          yPosition += 5;
         }
         yPosition += 6;
       });
