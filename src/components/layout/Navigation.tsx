@@ -9,9 +9,11 @@ import {
   Home,
   Menu,
   X,
-  Presentation
+  Presentation,
+  LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface NavigationProps {
   currentPage: string;
@@ -20,6 +22,7 @@ interface NavigationProps {
 
 const Navigation = ({ currentPage, onPageChange }: NavigationProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { logout } = useAuth();
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
@@ -29,6 +32,11 @@ const Navigation = ({ currentPage, onPageChange }: NavigationProps) => {
     { id: 'custom-reports', label: 'Relatórios Personalizados', icon: Presentation },
     { id: 'settings', label: 'Configurações e Compartilhar', icon: Settings },
   ];
+
+  const handleLogout = () => {
+    logout();
+    setIsMobileMenuOpen(false);
+  };
 
   return (
     <>
@@ -53,11 +61,11 @@ const Navigation = ({ currentPage, onPageChange }: NavigationProps) => {
 
       {/* Sidebar */}
       <nav className={cn(
-        "fixed top-0 left-0 h-full w-64 bg-card border-r border-border z-40 transition-transform duration-300",
+        "fixed top-0 left-0 h-full w-64 bg-card border-r border-border z-40 transition-transform duration-300 flex flex-col",
         "lg:translate-x-0",
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
-        <div className="p-6">
+        <div className="p-6 flex-1">
           {/* Logo */}
           <div className="flex items-center gap-3 mb-8">
             <img 
@@ -94,6 +102,18 @@ const Navigation = ({ currentPage, onPageChange }: NavigationProps) => {
               );
             })}
           </div>
+        </div>
+
+        {/* Logout Button */}
+        <div className="p-6 border-t border-border">
+          <Button
+            variant="outline"
+            className="w-full justify-start gap-3 text-destructive hover:text-destructive"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-5 w-5" />
+            Sair do Sistema
+          </Button>
         </div>
       </nav>
     </>
