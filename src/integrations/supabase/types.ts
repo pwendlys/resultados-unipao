@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instanciate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
+    PostgrestVersion: "12.2.12 (cd3cf9e)"
   }
   public: {
     Tables: {
@@ -37,7 +37,6 @@ export type Database = {
       }
       extratos: {
         Row: {
-          account_type: string
           bank: string
           created_at: string
           file_type: string
@@ -51,7 +50,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_type?: string
           bank: string
           created_at?: string
           file_type?: string
@@ -65,7 +63,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          account_type?: string
           bank?: string
           created_at?: string
           file_type?: string
@@ -80,42 +77,6 @@ export type Database = {
         }
         Relationships: []
       }
-      shared_reports: {
-        Row: {
-          config: Json
-          created_at: string
-          data: Json
-          expires_at: string | null
-          id: string
-          is_active: boolean
-          share_id: string
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          config: Json
-          created_at?: string
-          data: Json
-          expires_at?: string | null
-          id?: string
-          is_active?: boolean
-          share_id: string
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          config?: Json
-          created_at?: string
-          data?: Json
-          expires_at?: string | null
-          id?: string
-          is_active?: boolean
-          share_id?: string
-          title?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       transactions: {
         Row: {
           amount: number
@@ -125,8 +86,6 @@ export type Database = {
           description: string
           extrato_id: string | null
           id: string
-          juros: number | null
-          observacao: string | null
           status: string
           suggested: boolean | null
           type: string
@@ -140,8 +99,6 @@ export type Database = {
           description: string
           extrato_id?: string | null
           id?: string
-          juros?: number | null
-          observacao?: string | null
           status?: string
           suggested?: boolean | null
           type: string
@@ -155,8 +112,6 @@ export type Database = {
           description?: string
           extrato_id?: string | null
           id?: string
-          juros?: number | null
-          observacao?: string | null
           status?: string
           suggested?: boolean | null
           type?: string
