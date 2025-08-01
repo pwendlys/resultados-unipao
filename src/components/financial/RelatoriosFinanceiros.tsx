@@ -27,16 +27,16 @@ const RelatoriosFinanceiros: React.FC = () => {
 
     return itens.filter(item => {
       // Filtro por tipo de documento
-      if (filtroTipo) {
+      if (filtroTipo && filtroTipo !== 'todos') {
         const documento = documentos?.find(d => d.id === item.documento_id);
         if (!documento || documento.tipo_documento !== filtroTipo) return false;
       }
 
       // Filtro por status
-      if (filtroStatus && item.status !== filtroStatus) return false;
+      if (filtroStatus && filtroStatus !== 'todos' && item.status !== filtroStatus) return false;
 
       // Filtro por categoria
-      if (filtroCategoria && item.categoria !== filtroCategoria) return false;
+      if (filtroCategoria && filtroCategoria !== 'todas' && item.categoria !== filtroCategoria) return false;
 
       // Filtro por data de vencimento
       if (dataInicio && item.data_vencimento && item.data_vencimento < dataInicio) return false;
@@ -187,7 +187,7 @@ const RelatoriosFinanceiros: React.FC = () => {
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="todos">Todos</SelectItem>
                   <SelectItem value="contas_a_receber">Contas a Receber</SelectItem>
                   <SelectItem value="contas_a_pagar">Contas a Pagar</SelectItem>
                   <SelectItem value="contas_vencidas">Contas Vencidas</SelectItem>
@@ -202,7 +202,7 @@ const RelatoriosFinanceiros: React.FC = () => {
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="todos">Todos</SelectItem>
                   <SelectItem value="pendente">Pendente</SelectItem>
                   <SelectItem value="pago">Pago</SelectItem>
                   <SelectItem value="vencido">Vencido</SelectItem>
@@ -218,7 +218,7 @@ const RelatoriosFinanceiros: React.FC = () => {
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="todas">Todas</SelectItem>
                   {categorias.map(categoria => (
                     <SelectItem key={categoria} value={categoria}>
                       {categoria}
