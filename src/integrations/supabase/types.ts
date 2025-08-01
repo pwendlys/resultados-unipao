@@ -35,6 +35,51 @@ export type Database = {
         }
         Relationships: []
       }
+      documentos_financeiros: {
+        Row: {
+          arquivo_original: string
+          banco: string | null
+          created_at: string
+          id: string
+          nome: string
+          observacoes: string | null
+          periodo: string
+          quantidade_documentos: number | null
+          status: string
+          tipo_documento: string
+          updated_at: string
+          valor_total: number | null
+        }
+        Insert: {
+          arquivo_original: string
+          banco?: string | null
+          created_at?: string
+          id?: string
+          nome: string
+          observacoes?: string | null
+          periodo: string
+          quantidade_documentos?: number | null
+          status?: string
+          tipo_documento: string
+          updated_at?: string
+          valor_total?: number | null
+        }
+        Update: {
+          arquivo_original?: string
+          banco?: string | null
+          created_at?: string
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          periodo?: string
+          quantidade_documentos?: number | null
+          status?: string
+          tipo_documento?: string
+          updated_at?: string
+          valor_total?: number | null
+        }
+        Relationships: []
+      }
       extratos: {
         Row: {
           account_type: string
@@ -79,6 +124,71 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      itens_financeiros: {
+        Row: {
+          categoria: string | null
+          created_at: string
+          data_emissao: string | null
+          data_pagamento: string | null
+          data_vencimento: string | null
+          descricao: string
+          documento_id: string
+          id: string
+          juros: number | null
+          multa: number | null
+          numero_documento: string | null
+          observacao: string | null
+          status: string
+          updated_at: string
+          valor: number
+          valor_pago: number | null
+        }
+        Insert: {
+          categoria?: string | null
+          created_at?: string
+          data_emissao?: string | null
+          data_pagamento?: string | null
+          data_vencimento?: string | null
+          descricao: string
+          documento_id: string
+          id?: string
+          juros?: number | null
+          multa?: number | null
+          numero_documento?: string | null
+          observacao?: string | null
+          status?: string
+          updated_at?: string
+          valor: number
+          valor_pago?: number | null
+        }
+        Update: {
+          categoria?: string | null
+          created_at?: string
+          data_emissao?: string | null
+          data_pagamento?: string | null
+          data_vencimento?: string | null
+          descricao?: string
+          documento_id?: string
+          id?: string
+          juros?: number | null
+          multa?: number | null
+          numero_documento?: string | null
+          observacao?: string | null
+          status?: string
+          updated_at?: string
+          valor?: number
+          valor_pago?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "itens_financeiros_documento_id_fkey"
+            columns: ["documento_id"]
+            isOneToOne: false
+            referencedRelation: "documentos_financeiros"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shared_reports: {
         Row: {

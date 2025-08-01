@@ -10,7 +10,9 @@ import {
   Menu,
   X,
   Presentation,
-  LogOut
+  LogOut,
+  DollarSign,
+  TrendingUp
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,8 +29,10 @@ const Navigation = ({ currentPage, onPageChange }: NavigationProps) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'upload', label: 'Upload Extrato', icon: Upload },
+    { id: 'upload-financeiro', label: 'Upload Financeiro', icon: DollarSign },
     { id: 'categorization', label: 'Categorização', icon: FileText },
     { id: 'reports', label: 'Relatórios Unipão', icon: BarChart3 },
+    { id: 'relatorios-financeiros', label: 'Relatórios Financeiros', icon: TrendingUp },
     { id: 'custom-reports', label: 'Relatórios Personalizados', icon: Presentation },
     { id: 'settings', label: 'Configurações e Compartilhar', icon: Settings },
   ];
