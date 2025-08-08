@@ -17,18 +17,20 @@ export interface CustomReportConfig {
   includeExits: boolean;
   selectedCategories: string[];
   reportTitle: string;
+  detailGrouping?: 'date' | 'category';
 }
 
 const CustomReports = () => {
-  const [reportConfig, setReportConfig] = useState<CustomReportConfig>({
-    selectedAccounts: [],
-    dateFrom: undefined,
-    dateTo: undefined,
-    includeEntries: true,
-    includeExits: true,
-    selectedCategories: [],
-    reportTitle: 'Relatório Operacional Personalizado'
-  });
+const [reportConfig, setReportConfig] = useState<CustomReportConfig>({
+  selectedAccounts: [],
+  dateFrom: undefined,
+  dateTo: undefined,
+  includeEntries: true,
+  includeExits: true,
+  selectedCategories: [],
+  reportTitle: 'Relatório Operacional Personalizado',
+  detailGrouping: 'date'
+});
   const [showPreview, setShowPreview] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 

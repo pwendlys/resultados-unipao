@@ -325,46 +325,60 @@ export const generateCustomReport = (data: CustomReportData, config: CustomRepor
       }
     }
 
-    // Detalhamento das transações - TODAS AS TRANSAÇÕES ORDENADAS POR DATA
-    if (data.categorizedTransactions.length > 0) {
-      checkPageBreak(40);
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('DETALHAMENTO DAS TRANSAÇÕES', margin, yPosition);
-      yPosition += 10;
-      
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`(Mostrando todas as ${data.categorizedTransactions.length} transações ordenadas por data)`, margin, yPosition);
-      yPosition += 15;
+// Detalhamento das transações
+if (data.categorizedTransactions.length > 0) {
+  checkPageBreak(40);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DETALHAMENTO DAS TRANSAÇÕES', margin, yPosition);
+  yPosition += 10;
 
-      // Ordenar TODAS as transações por data (ordem crescente)
-      const sortedTransactions = sortTransactionsByDate(data.categorizedTransactions);
-      
-      sortedTransactions.forEach((transaction, index) => {
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+
+  if (config.detailGrouping === 'category') {
+    doc.text(`(Agrupado por categoria – ${data.categorizedTransactions.length} transações)`, margin, yPosition);
+    yPosition += 12;
+
+    const groupedByCategory = data.categorizedTransactions.reduce((acc, t) => {
+      const cat = t.category || 'Sem Categoria';
+      acc[cat] = acc[cat] || [];
+      acc[cat].push(t);
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    const categoryNames = Object.keys(groupedByCategory).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+    categoryNames.forEach((cat) => {
+      const txs = sortTransactionsByDate(groupedByCategory[cat]);
+
+      checkPageBreak(15);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text(cat, margin, yPosition);
+      yPosition += 8;
+
+      txs.forEach((transaction, idx) => {
         checkPageBreak(30);
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
-        doc.text(`${index + 1}. ${formatDate(transaction.date)} - ${transaction.type.toUpperCase()}`, margin, yPosition);
+        doc.text(`${idx + 1}. ${formatDate(transaction.date)} - ${transaction.type.toUpperCase()}`, margin, yPosition);
         yPosition += 6;
-        
+
         doc.setFont('helvetica', 'normal');
         doc.text(`Valor: ${formatCurrency(Number(transaction.amount))}`, margin + 10, yPosition);
         yPosition += 5;
-        
+
         if (transaction.juros && Number(transaction.juros) > 0) {
           doc.text(`Juros: ${formatCurrency(Number(transaction.juros))}`, margin + 10, yPosition);
           yPosition += 5;
         }
-        
-        doc.text(`Categoria: ${transaction.category || 'Sem Categoria'}`, margin + 10, yPosition);
-        yPosition += 5;
-        
+
         const maxDescLength = 70;
         const description = (transaction.description || '').substring(0, maxDescLength);
         doc.text(`Descrição: ${description}${transaction.description && transaction.description.length > maxDescLength ? '...' : ''}`, margin + 10, yPosition);
         yPosition += 5;
-        
+
         if (transaction.observacao) {
           const maxObsLength = 50;
           const observation = transaction.observacao.substring(0, maxObsLength);
@@ -373,7 +387,49 @@ export const generateCustomReport = (data: CustomReportData, config: CustomRepor
         }
         yPosition += 6;
       });
-    }
+
+      yPosition += 4;
+    });
+  } else {
+    doc.text(`(Mostrando todas as ${data.categorizedTransactions.length} transações ordenadas por data)`, margin, yPosition);
+    yPosition += 15;
+
+    const sortedTransactions = sortTransactionsByDate(data.categorizedTransactions);
+
+    sortedTransactions.forEach((transaction, index) => {
+      checkPageBreak(30);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${index + 1}. ${formatDate(transaction.date)} - ${transaction.type.toUpperCase()}`, margin, yPosition);
+      yPosition += 6;
+
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Valor: ${formatCurrency(Number(transaction.amount))}`, margin + 10, yPosition);
+      yPosition += 5;
+
+      if (transaction.juros && Number(transaction.juros) > 0) {
+        doc.text(`Juros: ${formatCurrency(Number(transaction.juros))}`, margin + 10, yPosition);
+        yPosition += 5;
+      }
+
+      doc.text(`Categoria: ${transaction.category || 'Sem Categoria'}`, margin + 10, yPosition);
+      yPosition += 5;
+
+      const maxDescLength = 70;
+      const description = (transaction.description || '').substring(0, maxDescLength);
+      doc.text(`Descrição: ${description}${transaction.description && transaction.description.length > maxDescLength ? '...' : ''}`, margin + 10, yPosition);
+      yPosition += 5;
+
+      if (transaction.observacao) {
+        const maxObsLength = 50;
+        const observation = transaction.observacao.substring(0, maxObsLength);
+        doc.text(`Observação: ${observation}${transaction.observacao.length > maxObsLength ? '...' : ''}`, margin + 10, yPosition);
+        yPosition += 5;
+      }
+      yPosition += 6;
+    });
+  }
+}
 
     // Rodapé final
     doc.addPage();
