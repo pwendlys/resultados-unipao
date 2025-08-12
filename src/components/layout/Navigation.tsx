@@ -24,7 +24,7 @@ interface NavigationProps {
 
 const Navigation = ({ currentPage, onPageChange }: NavigationProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
@@ -36,6 +36,10 @@ const Navigation = ({ currentPage, onPageChange }: NavigationProps) => {
     { id: 'custom-reports', label: 'Relatórios Personalizados', icon: Presentation },
     { id: 'settings', label: 'Configurações e Compartilhar', icon: Settings },
   ];
+
+  const itemsToShow = user?.role === 'cooperado'
+    ? [{ id: 'custom-reports', label: 'Relatórios Personalizados', icon: Presentation }]
+    : menuItems;
 
   const handleLogout = () => {
     logout();
@@ -85,7 +89,7 @@ const Navigation = ({ currentPage, onPageChange }: NavigationProps) => {
 
           {/* Menu Items */}
           <div className="space-y-2">
-            {menuItems.map((item) => {
+            {itemsToShow.map((item) => {
               const Icon = item.icon;
               return (
                 <Button

@@ -1,8 +1,16 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
+type UserRole = 'admin' | 'cooperado';
+
+interface UserInfo {
+  email: string;
+  role: UserRole;
+}
+
 interface AuthContextType {
   isAuthenticated: boolean;
+  user: UserInfo | null;
   login: (email: string, password: string) => boolean;
   logout: () => void;
 }
@@ -19,31 +27,54 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<UserInfo | null>(null);
 
-  // Verificar se já está logado ao carregar a página
   useEffect(() => {
     const isLoggedIn = localStorage.getItem('isAuthenticated') === 'true';
+    const storedUser = localStorage.getItem('user');
     setIsAuthenticated(isLoggedIn);
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser) as UserInfo);
+      } catch {
+        setUser(null);
+      }
+    }
   }, []);
 
   const login = (email: string, password: string) => {
-    // Credenciais fixas
     if (email === 'adm@adm.com' && password === 'adm@2025') {
+      const info: UserInfo = { email, role: 'admin' };
       setIsAuthenticated(true);
+      setUser(info);
       localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('user', JSON.stringify(info));
       return true;
     }
+
+    if (email === 'cooperativa@unipao.com' && password === 'unipao123') {
+      const info: UserInfo = { email, role: 'cooperado' };
+      setIsAuthenticated(true);
+      setUser(info);
+      localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('user', JSON.stringify(info));
+      return true;
+    }
+
     return false;
   };
 
   const logout = () => {
     setIsAuthenticated(false);
+    setUser(null);
     localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('user');
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
 };
+

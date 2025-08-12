@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Navigation from '@/components/layout/Navigation';
 import Dashboard from '@/components/dashboard/Dashboard';
 import UploadExtrato from '@/components/upload/UploadExtrato';
@@ -9,9 +9,25 @@ import RelatoriosFinanceiros from '@/components/financial/RelatoriosFinanceiros'
 import Settings from '@/components/settings/Settings';
 import Reports from '@/components/reports/Reports';
 import CustomReports from '@/components/custom-reports/CustomReports';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const { user } = useAuth();
+
+  const handlePageChange = (page: string) => {
+    if (user?.role === 'cooperado' && page !== 'custom-reports') {
+      setCurrentPage('custom-reports');
+      return;
+    }
+    setCurrentPage(page);
+  };
+
+  useEffect(() => {
+    if (user?.role === 'cooperado') {
+      setCurrentPage('custom-reports');
+    }
+  }, [user]);
 
   const renderCurrentPage = () => {
     switch (currentPage) {
@@ -38,7 +54,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation currentPage={currentPage} onPageChange={setCurrentPage} />
+      <Navigation currentPage={currentPage} onPageChange={handlePageChange} />
       
       <main className="lg:ml-64 p-6">
         {renderCurrentPage()}
