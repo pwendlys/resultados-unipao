@@ -107,7 +107,9 @@ const ChartsView = ({ entries, dashboardName }: ChartsViewProps) => {
         return acc;
       }, {} as Record<string, number>);
 
-    const pieArrayDespesas = Object.entries(pieDataDespesas).map(([name, value]) => ({ name, value }));
+    const pieArrayDespesas = Object.entries(pieDataDespesas)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value); // Ordenar por valor (maior para menor)
 
     return {
       totals: {
@@ -141,45 +143,6 @@ const ChartsView = ({ entries, dashboardName }: ChartsViewProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Entradas</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              R$ {data.totals.entradas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Saídas</CardTitle>
-            <TrendingDown className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              R$ {data.totals.saidas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Saldo Líquido</CardTitle>
-            <DollarSign className={`h-4 w-4 ${data.totals.saldo >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${data.totals.saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              R$ {data.totals.saldo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Evolução Mensal */}
       <Card>
         <CardHeader>
@@ -277,23 +240,13 @@ const ChartsView = ({ entries, dashboardName }: ChartsViewProps) => {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={data.pieDataDespesas}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#ef4444"
-                  dataKey="value"
-                >
-                  {data.pieDataDespesas.map((entry, index) => (
-                    <Cell key={`cell-despesas-${index}`} fill={EXPENSE_COLORS[index % EXPENSE_COLORS.length]} />
-                  ))}
-                </Pie>
+              <BarChart data={data.pieDataDespesas} layout="horizontal">
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis dataKey="name" type="category" width={80} />
                 <Tooltip formatter={(value) => `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} />
-              </PieChart>
+                <Bar dataKey="value" fill="#ef4444" />
+              </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
