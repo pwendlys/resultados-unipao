@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import { useCustomEntriesActions } from '@/hooks/useCustomEntries';
+import { useCategories } from '@/hooks/useCategories';
 import { useToast } from '@/hooks/use-toast';
 
 interface DataEntryProps {
@@ -28,22 +29,16 @@ const DataEntry = ({ dashboardId, onClose }: DataEntryProps) => {
   });
 
   const { createEntry } = useCustomEntriesActions();
+  const { data: categories = [], isLoading: categoriesLoading } = useCategories();
   const { toast } = useToast();
 
-  const categorias = [
-    'Vendas',
-    'Serviços',
-    'Investimentos',
-    'Salários',
-    'Aluguel',
-    'Fornecedores',
-    'Marketing',
-    'Tecnologia',
-    'Operacional',
-    'Administrativo',
-    'Financeiro',
-    'Outros'
-  ];
+  // Filter categories based on selected type
+  const filteredCategories = categories.filter(cat => cat.type === formData.tipo);
+
+  // Reset category when type changes to avoid inconsistencies
+  useEffect(() => {
+    setFormData(prev => ({ ...prev, categoria: '' }));
+  }, [formData.tipo]);
 
   const meses = [
     { value: '1', label: 'Janeiro' },
@@ -152,14 +147,26 @@ const DataEntry = ({ dashboardId, onClose }: DataEntryProps) => {
 
           <div>
             <Label htmlFor="categoria">Categoria *</Label>
-            <Select value={formData.categoria} onValueChange={(value) => setFormData(prev => ({ ...prev, categoria: value }))}>
+            <Select 
+              value={formData.categoria} 
+              onValueChange={(value) => setFormData(prev => ({ ...prev, categoria: value }))}
+              disabled={categoriesLoading}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="Selecione uma categoria" />
+                <SelectValue 
+                  placeholder={
+                    categoriesLoading 
+                      ? "Carregando categorias..." 
+                      : filteredCategories.length === 0 
+                        ? `Nenhuma categoria de ${formData.tipo} encontrada`
+                        : "Selecione uma categoria"
+                  } 
+                />
               </SelectTrigger>
               <SelectContent>
-                {categorias.map(categoria => (
-                  <SelectItem key={categoria} value={categoria}>
-                    {categoria}
+                {filteredCategories.map(categoria => (
+                  <SelectItem key={categoria.id} value={categoria.name}>
+                    {categoria.name}
                   </SelectItem>
                 ))}
               </SelectContent>
