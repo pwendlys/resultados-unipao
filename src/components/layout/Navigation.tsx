@@ -12,7 +12,8 @@ import {
   Presentation,
   LogOut,
   DollarSign,
-  TrendingUp
+  TrendingUp,
+  PieChart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,6 +35,7 @@ const Navigation = ({ currentPage, onPageChange }: NavigationProps) => {
     { id: 'reports', label: 'Relatórios Unipão', icon: BarChart3 },
     { id: 'relatorios-financeiros', label: 'Relatórios Financeiros', icon: TrendingUp },
     { id: 'custom-reports', label: 'Relatórios Personalizados', icon: Presentation },
+    { id: 'custom-dashboards', label: 'Dashboards Personalizados', icon: PieChart },
     { id: 'settings', label: 'Configurações e Compartilhar', icon: Settings },
   ];
 

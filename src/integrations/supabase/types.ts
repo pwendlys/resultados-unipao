@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
@@ -32,6 +32,30 @@ export type Database = {
           id?: string
           name?: string
           type?: string
+        }
+        Relationships: []
+      }
+      dashboards_personalizados: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -79,6 +103,53 @@ export type Database = {
           valor_total?: number | null
         }
         Relationships: []
+      }
+      entradas_personalizadas: {
+        Row: {
+          ano: number
+          categoria: string
+          created_at: string
+          dashboard_id: string
+          descricao: string | null
+          id: string
+          mes: number
+          tipo: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          ano: number
+          categoria: string
+          created_at?: string
+          dashboard_id: string
+          descricao?: string | null
+          id?: string
+          mes: number
+          tipo: string
+          updated_at?: string
+          valor: number
+        }
+        Update: {
+          ano?: number
+          categoria?: string
+          created_at?: string
+          dashboard_id?: string
+          descricao?: string | null
+          id?: string
+          mes?: number
+          tipo?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entradas_personalizadas_dashboard_id_fkey"
+            columns: ["dashboard_id"]
+            isOneToOne: false
+            referencedRelation: "dashboards_personalizados"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       extratos: {
         Row: {

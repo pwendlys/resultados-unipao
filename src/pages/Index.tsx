@@ -9,6 +9,7 @@ import RelatoriosFinanceiros from '@/components/financial/RelatoriosFinanceiros'
 import Settings from '@/components/settings/Settings';
 import Reports from '@/components/reports/Reports';
 import CustomReports from '@/components/custom-reports/CustomReports';
+import CustomDashboards from '@/components/custom-dashboards/CustomDashboards';
 import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
@@ -45,6 +46,8 @@ const Index = () => {
         return <RelatoriosFinanceiros />;
       case 'custom-reports':
         return <CustomReports />;
+      case 'custom-dashboards':
+        return <CustomDashboards />;
       case 'settings':
         return <Settings />;
       default:
