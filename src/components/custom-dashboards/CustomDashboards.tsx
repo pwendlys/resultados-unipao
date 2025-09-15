@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, BarChart3 } from 'lucide-react';
+import { Plus, BarChart3, Settings } from 'lucide-react';
 import DashboardSelector from './DashboardSelector';
 import DataEntry from './DataEntry';
+import DataTable from './DataTable';
 import ChartsView from './ChartsView';
 import { useCustomDashboards } from '@/hooks/useCustomDashboards';
 import { useCustomEntries } from '@/hooks/useCustomEntries';
@@ -11,6 +12,7 @@ import { useCustomEntries } from '@/hooks/useCustomEntries';
 const CustomDashboards = () => {
   const [selectedDashboardId, setSelectedDashboardId] = useState<string>('');
   const [showDataEntry, setShowDataEntry] = useState(false);
+  const [showDataTable, setShowDataTable] = useState(false);
   
   const { data: dashboards, isLoading: loadingDashboards } = useCustomDashboards();
   const { data: entries, isLoading: loadingEntries } = useCustomEntries(selectedDashboardId);
@@ -60,13 +62,24 @@ const CustomDashboards = () => {
                   {entries?.length || 0} entradas registradas
                 </p>
               </div>
-              <Button 
-                onClick={() => setShowDataEntry(true)}
-                className="flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Adicionar Dados
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline"
+                  onClick={() => setShowDataTable(true)}
+                  className="flex items-center gap-2"
+                  disabled={!entries || entries.length === 0}
+                >
+                  <Settings className="h-4 w-4" />
+                  Gerenciar Dados
+                </Button>
+                <Button 
+                  onClick={() => setShowDataEntry(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Adicionar Dados
+                </Button>
+              </div>
             </div>
           </Card>
 
@@ -75,6 +88,16 @@ const CustomDashboards = () => {
             <DataEntry
               dashboardId={selectedDashboardId}
               onClose={() => setShowDataEntry(false)}
+            />
+          )}
+
+          {/* Data Table Modal */}
+          {showDataTable && (
+            <DataTable
+              entries={entries || []}
+              open={showDataTable}
+              onClose={() => setShowDataTable(false)}
+              dashboardName={selectedDashboard.nome}
             />
           )}
 
