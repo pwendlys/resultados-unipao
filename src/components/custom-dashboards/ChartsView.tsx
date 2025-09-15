@@ -242,20 +242,18 @@ const ChartsView = ({ entries, dashboardName }: ChartsViewProps) => {
             <ResponsiveContainer width="100%" height={300}>
               <BarChart 
                 data={data.pieDataDespesas} 
-                layout="horizontal" 
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
-                  type="number" 
-                  domain={[0, 'dataMax']}
-                  tickFormatter={(value) => `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}`}
+                  dataKey="name" 
+                  angle={-45}
+                  textAnchor="end"
+                  height={60}
+                  fontSize={12}
                 />
                 <YAxis 
-                  dataKey="name" 
-                  type="category" 
-                  width={120}
-                  tick={{ fontSize: 12 }}
+                  tickFormatter={(value) => `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}`}
                 />
                 <Tooltip 
                   formatter={(value) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Valor']}
@@ -267,7 +265,7 @@ const ChartsView = ({ entries, dashboardName }: ChartsViewProps) => {
                   fill="#dc2626"
                   stroke="#b91c1c"
                   strokeWidth={1}
-                  radius={[0, 4, 4, 0]}
+                  radius={[4, 4, 0, 0]}
                 />
               </BarChart>
             </ResponsiveContainer>
