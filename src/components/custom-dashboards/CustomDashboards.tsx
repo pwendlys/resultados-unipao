@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, BarChart3, Settings } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Plus, BarChart3, Settings, Share2 } from 'lucide-react';
 import DashboardSelector from './DashboardSelector';
 import DataEntry from './DataEntry';
 import DataTable from './DataTable';
 import ChartsView from './ChartsView';
+import ShareDashboard from './ShareDashboard';
 import { useCustomDashboards } from '@/hooks/useCustomDashboards';
 import { useCustomEntries } from '@/hooks/useCustomEntries';
 
@@ -13,6 +15,7 @@ const CustomDashboards = () => {
   const [selectedDashboardId, setSelectedDashboardId] = useState<string>('');
   const [showDataEntry, setShowDataEntry] = useState(false);
   const [showDataTable, setShowDataTable] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
   
   const { data: dashboards, isLoading: loadingDashboards } = useCustomDashboards();
   const { data: entries, isLoading: loadingEntries } = useCustomEntries(selectedDashboardId);
@@ -65,6 +68,14 @@ const CustomDashboards = () => {
               <div className="flex items-center gap-2">
                 <Button 
                   variant="outline"
+                  onClick={() => setShowShareDialog(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Share2 className="h-4 w-4" />
+                  Compartilhar
+                </Button>
+                <Button 
+                  variant="outline"
                   onClick={() => setShowDataTable(true)}
                   className="flex items-center gap-2"
                   disabled={!entries || entries.length === 0}
@@ -100,6 +111,16 @@ const CustomDashboards = () => {
               dashboardName={selectedDashboard.nome}
             />
           )}
+
+          {/* Share Dashboard Dialog */}
+          <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Compartilhar Dashboard</DialogTitle>
+              </DialogHeader>
+              <ShareDashboard dashboard={selectedDashboard} />
+            </DialogContent>
+          </Dialog>
 
           {/* Charts View */}
           {!loadingEntries && (

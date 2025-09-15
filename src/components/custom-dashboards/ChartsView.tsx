@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Activity } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Activity, Calendar, BarChart3Icon } from 'lucide-react';
 import { EntradaPersonalizada } from '@/hooks/useCustomEntries';
 
 interface ChartsViewProps {
@@ -10,6 +11,8 @@ interface ChartsViewProps {
 }
 
 const ChartsView = ({ entries, dashboardName }: ChartsViewProps) => {
+  const [sortByValue, setSortByValue] = useState(false);
+  
   const data = useMemo(() => {
     if (!entries.length) return null;
 
@@ -32,7 +35,8 @@ const ChartsView = ({ entries, dashboardName }: ChartsViewProps) => {
           periodo: monthName,
           entradas: 0,
           saidas: 0,
-          saldo: 0
+          saldo: 0,
+          sortKey: `${entry.ano}-${entry.mes.toString().padStart(2, '0')}`
         };
       }
       
@@ -47,7 +51,13 @@ const ChartsView = ({ entries, dashboardName }: ChartsViewProps) => {
       return acc;
     }, {} as Record<string, any>);
 
-    const evolucaoArray = Object.values(evolucaoMensal).sort((a: any, b: any) => a.periodo.localeCompare(b.periodo));
+    // Ordenação sempre cronológica por padrão, com opção de ordenar por valor
+    const evolucaoArray = Object.values(evolucaoMensal).sort((a: any, b: any) => {
+      if (sortByValue) {
+        return b.saldo - a.saldo;
+      }
+      return a.sortKey.localeCompare(b.sortKey);
+    });
 
     // Distribuição por categoria
     const distribuicaoCategoria = entries.reduce((acc, entry) => {
@@ -73,8 +83,8 @@ const ChartsView = ({ entries, dashboardName }: ChartsViewProps) => {
 
     const distribuicaoArray = Object.values(distribuicaoCategoria);
 
-    // Dados para gráfico de pizza (apenas entradas)
-    const pieData = entries
+    // Dados para gráfico de pizza (receitas - entradas)
+    const pieDataReceitas = entries
       .filter(e => e.tipo === 'entrada')
       .reduce((acc, entry) => {
         if (!acc[entry.categoria]) {
@@ -84,7 +94,20 @@ const ChartsView = ({ entries, dashboardName }: ChartsViewProps) => {
         return acc;
       }, {} as Record<string, number>);
 
-    const pieArray = Object.entries(pieData).map(([name, value]) => ({ name, value }));
+    const pieArrayReceitas = Object.entries(pieDataReceitas).map(([name, value]) => ({ name, value }));
+
+    // Dados para gráfico de pizza (despesas - saídas)
+    const pieDataDespesas = entries
+      .filter(e => e.tipo === 'saida')
+      .reduce((acc, entry) => {
+        if (!acc[entry.categoria]) {
+          acc[entry.categoria] = 0;
+        }
+        acc[entry.categoria] += Number(entry.valor);
+        return acc;
+      }, {} as Record<string, number>);
+
+    const pieArrayDespesas = Object.entries(pieDataDespesas).map(([name, value]) => ({ name, value }));
 
     return {
       totals: {
@@ -94,9 +117,10 @@ const ChartsView = ({ entries, dashboardName }: ChartsViewProps) => {
       },
       evolucaoMensal: evolucaoArray,
       distribuicaoCategoria: distribuicaoArray,
-      pieData: pieArray
+      pieDataReceitas: pieArrayReceitas,
+      pieDataDespesas: pieArrayDespesas
     };
-  }, [entries]);
+  }, [entries, sortByValue]);
 
   if (!data || entries.length === 0) {
     return (
@@ -113,6 +137,7 @@ const ChartsView = ({ entries, dashboardName }: ChartsViewProps) => {
   }
 
   const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1', '#d084d0'];
+  const EXPENSE_COLORS = ['#ef4444', '#dc2626', '#b91c1c', '#991b1b', '#7f1d1d', '#6b1d1d'];
 
   return (
     <div className="space-y-6">
@@ -158,7 +183,27 @@ const ChartsView = ({ entries, dashboardName }: ChartsViewProps) => {
       {/* Evolução Mensal */}
       <Card>
         <CardHeader>
-          <CardTitle>Evolução Mensal</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Evolução Mensal</CardTitle>
+            <div className="flex items-center gap-2">
+              <Button
+                variant={sortByValue ? "outline" : "default"}
+                size="sm"
+                onClick={() => setSortByValue(false)}
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                Cronológica
+              </Button>
+              <Button
+                variant={sortByValue ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSortByValue(true)}
+              >
+                <BarChart3Icon className="h-4 w-4 mr-2" />
+                Por Valor
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
@@ -206,7 +251,7 @@ const ChartsView = ({ entries, dashboardName }: ChartsViewProps) => {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={data.pieData}
+                  data={data.pieDataReceitas}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -215,8 +260,36 @@ const ChartsView = ({ entries, dashboardName }: ChartsViewProps) => {
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {data.pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  {data.pieDataReceitas.map((entry, index) => (
+                    <Cell key={`cell-receitas-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value) => `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Distribuição de Despesas */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Distribuição de Despesas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={data.pieDataDespesas}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#ef4444"
+                  dataKey="value"
+                >
+                  {data.pieDataDespesas.map((entry, index) => (
+                    <Cell key={`cell-despesas-${index}`} fill={EXPENSE_COLORS[index % EXPENSE_COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip formatter={(value) => `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} />

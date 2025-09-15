@@ -265,6 +265,7 @@ export type Database = {
         Row: {
           config: Json
           created_at: string
+          dashboard_id: string | null
           data: Json
           expires_at: string | null
           id: string
@@ -276,6 +277,7 @@ export type Database = {
         Insert: {
           config: Json
           created_at?: string
+          dashboard_id?: string | null
           data: Json
           expires_at?: string | null
           id?: string
@@ -287,6 +289,7 @@ export type Database = {
         Update: {
           config?: Json
           created_at?: string
+          dashboard_id?: string | null
           data?: Json
           expires_at?: string | null
           id?: string
@@ -295,7 +298,15 @@ export type Database = {
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "shared_reports_dashboard_id_fkey"
+            columns: ["dashboard_id"]
+            isOneToOne: false
+            referencedRelation: "dashboards_personalizados"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       transactions: {
         Row: {

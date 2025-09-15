@@ -9,6 +9,7 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import SharedReports from "./pages/SharedReports";
 import SharedCustomReport from "./pages/SharedCustomReport";
+import SharedCustomDashboard from "./pages/SharedCustomDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
             />
             <Route path="/relatorios-compartilhados/:shareId" element={<SharedReports />} />
             <Route path="/relatorios-compartilhados/custom/:reportId" element={<SharedCustomReport />} />
+            <Route path="/dashboard-compartilhado/:shareId" element={<SharedCustomDashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
