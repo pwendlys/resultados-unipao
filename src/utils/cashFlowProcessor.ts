@@ -15,39 +15,59 @@ export const processCashFlowXLSX = async (file: File, periodo: string): Promise<
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
+        console.log('[DEBUG] Iniciando processamento de fluxo de caixa para arquivo:', file.name);
+        
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
 
+        console.log('[DEBUG] Dados extraídos da planilha:', jsonData.slice(0, 5)); // Primeiras 5 linhas
+
         if (jsonData.length < 2) {
           throw new Error('Planilha deve ter pelo menos uma linha de cabeçalho e uma linha de dados');
         }
 
         const cashFlowItems = processCashFlowData(jsonData);
+        console.log('[DEBUG] Itens de fluxo de caixa processados:', cashFlowItems);
+        
         const valorTotal = cashFlowItems.reduce((sum, item) => sum + Math.abs(item.a_pagar - item.a_receber), 0);
 
         // Converter itens de fluxo de caixa para formato de itens financeiros
-        const itens = cashFlowItems.map((item, index) => ({
-          descricao: `Fluxo de Caixa - ${formatDate(item.data) || `Dia ${index + 1}`}`,
-          valor: Math.abs(item.a_pagar - item.a_receber),
-          data_vencimento: formatDateToISO(item.data),
-          data_emissao: formatDateToISO(item.data),
-          numero_documento: `FC-${index + 1}`,
-          categoria: `Fluxo de Caixa - ${item.situacao}`,
-          status: 'pendente' as const,
-          juros: 0,
-          multa: 0,
-          observacao: JSON.stringify({
-            saldo_dia: item.saldo_dia,
-            a_pagar: item.a_pagar,
-            a_receber: item.a_receber,
-            saldo_final: item.saldo_final,
-            situacao: item.situacao,
-            tipo_fluxo: 'diario'
-          })
-        }));
+        const itens = cashFlowItems.map((item, index) => {
+          const dataVencimento = formatDateToISO(item.data);
+          const dataEmissao = formatDateToISO(item.data);
+          
+          console.log(`[DEBUG] Processando item ${index + 1}:`, {
+            data_original: item.data,
+            data_vencimento: dataVencimento,
+            data_emissao: dataEmissao,
+            valor: Math.abs(item.a_pagar - item.a_receber)
+          });
+
+          return {
+            descricao: `Fluxo de Caixa - ${formatDate(item.data) || `Dia ${index + 1}`}`,
+            valor: Math.abs(item.a_pagar - item.a_receber),
+            data_vencimento: dataVencimento || new Date().toISOString().split('T')[0], // Fallback para hoje
+            data_emissao: dataEmissao || new Date().toISOString().split('T')[0], // Fallback para hoje
+            numero_documento: `FC-${index + 1}`,
+            categoria: `Fluxo de Caixa - ${item.situacao}`,
+            status: 'pendente' as const,
+            juros: 0,
+            multa: 0,
+            observacao: JSON.stringify({
+              saldo_dia: item.saldo_dia,
+              a_pagar: item.a_pagar,
+              a_receber: item.a_receber,
+              saldo_final: item.saldo_final,
+              situacao: item.situacao,
+              tipo_fluxo: 'diario'
+            })
+          };
+        });
+
+        console.log('[DEBUG] Itens finais formatados para inserção:', itens);
 
         const documento = {
           nome: file.name,
@@ -60,8 +80,11 @@ export const processCashFlowXLSX = async (file: File, periodo: string): Promise<
           observacoes: 'Documento de Fluxo de Caixa Diário'
         };
 
+        console.log('[DEBUG] Documento criado:', documento);
+
         resolve({ documento, itens });
       } catch (error) {
+        console.error('[DEBUG] Erro durante processamento de fluxo de caixa:', error);
         reject(error);
       }
     };

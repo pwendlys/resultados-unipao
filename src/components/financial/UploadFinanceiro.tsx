@@ -130,8 +130,11 @@ const UploadFinanceiro: React.FC<UploadFinanceiroProps> = ({ onNavigateToPage })
           processedData.documento.observacoes = observacoes;
         }
 
+        console.log('[DEBUG] Dados processados para o arquivo:', file.name, processedData);
+
         // Criar o documento
         const novoDocumento = await createDocumento.mutateAsync(processedData.documento);
+        console.log('[DEBUG] Documento criado com sucesso:', novoDocumento);
 
         // Criar os itens se houver
         if (processedData.itens.length > 0) {
@@ -140,7 +143,26 @@ const UploadFinanceiro: React.FC<UploadFinanceiroProps> = ({ onNavigateToPage })
             documento_id: novoDocumento.id,
           }));
           
-          await createItens.mutateAsync(itensComDocumento);
+          console.log('[DEBUG] Itens a serem inseridos:', itensComDocumento);
+          
+          try {
+            const itensCreated = await createItens.mutateAsync(itensComDocumento);
+            console.log('[DEBUG] Itens criados com sucesso:', itensCreated);
+          } catch (itemError) {
+            console.error('[DEBUG] Erro ao criar itens financeiros:', itemError);
+            
+            // Rollback: excluir o documento se a criação dos itens falhar
+            try {
+              await deleteDocumento.mutateAsync(novoDocumento.id);
+              console.log('[DEBUG] Documento removido devido ao erro na criação dos itens');
+            } catch (rollbackError) {
+              console.error('[DEBUG] Erro no rollback do documento:', rollbackError);
+            }
+            
+            throw new Error(`Erro ao criar itens financeiros: ${itemError.message}`);
+          }
+        } else {
+          console.warn('[DEBUG] Nenhum item encontrado para inserir');
         }
       }
 

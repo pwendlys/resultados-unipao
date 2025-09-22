@@ -171,22 +171,37 @@ export const useItensFinanceirosActions = () => {
 
   const createItens = useMutation({
     mutationFn: async (itens: Omit<ItemFinanceiro, 'id' | 'created_at' | 'updated_at'>[]) => {
+      console.log('[DEBUG] Hook createItens - Iniciando inserção de itens:', itens);
+      
+      // Validar itens antes da inserção
+      const invalidItems = itens.filter(item => !item.descricao || item.valor === undefined || item.valor === null);
+      if (invalidItems.length > 0) {
+        console.error('[DEBUG] Itens inválidos encontrados:', invalidItems);
+        throw new Error('Alguns itens possuem dados inválidos');
+      }
+
       const { data, error } = await supabase
         .from('itens_financeiros')
         .insert(itens)
         .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[DEBUG] Erro do Supabase ao inserir itens:', error);
+        throw error;
+      }
+      
+      console.log('[DEBUG] Itens inseridos com sucesso no banco:', data);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('[DEBUG] Success callback - Itens criados:', data);
       queryClient.invalidateQueries({ queryKey: ['itens-financeiros'] });
       queryClient.invalidateQueries({ queryKey: ['all-itens-financeiros'] });
       toast.success('Itens financeiros criados com sucesso!');
     },
     onError: (error) => {
-      console.error('Erro ao criar itens financeiros:', error);
-      toast.error('Erro ao criar itens financeiros');
+      console.error('[DEBUG] Error callback - Erro ao criar itens financeiros:', error);
+      toast.error(`Erro ao criar itens financeiros: ${error.message}`);
     },
   });
 
