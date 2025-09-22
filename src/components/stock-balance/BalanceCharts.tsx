@@ -1,4 +1,4 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatNumber } from '@/utils/stockBalanceProcessor';
 import type { ItemBalanco } from '@/hooks/useStockBalance';
@@ -105,35 +105,32 @@ const BalanceCharts = ({ itens }: BalanceChartsProps) => {
           <CardContent>
             {topDiscrepancies.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart 
+                <LineChart 
                   data={topDiscrepancies} 
-                  layout="horizontal"
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
-                    type="number" 
-                    tickFormatter={(value) => formatNumber(Math.abs(value))}
+                    dataKey="name" 
+                    tick={{ fontSize: 10 }}
+                    height={80}
+                    angle={-45}
                   />
                   <YAxis 
-                    dataKey="name" 
-                    type="category" 
-                    width={120}
-                    tick={{ fontSize: 10 }}
+                    tickFormatter={(value) => formatNumber(value)}
                   />
                   <Tooltip 
                     formatter={(value) => [formatNumber(value as number), 'Diferença']}
                     labelFormatter={(label) => `Item: ${label}`}
                   />
-                  <Bar 
+                  <Line 
                     dataKey="value" 
-                    radius={[0, 4, 4, 0]}
-                  >
-                    {topDiscrepancies.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Bar>
-                </BarChart>
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    dot={{ r: 4, fill: "#3b82f6" }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-[300px] text-muted-foreground">
@@ -154,35 +151,32 @@ const BalanceCharts = ({ itens }: BalanceChartsProps) => {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={400}>
-              <BarChart 
+              <LineChart 
                 data={monetaryImpact} 
-                layout="horizontal"
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
-                  type="number" 
-                  tickFormatter={(value) => formatCurrency(Math.abs(value))}
+                  dataKey="name" 
+                  tick={{ fontSize: 10 }}
+                  height={80}
+                  angle={-45}
                 />
                 <YAxis 
-                  dataKey="name" 
-                  type="category" 
-                  width={150}
-                  tick={{ fontSize: 10 }}
+                  tickFormatter={(value) => formatCurrency(value)}
                 />
                 <Tooltip 
                   formatter={(value) => [formatCurrency(value as number), 'Impacto Monetário']}
                   labelFormatter={(label) => `Item: ${label}`}
                 />
-                <Bar 
+                <Line 
                   dataKey="value" 
-                  radius={[0, 4, 4, 0]}
-                >
-                  {monetaryImpact.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Bar>
-              </BarChart>
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  dot={{ r: 4, fill: "#10b981" }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
