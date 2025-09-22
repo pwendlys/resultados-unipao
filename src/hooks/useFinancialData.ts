@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 export interface DocumentoFinanceiro {
   id: string;
   nome: string;
-  tipo_documento: 'contas_a_receber' | 'contas_a_pagar' | 'contas_vencidas';
+  tipo_documento: 'contas_a_receber' | 'contas_a_pagar' | 'contas_vencidas' | 'fluxo_caixa';
   arquivo_original: string;
   periodo: string;
   banco?: string;

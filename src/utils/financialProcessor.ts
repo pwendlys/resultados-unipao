@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { DocumentoFinanceiro, ItemFinanceiro } from '@/hooks/useFinancialData';
+import { processCashFlowXLSX, isCashFlowFile } from './cashFlowProcessor';
 
 export interface ProcessedFinancialData {
   documento: Omit<DocumentoFinanceiro, 'id' | 'created_at' | 'updated_at'>;
@@ -221,8 +222,16 @@ export const processXLSXFinancial = async (file: File, tipoDocumento: string, pe
         let valorTotal = 0;
         let periodoDetectado = periodo;
 
+        // Verificar se é arquivo de fluxo de caixa
+        if (isCashFlowFile(jsonData)) {
+          // Processar como fluxo de caixa
+          processCashFlowXLSX(file, periodo)
+            .then(cashFlowResult => resolve(cashFlowResult))
+            .catch(error => reject(error));
+          return;
+        }
         // Verificar se é arquivo SICOOB
-        if (isSICOOBFile(jsonData)) {
+        else if (isSICOOBFile(jsonData)) {
           const sicoobResult = processSICOOBXLSX(jsonData);
           itens = sicoobResult.itens;
           valorTotal = sicoobResult.valorTotal;

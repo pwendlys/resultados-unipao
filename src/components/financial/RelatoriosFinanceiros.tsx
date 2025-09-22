@@ -7,8 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAllItensFinanceiros, useDocumentosFinanceiros } from '@/hooks/useFinancialData';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import FluxoCaixaView from './FluxoCaixaView';
 
 const RelatoriosFinanceiros: React.FC = () => {
   const [filtroTipo, setFiltroTipo] = useState('');
@@ -17,6 +19,7 @@ const RelatoriosFinanceiros: React.FC = () => {
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
   const [pesquisa, setPesquisa] = useState('');
+  const [abaSelecionada, setAbaSelecionada] = useState('documentos');
 
   const { data: itens, isLoading: loadingItens } = useAllItensFinanceiros();
   const { data: documentos, isLoading: loadingDocumentos } = useDocumentosFinanceiros();
@@ -49,6 +52,15 @@ const RelatoriosFinanceiros: React.FC = () => {
       return true;
     });
   }, [itens, documentos, filtroTipo, filtroStatus, filtroCategoria, dataInicio, dataFim, pesquisa]);
+
+  // Separar dados de fluxo de caixa
+  const dadosFluxoCaixa = useMemo(() => {
+    if (!itens) return [];
+    return itens.filter(item => {
+      const documento = documentos?.find(d => d.id === item.documento_id);
+      return documento?.tipo_documento === 'fluxo_caixa';
+    });
+  }, [itens, documentos]);
 
   // Calcular métricas
   const metricas = useMemo(() => {
@@ -170,6 +182,14 @@ const RelatoriosFinanceiros: React.FC = () => {
         </Button>
       </div>
 
+      <Tabs value={abaSelecionada} onValueChange={setAbaSelecionada}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="documentos">Documentos Financeiros</TabsTrigger>
+          <TabsTrigger value="fluxo-caixa">Fluxo de Caixa</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="documentos" className="space-y-6">
+
       {/* Filtros */}
       <Card>
         <CardHeader>
@@ -191,6 +211,7 @@ const RelatoriosFinanceiros: React.FC = () => {
                   <SelectItem value="contas_a_receber">Contas a Receber</SelectItem>
                   <SelectItem value="contas_a_pagar">Contas a Pagar</SelectItem>
                   <SelectItem value="contas_vencidas">Contas Vencidas</SelectItem>
+                  <SelectItem value="fluxo_caixa">Fluxo de Caixa</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -408,8 +429,14 @@ const RelatoriosFinanceiros: React.FC = () => {
               Nenhum item encontrado com os filtros aplicados.
             </p>
           )}
-        </CardContent>
-      </Card>
+         </CardContent>
+        </Card>
+        </TabsContent>
+
+        <TabsContent value="fluxo-caixa" className="space-y-6">
+          <FluxoCaixaView itens={dadosFluxoCaixa} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

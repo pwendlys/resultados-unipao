@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useDocumentosFinanceiros, useDocumentosFinanceirosActions, useItensFinanceirosActions } from '@/hooks/useFinancialData';
 import { processCSVFinancial, processXLSXFinancial, processPDFFinancial, downloadFinancialSampleCSV, downloadFinancialSampleXLSX } from '@/utils/financialProcessor';
+import { downloadCashFlowSampleXLSX } from '@/utils/cashFlowProcessor';
 import { toast } from 'sonner';
 
 interface UploadFinanceiroProps {
@@ -20,6 +21,7 @@ const TIPOS_DOCUMENTO = [
   { value: 'contas_a_receber', label: 'Contas a Receber' },
   { value: 'contas_a_pagar', label: 'Contas a Pagar' },
   { value: 'contas_vencidas', label: 'Contas Vencidas' },
+  { value: 'fluxo_caixa', label: 'Fluxo de Caixa' },
 ];
 
 const UploadFinanceiro: React.FC<UploadFinanceiroProps> = ({ onNavigateToPage }) => {
@@ -94,11 +96,6 @@ const UploadFinanceiro: React.FC<UploadFinanceiroProps> = ({ onNavigateToPage })
       return;
     }
 
-    if (!tipoDocumento) {
-      toast.error('Selecione o tipo de documento');
-      return;
-    }
-
     if (!periodo) {
       toast.error('Informe o período');
       return;
@@ -111,10 +108,19 @@ const UploadFinanceiro: React.FC<UploadFinanceiroProps> = ({ onNavigateToPage })
         let processedData;
 
         if (file.type === 'text/csv') {
+          if (!tipoDocumento) {
+            toast.error('Selecione o tipo de documento para arquivos CSV');
+            return;
+          }
           processedData = await processCSVFinancial(file, tipoDocumento, periodo, banco);
         } else if (file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
-          processedData = await processXLSXFinancial(file, tipoDocumento, periodo, banco);
+          // Para XLSX, o processador pode detectar automaticamente o tipo (fluxo de caixa, SICOOB, etc.)
+          processedData = await processXLSXFinancial(file, tipoDocumento || 'contas_a_receber', periodo, banco);
         } else if (file.type === 'application/pdf') {
+          if (!tipoDocumento) {
+            toast.error('Selecione o tipo de documento para arquivos PDF');
+            return;
+          }
           processedData = await processPDFFinancial(file, tipoDocumento, periodo, banco);
         } else {
           continue;
@@ -186,7 +192,8 @@ const UploadFinanceiro: React.FC<UploadFinanceiroProps> = ({ onNavigateToPage })
     const colors = {
       'contas_a_receber': 'bg-success/10 text-success',
       'contas_a_pagar': 'bg-warning/10 text-warning', 
-      'contas_vencidas': 'bg-destructive/10 text-destructive'
+      'contas_vencidas': 'bg-destructive/10 text-destructive',
+      'fluxo_caixa': 'bg-primary/10 text-primary'
     };
     
     return (
@@ -285,10 +292,15 @@ const UploadFinanceiro: React.FC<UploadFinanceiroProps> = ({ onNavigateToPage })
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="tipoDocumento">Tipo de Documento *</Label>
+                <Label htmlFor="tipoDocumento">
+                  Tipo de Documento 
+                  <span className="text-xs text-muted-foreground ml-1">
+                    (Opcional para XLSX - detectado automaticamente)
+                  </span>
+                </Label>
                 <Select value={tipoDocumento} onValueChange={setTipoDocumento}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tipo" />
+                    <SelectValue placeholder="Auto-detectar (recomendado)" />
                   </SelectTrigger>
                   <SelectContent>
                     {TIPOS_DOCUMENTO.map((tipo) => (
@@ -340,7 +352,7 @@ const UploadFinanceiro: React.FC<UploadFinanceiroProps> = ({ onNavigateToPage })
               {isProcessing ? 'Processando...' : 'Processar Documentos'}
             </Button>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button
                 variant="outline"
                 size="sm"
@@ -356,6 +368,14 @@ const UploadFinanceiro: React.FC<UploadFinanceiroProps> = ({ onNavigateToPage })
               >
                 <Download className="h-4 w-4 mr-2" />
                 Modelo XLSX
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadCashFlowSampleXLSX}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Modelo Fluxo de Caixa
               </Button>
             </div>
           </CardContent>
