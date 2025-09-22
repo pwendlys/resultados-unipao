@@ -1,4 +1,4 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatNumber } from '@/utils/stockBalanceProcessor';
 import type { ItemBalanco } from '@/hooks/useStockBalance';
@@ -128,7 +128,11 @@ const BalanceCharts = ({ itens }: BalanceChartsProps) => {
                   <Bar 
                     dataKey="value" 
                     radius={[0, 4, 4, 0]}
-                  />
+                  >
+                    {topDiscrepancies.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -173,7 +177,11 @@ const BalanceCharts = ({ itens }: BalanceChartsProps) => {
                 <Bar 
                   dataKey="value" 
                   radius={[0, 4, 4, 0]}
-                />
+                >
+                  {monetaryImpact.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
