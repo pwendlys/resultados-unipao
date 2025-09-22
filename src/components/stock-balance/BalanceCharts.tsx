@@ -33,7 +33,7 @@ const BalanceCharts = ({ itens }: BalanceChartsProps) => {
     .map(item => ({
       ...item,
       abs_diferenca: Math.abs(item.diferenca_quantidade || 0),
-      display_name: item.codigo || item.descricao || 'Item sem identificação'
+      display_name: item.descricao || item.codigo || 'Item sem identificação'
     }))
     .sort((a, b) => b.abs_diferenca - a.abs_diferenca)
     .slice(0, 10)
@@ -50,7 +50,7 @@ const BalanceCharts = ({ itens }: BalanceChartsProps) => {
     .map(item => ({
       ...item,
       abs_monetaria: Math.abs(item.diferenca_monetaria || 0),
-      display_name: item.codigo || item.descricao || 'Item sem identificação'
+      display_name: item.descricao || item.codigo || 'Item sem identificação'
     }))
     .sort((a, b) => b.abs_monetaria - a.abs_monetaria)
     .slice(0, 10)
