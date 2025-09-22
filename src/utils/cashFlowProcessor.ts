@@ -2,7 +2,7 @@ import * as XLSX from 'xlsx';
 import { ProcessedFinancialData } from './financialProcessor';
 
 interface CashFlowItem {
-  data: string;
+  data: any; // Pode ser Date, number (serial Excel) ou string
   saldo_dia: number;
   a_pagar: number;
   a_receber: number;
@@ -18,7 +18,7 @@ export const processCashFlowXLSX = async (file: File, periodo: string): Promise<
         console.log('[DEBUG] Iniciando processamento de fluxo de caixa para arquivo:', file.name);
         
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
+        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
@@ -36,8 +36,8 @@ export const processCashFlowXLSX = async (file: File, periodo: string): Promise<
 
         // Converter itens de fluxo de caixa para formato de itens financeiros
         const itens = cashFlowItems.map((item, index) => {
-          const dataVencimento = formatDateToISO(item.data);
-          const dataEmissao = formatDateToISO(item.data);
+          const dataVencimento = parseExcelDate(item.data);
+          const dataEmissao = parseExcelDate(item.data);
           
           console.log(`[DEBUG] Processando item ${index + 1}:`, {
             data_original: item.data,
@@ -163,15 +163,16 @@ const processCashFlowData = (jsonData: any[][]): CashFlowItem[] => {
       const row = jsonData[i];
       
       if (row && row.length > Math.max(dateCol, aPagarCol, aReceberCol)) {
-        const dataStr = String(row[dateCol] || '').trim();
+        const dataValue = row[dateCol];
+        console.log('[DEBUG] Valor da data bruto:', dataValue, 'Tipo:', typeof dataValue);
         const saldoDiaStr = String(row[saldoDiaCol] || '0').trim();
         const aPagarStr = String(row[aPagarCol] || '0').trim();
         const aReceberStr = String(row[aReceberCol] || '0').trim();
         const saldoStr = String(row[saldoCol] || '0').trim();
         const situacao = String(row[situacaoCol] || 'Normal').trim();
 
-        // Pular linhas vazias
-        if (!dataStr || dataStr.length < 2) continue;
+        // Pular linhas vazias - verificar se o valor da data existe
+        if (!dataValue || (typeof dataValue === 'string' && dataValue.trim().length < 2)) continue;
 
         // Converter valores
         const saldoDia = parseFloat(saldoDiaStr.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
@@ -180,7 +181,7 @@ const processCashFlowData = (jsonData: any[][]): CashFlowItem[] => {
         const saldoFinal = parseFloat(saldoStr.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.')) || (saldoDia + aReceber - aPagar);
 
         items.push({
-          data: dataStr,
+          data: dataValue, // Manter valor original (pode ser Date, número ou string)
           saldo_dia: saldoDia,
           a_pagar: aPagar,
           a_receber: aReceber,
@@ -215,7 +216,53 @@ const formatDate = (dateStr: string): string => {
   }
 };
 
-const formatDateToISO = (dateStr: string): string | undefined => {
+// Função principal para converter datas do Excel
+const parseExcelDate = (value: any): string => {
+  console.log('[DEBUG] Processando valor de data:', value, 'Tipo:', typeof value);
+  
+  // Se é um objeto Date (resultado do cellDates: true)
+  if (value instanceof Date) {
+    const isoDate = value.toISOString().split('T')[0];
+    console.log('[DEBUG] Data convertida de Date object:', isoDate);
+    return isoDate;
+  }
+  
+  // Se é um número (serial date do Excel)
+  if (typeof value === 'number') {
+    console.log('[DEBUG] Convertendo número serial do Excel:', value);
+    
+    // Excel serial date: número de dias desde 1/1/1900
+    // Mas Excel considera 1900 como ano bissexto (erro histórico), então ajustamos
+    const excelEpoch = new Date(1899, 11, 30); // 30 de dezembro de 1899
+    const date = new Date(excelEpoch.getTime() + value * 24 * 60 * 60 * 1000);
+    
+    if (isNaN(date.getTime())) {
+      console.log('[DEBUG] Data inválida do número serial, usando data atual');
+      return new Date().toISOString().split('T')[0];
+    }
+    
+    const isoDate = date.toISOString().split('T')[0];
+    console.log('[DEBUG] Data convertida de número serial:', isoDate);
+    return isoDate;
+  }
+  
+  // Se é string, usar função de formatação existente
+  if (typeof value === 'string') {
+    return formatDateToISO(value);
+  }
+  
+  console.log('[DEBUG] Tipo de data não reconhecido, usando data atual');
+  return new Date().toISOString().split('T')[0];
+};
+
+const formatDateToISO = (dateStr: string): string => {
+  console.log('[DEBUG] Formatando data string:', dateStr);
+  
+  if (!dateStr) {
+    console.log('[DEBUG] Data string vazia, usando data atual');
+    return new Date().toISOString().split('T')[0];
+  }
+
   try {
     // Tentar diferentes formatos
     const date = new Date(dateStr);
@@ -233,9 +280,11 @@ const formatDateToISO = (dateStr: string): string | undefined => {
       }
     }
 
-    return undefined;
+    console.log('[DEBUG] Formato de data não reconhecido, usando data atual');
+    return new Date().toISOString().split('T')[0];
   } catch {
-    return undefined;
+    console.log('[DEBUG] Erro ao processar data, usando data atual');
+    return new Date().toISOString().split('T')[0];
   }
 };
 
