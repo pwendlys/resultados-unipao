@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      balancos_estoque: {
+        Row: {
+          created_at: string
+          id: string
+          itens_negativos: number | null
+          itens_neutros: number | null
+          itens_positivos: number | null
+          nome: string
+          periodo: string
+          resultado_monetario: number | null
+          status: string
+          total_itens: number | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          itens_negativos?: number | null
+          itens_neutros?: number | null
+          itens_positivos?: number | null
+          nome: string
+          periodo: string
+          resultado_monetario?: number | null
+          status?: string
+          total_itens?: number | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          itens_negativos?: number | null
+          itens_neutros?: number | null
+          itens_positivos?: number | null
+          nome?: string
+          periodo?: string
+          resultado_monetario?: number | null
+          status?: string
+          total_itens?: number | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string
@@ -196,6 +241,51 @@ export type Database = {
         }
         Relationships: []
       }
+      itens_balanco: {
+        Row: {
+          balanco_id: string
+          codigo: string | null
+          created_at: string
+          descricao: string | null
+          diferenca_monetaria: number | null
+          diferenca_quantidade: number | null
+          id: string
+          quantidade_real: number | null
+          quantidade_sistema: number | null
+          unitario: number | null
+          valor_real: number | null
+          valor_sistema: number | null
+        }
+        Insert: {
+          balanco_id: string
+          codigo?: string | null
+          created_at?: string
+          descricao?: string | null
+          diferenca_monetaria?: number | null
+          diferenca_quantidade?: number | null
+          id?: string
+          quantidade_real?: number | null
+          quantidade_sistema?: number | null
+          unitario?: number | null
+          valor_real?: number | null
+          valor_sistema?: number | null
+        }
+        Update: {
+          balanco_id?: string
+          codigo?: string | null
+          created_at?: string
+          descricao?: string | null
+          diferenca_monetaria?: number | null
+          diferenca_quantidade?: number | null
+          id?: string
+          quantidade_real?: number | null
+          quantidade_sistema?: number | null
+          unitario?: number | null
+          valor_real?: number | null
+          valor_sistema?: number | null
+        }
+        Relationships: []
+      }
       itens_financeiros: {
         Row: {
           categoria: string | null
@@ -260,6 +350,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      mapeamentos_colunas_balanco: {
+        Row: {
+          created_at: string
+          id: string
+          mapeamento: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mapeamento: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mapeamento?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       shared_reports: {
         Row: {

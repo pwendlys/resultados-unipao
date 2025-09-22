@@ -6,6 +6,7 @@ import UploadExtrato from '@/components/upload/UploadExtrato';
 import UploadFinanceiro from '@/components/financial/UploadFinanceiro';
 import Categorization from '@/components/categorization/Categorization';
 import RelatoriosFinanceiros from '@/components/financial/RelatoriosFinanceiros';
+import StockBalance from '@/components/stock-balance/StockBalance';
 import Settings from '@/components/settings/Settings';
 import Reports from '@/components/reports/Reports';
 import CustomReports from '@/components/custom-reports/CustomReports';
@@ -44,6 +45,8 @@ const Index = () => {
         return <Reports />;
       case 'relatorios-financeiros':
         return <RelatoriosFinanceiros />;
+      case 'stock-balance':
+        return <StockBalance />;
       case 'custom-reports':
         return <CustomReports />;
       case 'custom-dashboards':
