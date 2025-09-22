@@ -38,9 +38,10 @@ const BalanceCharts = ({ itens }: BalanceChartsProps) => {
     .sort((a, b) => b.abs_diferenca - a.abs_diferenca)
     .slice(0, 10)
     .map(item => ({
-      name: item.display_name.length > 30 ? item.display_name.substring(0, 30) + '...' : item.display_name,
+      name: item.codigo || 'N/A',
       value: item.diferenca_quantidade || 0,
       abs_value: item.abs_diferenca,
+      descricao: item.display_name,
       fill: (item.diferenca_quantidade || 0) >= 0 ? '#16a34a' : '#dc2626'
     }));
 
@@ -55,9 +56,10 @@ const BalanceCharts = ({ itens }: BalanceChartsProps) => {
     .sort((a, b) => b.abs_monetaria - a.abs_monetaria)
     .slice(0, 10)
     .map(item => ({
-      name: item.display_name.length > 30 ? item.display_name.substring(0, 30) + '...' : item.display_name,
+      name: item.codigo || 'N/A',
       value: item.diferenca_monetaria || 0,
       abs_value: item.abs_monetaria,
+      descricao: item.display_name,
       fill: (item.diferenca_monetaria || 0) >= 0 ? '#16a34a' : '#dc2626'
     }));
 
@@ -121,7 +123,10 @@ const BalanceCharts = ({ itens }: BalanceChartsProps) => {
                   />
                   <Tooltip 
                     formatter={(value) => [formatNumber(value as number), 'Diferença']}
-                    labelFormatter={(label) => `Item: ${label}`}
+                    labelFormatter={(label, payload) => {
+                      const item = payload?.[0]?.payload;
+                      return item?.descricao ? `${item.descricao} (${label})` : `Item: ${label}`;
+                    }}
                   />
                   <Line 
                     dataKey="value" 
@@ -167,7 +172,10 @@ const BalanceCharts = ({ itens }: BalanceChartsProps) => {
                 />
                 <Tooltip 
                   formatter={(value) => [formatCurrency(value as number), 'Impacto Monetário']}
-                  labelFormatter={(label) => `Item: ${label}`}
+                  labelFormatter={(label, payload) => {
+                    const item = payload?.[0]?.payload;
+                    return item?.descricao ? `${item.descricao} (${label})` : `Item: ${label}`;
+                  }}
                 />
                 <Line 
                   dataKey="value" 
