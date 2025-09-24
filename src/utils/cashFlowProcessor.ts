@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { parseBrazilianCurrency } from '@/lib/utils';
 import { ProcessedFinancialData } from './financialProcessor';
 
 interface CashFlowItem {
@@ -174,11 +175,11 @@ const processCashFlowData = (jsonData: any[][]): CashFlowItem[] => {
         // Pular linhas vazias - verificar se o valor da data existe
         if (!dataValue || (typeof dataValue === 'string' && dataValue.trim().length < 2)) continue;
 
-        // Converter valores
-        const saldoDia = parseFloat(saldoDiaStr.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
-        const aPagar = parseFloat(aPagarStr.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
-        const aReceber = parseFloat(aReceberStr.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
-        const saldoFinal = parseFloat(saldoStr.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.')) || (saldoDia + aReceber - aPagar);
+        // Converter valores usando função brasileira
+        const saldoDia = parseBrazilianCurrency(saldoDiaStr);
+        const aPagar = parseBrazilianCurrency(aPagarStr);
+        const aReceber = parseBrazilianCurrency(aReceberStr);
+        const saldoFinal = parseBrazilianCurrency(saldoStr) || (saldoDia + aReceber - aPagar);
 
         items.push({
           data: dataValue, // Manter valor original (pode ser Date, número ou string)

@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import { DocumentoFinanceiro, ItemFinanceiro } from '@/hooks/useFinancialData';
 import { processCashFlowXLSX, isCashFlowFile } from './cashFlowProcessor';
+import { parseBrazilianCurrency } from '@/lib/utils';
 
 export interface ProcessedFinancialData {
   documento: Omit<DocumentoFinanceiro, 'id' | 'created_at' | 'updated_at'>;
@@ -169,13 +170,8 @@ const processSICOOBXLSX = (jsonData: any[][]): { itens: Omit<ItemFinanceiro, 'id
         // Pular linhas vazias ou com dados inválidos
         if (!sacado || sacado.length < 2) continue;
 
-        // Converter valor
-        let valor = 0;
-        if (valorStr) {
-          // Remover R$, pontos de milhares, converter vírgula para ponto
-          const valorLimpo = valorStr.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.');
-          valor = parseFloat(valorLimpo) || 0;
-        }
+        // Converter valor usando função brasileira
+        const valor = parseBrazilianCurrency(valorStr);
 
         // Converter data de vencimento
         const dataVencimento = formatDate(vencimento);
