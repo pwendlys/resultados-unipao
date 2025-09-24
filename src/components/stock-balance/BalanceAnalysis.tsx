@@ -5,13 +5,16 @@ import BalanceKPIs from './BalanceKPIs';
 import BalanceCharts from './BalanceCharts';
 import BalanceTable from './BalanceTable';
 import BalanceReports from './BalanceReports';
+import BalanceDropdown from './BalanceDropdown';
 import { useItensBalanco, type BalancoEstoque } from '@/hooks/useStockBalance';
 
 interface BalanceAnalysisProps {
   balanco: BalancoEstoque;
+  balances: BalancoEstoque[];
+  onBalanceChange: (balance: BalancoEstoque) => void;
 }
 
-const BalanceAnalysis = ({ balanco }: BalanceAnalysisProps) => {
+const BalanceAnalysis = ({ balanco, balances, onBalanceChange }: BalanceAnalysisProps) => {
   const { data: itens = [], isLoading } = useItensBalanco(balanco.id);
   const [activeView, setActiveView] = useState('overview');
 
@@ -28,8 +31,22 @@ const BalanceAnalysis = ({ balanco }: BalanceAnalysisProps) => {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
+      <div className="space-y-4">
         <h2 className="text-2xl font-semibold text-foreground">Análise de Balanço</h2>
+        
+        {balances.length > 1 && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">
+              Selecionar Balanço:
+            </label>
+            <BalanceDropdown 
+              balances={balances}
+              selectedBalance={balanco}
+              onSelect={onBalanceChange}
+            />
+          </div>
+        )}
+        
         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
           <span>Arquivo: {balanco.nome}</span>
           <span>Período: {balanco.periodo}</span>

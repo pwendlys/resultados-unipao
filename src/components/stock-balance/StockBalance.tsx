@@ -11,9 +11,15 @@ const StockBalance = () => {
   const [activeTab, setActiveTab] = useState('upload');
   const [selectedBalances, setSelectedBalances] = useState<BalancoEstoque[]>([]);
   const [showComparison, setShowComparison] = useState(false);
+  const [selectedBalanceForAnalysis, setSelectedBalanceForAnalysis] = useState<BalancoEstoque | null>(null);
   const { data: balancos } = useBalancosEstoque();
   const latestBalanco = balancos?.[0];
   const hasMultipleBalances = (balancos?.length || 0) >= 2;
+  
+  // Atualizar balanço selecionado quando dados carregarem
+  if (latestBalanco && !selectedBalanceForAnalysis) {
+    setSelectedBalanceForAnalysis(latestBalanco);
+  }
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -43,8 +49,12 @@ const StockBalance = () => {
           </TabsContent>
           
           <TabsContent value="analysis" className="mt-6">
-            {latestBalanco ? (
-              <BalanceAnalysis balanco={latestBalanco} />
+            {selectedBalanceForAnalysis ? (
+              <BalanceAnalysis 
+                balanco={selectedBalanceForAnalysis} 
+                balances={balancos || []}
+                onBalanceChange={setSelectedBalanceForAnalysis}
+              />
             ) : (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">
