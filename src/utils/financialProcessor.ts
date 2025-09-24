@@ -307,6 +307,14 @@ export const processPDFFinancial = async (file: File, tipoDocumento: string, per
   return { documento, itens };
 };
 
+// Função para formatar valores monetários
+export const formatCurrency = (value: number): string => {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(value);
+};
+
 // Função auxiliar para formatar datas
 const formatDate = (dateStr: string): string | undefined => {
   try {

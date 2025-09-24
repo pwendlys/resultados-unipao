@@ -3,12 +3,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import UploadBalance from './UploadBalance';
 import BalanceAnalysis from './BalanceAnalysis';
-import { useBalancosEstoque } from '@/hooks/useStockBalance';
+import BalanceSelector from './BalanceSelector';
+import BalanceComparison from './BalanceComparison';
+import { useBalancosEstoque, BalancoEstoque } from '@/hooks/useStockBalance';
 
 const StockBalance = () => {
   const [activeTab, setActiveTab] = useState('upload');
+  const [selectedBalances, setSelectedBalances] = useState<BalancoEstoque[]>([]);
+  const [showComparison, setShowComparison] = useState(false);
   const { data: balancos } = useBalancosEstoque();
   const latestBalanco = balancos?.[0];
+  const hasMultipleBalances = (balancos?.length || 0) >= 2;
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -21,11 +26,16 @@ const StockBalance = () => {
 
       <Card className="p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className={`grid w-full ${hasMultipleBalances ? 'grid-cols-3' : 'grid-cols-2'}`}>
             <TabsTrigger value="upload">Upload Balanço</TabsTrigger>
             <TabsTrigger value="analysis" disabled={!latestBalanco}>
               Balanço Personalizado
             </TabsTrigger>
+            {hasMultipleBalances && (
+              <TabsTrigger value="comparison">
+                Comparação de Balanços
+              </TabsTrigger>
+            )}
           </TabsList>
           
           <TabsContent value="upload" className="mt-6">
@@ -43,6 +53,27 @@ const StockBalance = () => {
               </div>
             )}
           </TabsContent>
+          
+          {hasMultipleBalances && (
+            <TabsContent value="comparison" className="mt-6">
+              {showComparison ? (
+                <BalanceComparison 
+                  selectedBalances={selectedBalances}
+                  onBack={() => {
+                    setShowComparison(false);
+                    setSelectedBalances([]);
+                  }}
+                />
+              ) : (
+                <BalanceSelector
+                  balances={balancos || []}
+                  selectedBalances={selectedBalances}
+                  onSelectionChange={setSelectedBalances}
+                  onCompare={() => setShowComparison(true)}
+                />
+              )}
+            </TabsContent>
+          )}
         </Tabs>
       </Card>
     </div>
