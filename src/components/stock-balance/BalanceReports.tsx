@@ -9,6 +9,7 @@ import { formatCurrency, formatNumber } from '@/utils/stockBalanceProcessor';
 import { useToast } from '@/hooks/use-toast';
 import type { ItemBalanco, BalancoEstoque } from '@/hooks/useStockBalance';
 import * as XLSX from 'xlsx';
+import { generateBalancePDF } from '@/utils/balancePdfGenerator';
 
 interface BalanceReportsProps {
   itens: ItemBalanco[];
@@ -100,6 +101,14 @@ const BalanceReports = ({ itens, balanco }: BalanceReportsProps) => {
     }
   };
 
+  const handleDownloadPDF = async () => {
+    try {
+      await generateBalancePDF(filteredItems, balanco);
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+    }
+  };
+
   const filteredItems = getFilteredItems();
 
   const getDiferencaBadge = (diferenca?: number) => {
@@ -168,14 +177,26 @@ const BalanceReports = ({ itens, balanco }: BalanceReportsProps) => {
               </Select>
             </div>
 
-            <Button 
-              onClick={() => exportToExcel(filteredItems, `relatorio_balanco_${balanco.periodo.replace(/\s+/g, '_')}`)}
-              className="w-full"
-              disabled={filteredItems.length === 0}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Exportar para Excel
-            </Button>
+            <div className="space-y-2">
+              <Button 
+                onClick={() => exportToExcel(filteredItems, `relatorio_balanco_${balanco.periodo.replace(/\s+/g, '_')}`)}
+                className="w-full"
+                disabled={filteredItems.length === 0}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Exportar para Excel
+              </Button>
+              
+              <Button 
+                onClick={handleDownloadPDF}
+                variant="outline"
+                className="w-full"
+                disabled={filteredItems.length === 0}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Baixar PDF do Balanço
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

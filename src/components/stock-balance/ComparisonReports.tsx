@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Download, FileText, BarChart3, TrendingUp, Eye } from 'lucide-react';
+import { Download, FileText, BarChart3, TrendingUp, Eye, FileBarChart } from 'lucide-react';
 import { ComparisonData } from '@/hooks/useBalanceComparison';
 import { formatCurrency } from '@/utils/financialProcessor';
 import { generateComparisonPDF } from '@/utils/comparisonPdfGenerator';
 import { generateAllCharts } from '@/utils/chartGenerator';
+import { generateComparisonSummaryPDF } from '@/utils/comparisonSummaryPdfGenerator';
 import ReportPreview from './ReportPreview';
 
 interface ComparisonReportsProps {
@@ -29,6 +30,14 @@ const ComparisonReports = ({ data }: ComparisonReportsProps) => {
       console.error('Erro ao gerar PDF:', error);
     } finally {
       setIsGeneratingPDF(false);
+    }
+  };
+
+  const downloadSummaryPDF = async () => {
+    try {
+      await generateComparisonSummaryPDF(data);
+    } catch (error) {
+      console.error('Erro ao gerar PDF resumido:', error);
     }
   };
 
@@ -200,7 +209,7 @@ Semana 7-8: Preparação para próxima contagem
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <Button onClick={() => setIsPreviewOpen(true)} variant="outline" className="w-full">
               <Eye className="h-4 w-4 mr-2" />
               Preview do Relatório
@@ -212,6 +221,14 @@ Semana 7-8: Preparação para próxima contagem
             >
               <Download className="h-4 w-4 mr-2" />
               {isGeneratingPDF ? 'Gerando PDF...' : 'Relatório Executivo PDF'}
+            </Button>
+            <Button 
+              onClick={downloadSummaryPDF}
+              variant="outline"
+              className="w-full"
+            >
+              <FileBarChart className="h-4 w-4 mr-2" />
+              Relatório Resumido PDF
             </Button>
           </div>
         </CardContent>
