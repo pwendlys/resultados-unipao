@@ -112,10 +112,10 @@ export async function generateComparisonSummaryPDF(data: ComparisonData) {
   yPosition += 15;
 
   // Cabeçalho da tabela
-  pdf.setFontSize(8);
+  pdf.setFontSize(7);
   pdf.setFont('helvetica', 'bold');
-  const headers = ['Descrição', 'Qtd Ant.', 'Real Ant.', 'Qtd Atual', 'Real Atual', 'Dif.', 'Vlr Unit.', 'Impacto'];
-  const colWidths = [35, 18, 18, 18, 18, 15, 20, 30];
+  const headers = ['Descrição', 'Qtd Ant.', 'Real Ant.', 'Qtd Atual', 'Real Atual', 'Dif.', 'Vlr Ant.', 'Vlr Atual', 'Impacto'];
+  const colWidths = [30, 15, 15, 15, 15, 12, 18, 18, 25];
   let xStart = 8;
 
   headers.forEach((header, i) => {
@@ -159,14 +159,18 @@ export async function generateComparisonSummaryPDF(data: ComparisonData) {
     // CÁLCULO DO IMPACTO: Diferença monetária entre (Qtd Real - Qtd Sistema) * Valor Unitário
     // do último balanço comparado com o primeiro balanço
     
+    const valorUnitarioAnterior = itemAnterior?.unitario || 0;
+    const valorUnitarioAtual = itemAtualData?.unitario || 0;
+    
     const rowData = [
-      descricao.length > 20 ? descricao.substring(0, 20) + '...' : descricao,
+      descricao.length > 18 ? descricao.substring(0, 18) + '...' : descricao,
       formatNumber(qtdSistemaAnterior),
       formatNumber(qtdRealAnterior),
       formatNumber(qtdSistemaAtual),
       formatNumber(qtdRealAtual),
       formatNumber(diferenca),
-      formatCurrency(valorUnitario),
+      formatCurrency(valorUnitarioAnterior),
+      formatCurrency(valorUnitarioAtual),
       formatCurrency(item.variacao_monetaria)
     ];
 
@@ -178,7 +182,7 @@ export async function generateComparisonSummaryPDF(data: ComparisonData) {
         const dataWidth = pdf.getTextWidth(data);
         pdf.text(data, xStart + (colWidths[i] - dataWidth) / 2, yPosition);
         
-        if (i === 7) { // Impacto - colorir se positivo
+        if (i === 8) { // Impacto - colorir se positivo
           pdf.setTextColor(34, 197, 94); // Verde
           pdf.text(data, xStart + (colWidths[i] - dataWidth) / 2, yPosition);
           pdf.setTextColor(0, 0, 0);
@@ -205,7 +209,7 @@ export async function generateComparisonSummaryPDF(data: ComparisonData) {
   yPosition += 15;
 
   // Cabeçalho da tabela
-  pdf.setFontSize(8);
+  pdf.setFontSize(7);
   pdf.setFont('helvetica', 'bold');
   xStart = 8;
 
@@ -250,14 +254,18 @@ export async function generateComparisonSummaryPDF(data: ComparisonData) {
     // CÁLCULO DO IMPACTO: Diferença monetária entre (Qtd Real - Qtd Sistema) * Valor Unitário
     // do último balanço comparado com o primeiro balanço
     
+    const valorUnitarioAnterior = itemAnterior?.unitario || 0;
+    const valorUnitarioAtual = itemAtualData?.unitario || 0;
+    
     const rowData = [
-      descricao.length > 20 ? descricao.substring(0, 20) + '...' : descricao,
+      descricao.length > 18 ? descricao.substring(0, 18) + '...' : descricao,
       formatNumber(qtdSistemaAnterior),
       formatNumber(qtdRealAnterior),
       formatNumber(qtdSistemaAtual),
       formatNumber(qtdRealAtual),
       formatNumber(diferenca),
-      formatCurrency(valorUnitario),
+      formatCurrency(valorUnitarioAnterior),
+      formatCurrency(valorUnitarioAtual),
       formatCurrency(item.variacao_monetaria)
     ];
 
@@ -269,7 +277,7 @@ export async function generateComparisonSummaryPDF(data: ComparisonData) {
         const dataWidth = pdf.getTextWidth(data);
         pdf.text(data, xStart + (colWidths[i] - dataWidth) / 2, yPosition);
         
-        if (i === 7) { // Impacto - colorir se negativo
+        if (i === 8) { // Impacto - colorir se negativo
           pdf.setTextColor(220, 38, 38); // Vermelho
           pdf.text(data, xStart + (colWidths[i] - dataWidth) / 2, yPosition);
           pdf.setTextColor(0, 0, 0);
