@@ -156,8 +156,11 @@ export async function generateComparisonSummaryPDF(data: ComparisonData) {
     const diferenca = qtdRealAtual - qtdRealAnterior;
     const valorUnitario = itemAnterior?.unitario || itemAtualData?.unitario || 0;
     
+    // CÁLCULO DO IMPACTO: Diferença monetária entre (Qtd Real - Qtd Sistema) * Valor Unitário
+    // do último balanço comparado com o primeiro balanço
+    
     const rowData = [
-      descricao.length > 25 ? descricao.substring(0, 25) + '...' : descricao,
+      descricao.length > 20 ? descricao.substring(0, 20) + '...' : descricao,
       formatNumber(qtdSistemaAnterior),
       formatNumber(qtdRealAnterior),
       formatNumber(qtdSistemaAtual),
@@ -244,8 +247,11 @@ export async function generateComparisonSummaryPDF(data: ComparisonData) {
     const diferenca = qtdRealAtual - qtdRealAnterior;
     const valorUnitario = itemAnterior?.unitario || itemAtualData?.unitario || 0;
     
+    // CÁLCULO DO IMPACTO: Diferença monetária entre (Qtd Real - Qtd Sistema) * Valor Unitário
+    // do último balanço comparado com o primeiro balanço
+    
     const rowData = [
-      descricao.length > 25 ? descricao.substring(0, 25) + '...' : descricao,
+      descricao.length > 20 ? descricao.substring(0, 20) + '...' : descricao,
       formatNumber(qtdSistemaAnterior),
       formatNumber(qtdRealAnterior),
       formatNumber(qtdSistemaAtual),
