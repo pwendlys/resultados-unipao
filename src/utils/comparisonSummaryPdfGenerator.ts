@@ -98,6 +98,42 @@ export async function generateComparisonSummaryPDF(data: ComparisonData) {
     yPosition += 8;
   });
 
+  // METODOLOGIA DE CÁLCULO
+  yPosition += 15;
+  pdf.setFontSize(12);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('METODOLOGIA DE CÁLCULO DO IMPACTO', 20, yPosition);
+  yPosition += 10;
+
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'normal');
+  const metodologia = [
+    'O IMPACTO é calculado pela diferença entre as divergências monetárias dos períodos:',
+    '',
+    'IMPACTO = (Diferença Monetária Atual) - (Diferença Monetária Anterior)',
+    '',
+    'Onde:',
+    '• Diferença Monetária = (Qtd Real - Qtd Sistema) × Valor Unitário',
+    '• Qtd Real = Quantidade física contada no estoque',
+    '• Qtd Sistema = Quantidade registrada no sistema',
+    '• Valor Unitário = Preço unitário do produto no período',
+    '',
+    'Interpretação dos resultados:',
+    '• Valores POSITIVOS = Melhoria no controle de estoque',
+    '• Valores NEGATIVOS = Piora no controle de estoque',
+    '• O impacto mostra o efeito financeiro da evolução das divergências entre períodos'
+  ];
+
+  metodologia.forEach(line => {
+    if (line === '') {
+      yPosition += 4;
+    } else {
+      checkPageBreak(8);
+      pdf.text(line, 20, yPosition);
+      yPosition += 7;
+    }
+  });
+
   // NOVA PÁGINA - TOP 10 MELHORIAS
   addNewPage();
   pdf.setFontSize(18);
