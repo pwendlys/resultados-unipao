@@ -1,6 +1,4 @@
-import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { BalancoEstoque } from '@/hooks/useStockBalance';
@@ -19,11 +17,15 @@ const BalanceSelector = ({
   onSelectionChange, 
   onCompare 
 }: BalanceSelectorProps) => {
-  const handleBalanceToggle = (balance: BalancoEstoque, checked: boolean) => {
-    if (checked) {
-      onSelectionChange([...selectedBalances, balance]);
-    } else {
+  const handleBalanceClick = (balance: BalancoEstoque) => {
+    const isSelected = selectedBalances.some(b => b.id === balance.id);
+    
+    if (isSelected) {
+      // Remove da sequência e reorganiza
       onSelectionChange(selectedBalances.filter(b => b.id !== balance.id));
+    } else {
+      // Adiciona ao final da sequência
+      onSelectionChange([...selectedBalances, balance]);
     }
   };
 
@@ -39,7 +41,7 @@ const BalanceSelector = ({
         <div>
           <h2 className="text-xl font-semibold text-foreground">Selecionar Balanços para Comparação</h2>
           <p className="text-sm text-muted-foreground">
-            Escolha 2 ou mais balanços para análise comparativa
+            Clique nos balanços na ordem cronológica desejada para comparação
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -66,26 +68,37 @@ const BalanceSelector = ({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {balances.map((balance) => {
           const isSelected = selectedBalances.some(b => b.id === balance.id);
+          const selectionIndex = selectedBalances.findIndex(b => b.id === balance.id);
+          const selectionOrder = selectionIndex >= 0 ? selectionIndex + 1 : null;
           
           return (
             <Card 
               key={balance.id} 
-              className={`cursor-pointer transition-colors ${
-                isSelected ? 'ring-2 ring-primary bg-accent/50' : 'hover:bg-accent/20'
+              className={`cursor-pointer transition-all duration-200 ${
+                isSelected ? 'ring-2 ring-primary bg-accent/50 shadow-md' : 'hover:bg-accent/20 hover:shadow-sm'
               }`}
-              onClick={() => handleBalanceToggle(balance, !isSelected)}
+              onClick={() => handleBalanceClick(balance)}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <CardTitle className="text-base">{balance.nome}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-base">{balance.nome}</CardTitle>
+                      {selectionOrder && (
+                        <Badge variant="default" className="text-xs font-bold px-2 py-1">
+                          {selectionOrder}º
+                        </Badge>
+                      )}
+                    </div>
                     <CardDescription>{balance.periodo}</CardDescription>
                   </div>
-                  <Checkbox 
-                    checked={isSelected}
-                    onChange={() => {}}
-                    className="mt-1"
-                  />
+                  {isSelected && (
+                    <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                      <span className="text-primary-foreground text-xs font-bold">
+                        {selectionOrder}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
