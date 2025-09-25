@@ -115,8 +115,8 @@ export async function generateComparisonSummaryPDF(data: ComparisonData) {
   pdf.setFontSize(9);
   pdf.setFont('helvetica', 'bold');
   const headers = ['Descrição', 'Qtd Anterior', 'Qtd Atual', 'Diferença', 'Vlr Unit.', 'Impacto'];
-  const colWidths = [55, 25, 25, 25, 25, 30];
-  let xStart = 10;
+  const colWidths = [42, 20, 20, 18, 22, 35];
+  let xStart = 8;
 
   headers.forEach((header, i) => {
     pdf.text(header, xStart, yPosition);
@@ -131,7 +131,7 @@ export async function generateComparisonSummaryPDF(data: ComparisonData) {
   topMelhorias.forEach((item) => {
     checkPageBreak(10);
     
-    xStart = 10;
+    xStart = 8;
     const itemAtual = data.itemsComparison.find(comp => comp.codigo === item.codigo);
     
     const descricao = item.descricao || `Código: ${item.codigo}`;
@@ -142,7 +142,7 @@ export async function generateComparisonSummaryPDF(data: ComparisonData) {
     const diferenca = qtdAtual - qtdAnterior;
     
     const rowData = [
-      descricao.length > 35 ? descricao.substring(0, 35) + '...' : descricao,
+      descricao.length > 20 ? descricao.substring(0, 20) + '...' : descricao,
       formatNumber(qtdAnterior),
       formatNumber(qtdAtual),
       formatNumber(diferenca),
@@ -183,7 +183,7 @@ export async function generateComparisonSummaryPDF(data: ComparisonData) {
   // Cabeçalho da tabela
   pdf.setFontSize(9);
   pdf.setFont('helvetica', 'bold');
-  xStart = 10;
+  xStart = 8;
 
   headers.forEach((header, i) => {
     pdf.text(header, xStart, yPosition);
@@ -198,7 +198,7 @@ export async function generateComparisonSummaryPDF(data: ComparisonData) {
   topPioras.forEach((item) => {
     checkPageBreak(10);
     
-    xStart = 10;
+    xStart = 8;
     const itemAtual = data.itemsComparison.find(comp => comp.codigo === item.codigo);
     
     const descricao = item.descricao || `Código: ${item.codigo}`;
@@ -209,7 +209,7 @@ export async function generateComparisonSummaryPDF(data: ComparisonData) {
     const diferenca = qtdAtual - qtdAnterior;
     
     const rowData = [
-      descricao.length > 35 ? descricao.substring(0, 35) + '...' : descricao,
+      descricao.length > 20 ? descricao.substring(0, 20) + '...' : descricao,
       formatNumber(qtdAnterior),
       formatNumber(qtdAtual),
       formatNumber(diferenca),

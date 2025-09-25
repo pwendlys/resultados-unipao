@@ -139,11 +139,11 @@ export async function generateBalancePDF(itens: ItemBalanco[], balanco: BalancoE
     .slice(0, 20);
 
   // Cabeçalho da tabela
-  pdf.setFontSize(8);
+  pdf.setFontSize(9);
   pdf.setFont('helvetica', 'bold');
   const headers = ['Código', 'Descrição', 'Qtd Sist.', 'Qtd Real', 'Dif. Qtd', 'Vlr Unit.', 'Impacto'];
-  const colWidths = [20, 60, 20, 20, 20, 25, 25];
-  let xStart = 10;
+  const colWidths = [18, 50, 18, 18, 18, 22, 30];
+  let xStart = 8;
 
   headers.forEach((header, i) => {
     pdf.text(header, xStart, yPosition);
@@ -156,10 +156,10 @@ export async function generateBalancePDF(itens: ItemBalanco[], balanco: BalancoE
   topDiscrepancias.forEach((item) => {
     checkPageBreak(10);
     
-    xStart = 10;
+    xStart = 8;
     const rowData = [
       item.codigo || '',
-      (item.descricao || '').substring(0, 35) + ((item.descricao || '').length > 35 ? '...' : ''),
+      (item.descricao || '').substring(0, 22) + ((item.descricao || '').length > 22 ? '...' : ''),
       formatNumber(item.quantidade_sistema),
       formatNumber(item.quantidade_real),
       formatNumber(item.diferenca_quantidade),
@@ -199,7 +199,7 @@ export async function generateBalancePDF(itens: ItemBalanco[], balanco: BalancoE
   yPosition += 15;
 
   // Tabela completa (paginada)
-  pdf.setFontSize(7);
+  pdf.setFontSize(8);
   pdf.setFont('helvetica', 'bold');
   
   const renderTableHeader = () => {
@@ -227,7 +227,7 @@ export async function generateBalancePDF(itens: ItemBalanco[], balanco: BalancoE
     xStart = 5;
     const rowData = [
       item.codigo || '',
-      (item.descricao || '').substring(0, 30) + ((item.descricao || '').length > 30 ? '...' : ''),
+      (item.descricao || '').substring(0, 20) + ((item.descricao || '').length > 20 ? '...' : ''),
       formatNumber(item.quantidade_sistema),
       formatNumber(item.quantidade_real),
       formatNumber(item.diferenca_quantidade),
