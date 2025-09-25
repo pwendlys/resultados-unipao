@@ -48,10 +48,8 @@ export function useBalanceComparison(
   return useMemo(() => {
     if (selectedBalances.length < 2) return null;
 
-    // Ordenar balanços por data para análise temporal
-    const sortedBalances = [...selectedBalances].sort((a, b) => 
-      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
+    // Manter ordem de seleção sequencial do usuário
+    const sortedBalances = [...selectedBalances];
 
     const balanceIds = sortedBalances.map(b => b.id);
     
