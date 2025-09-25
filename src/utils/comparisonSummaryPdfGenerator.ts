@@ -98,41 +98,6 @@ export async function generateComparisonSummaryPDF(data: ComparisonData) {
     yPosition += 8;
   });
 
-  // METODOLOGIA DE CÁLCULO
-  yPosition += 15;
-  pdf.setFontSize(12);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('METODOLOGIA DE CÁLCULO DO IMPACTO', 20, yPosition);
-  yPosition += 10;
-
-  pdf.setFontSize(9);
-  pdf.setFont('helvetica', 'normal');
-  const metodologia = [
-    'O IMPACTO é calculado pela diferença entre as divergências monetárias dos períodos:',
-    '',
-    'IMPACTO = (Diferença Monetária Atual) - (Diferença Monetária Anterior)',
-    '',
-    'Onde:',
-    '• Diferença Monetária = (Qtd Real - Qtd Sistema) × Valor Unitário',
-    '• Qtd Real = Quantidade física contada no estoque',
-    '• Qtd Sistema = Quantidade registrada no sistema',
-    '• Valor Unitário = Preço unitário do produto no período',
-    '',
-    'Interpretação dos resultados:',
-    '• Valores POSITIVOS = Melhoria no controle de estoque',
-    '• Valores NEGATIVOS = Piora no controle de estoque',
-    '• O impacto mostra o efeito financeiro da evolução das divergências entre períodos'
-  ];
-
-  metodologia.forEach(line => {
-    if (line === '') {
-      yPosition += 4;
-    } else {
-      checkPageBreak(8);
-      pdf.text(line, 20, yPosition);
-      yPosition += 7;
-    }
-  });
 
   // NOVA PÁGINA - TOP 10 MELHORIAS
   addNewPage();
@@ -150,7 +115,7 @@ export async function generateComparisonSummaryPDF(data: ComparisonData) {
   // Cabeçalho da tabela
   pdf.setFontSize(7);
   pdf.setFont('helvetica', 'bold');
-  const headers = ['Descrição', 'Qtd Ant.', 'Real Ant.', 'Qtd Atual', 'Real Atual', 'Dif.', 'Vlr Ant.', 'Vlr Atual', 'Impacto'];
+  const headers = ['Descrição', 'Qtd Ant.', 'Real Ant.', 'Qtd Atual', 'Real Atual', 'Dif. Ant.', 'Dif.', 'Vlr Atual', 'Impacto'];
   const colWidths = [30, 15, 15, 15, 15, 12, 18, 18, 25];
   let xStart = 8;
 
@@ -189,13 +154,8 @@ export async function generateComparisonSummaryPDF(data: ComparisonData) {
     const qtdRealAnterior = itemAnterior?.quantidade_real || 0;
     const qtdSistemaAtual = itemAtualData?.quantidade_sistema || 0;
     const qtdRealAtual = itemAtualData?.quantidade_real || 0;
-    const diferenca = qtdRealAtual - qtdRealAnterior;
-    const valorUnitario = itemAnterior?.unitario || itemAtualData?.unitario || 0;
-    
-    // CÁLCULO DO IMPACTO: Diferença monetária entre (Qtd Real - Qtd Sistema) * Valor Unitário
-    // do último balanço comparado com o primeiro balanço
-    
-    const valorUnitarioAnterior = itemAnterior?.unitario || 0;
+    const diferencaAnterior = qtdRealAnterior - qtdSistemaAnterior;
+    const diferencaAtual = qtdRealAtual - qtdSistemaAtual;
     const valorUnitarioAtual = itemAtualData?.unitario || 0;
     
     const rowData = [
@@ -204,8 +164,8 @@ export async function generateComparisonSummaryPDF(data: ComparisonData) {
       formatNumber(qtdRealAnterior),
       formatNumber(qtdSistemaAtual),
       formatNumber(qtdRealAtual),
-      formatNumber(diferenca),
-      formatCurrency(valorUnitarioAnterior),
+      formatNumber(diferencaAnterior),
+      formatNumber(diferencaAtual),
       formatCurrency(valorUnitarioAtual),
       formatCurrency(item.variacao_monetaria)
     ];
@@ -284,13 +244,8 @@ export async function generateComparisonSummaryPDF(data: ComparisonData) {
     const qtdRealAnterior = itemAnterior?.quantidade_real || 0;
     const qtdSistemaAtual = itemAtualData?.quantidade_sistema || 0;
     const qtdRealAtual = itemAtualData?.quantidade_real || 0;
-    const diferenca = qtdRealAtual - qtdRealAnterior;
-    const valorUnitario = itemAnterior?.unitario || itemAtualData?.unitario || 0;
-    
-    // CÁLCULO DO IMPACTO: Diferença monetária entre (Qtd Real - Qtd Sistema) * Valor Unitário
-    // do último balanço comparado com o primeiro balanço
-    
-    const valorUnitarioAnterior = itemAnterior?.unitario || 0;
+    const diferencaAnterior = qtdRealAnterior - qtdSistemaAnterior;
+    const diferencaAtual = qtdRealAtual - qtdSistemaAtual;
     const valorUnitarioAtual = itemAtualData?.unitario || 0;
     
     const rowData = [
@@ -299,8 +254,8 @@ export async function generateComparisonSummaryPDF(data: ComparisonData) {
       formatNumber(qtdRealAnterior),
       formatNumber(qtdSistemaAtual),
       formatNumber(qtdRealAtual),
-      formatNumber(diferenca),
-      formatCurrency(valorUnitarioAnterior),
+      formatNumber(diferencaAnterior),
+      formatNumber(diferencaAtual),
       formatCurrency(valorUnitarioAtual),
       formatCurrency(item.variacao_monetaria)
     ];
