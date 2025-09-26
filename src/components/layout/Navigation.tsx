@@ -22,9 +22,11 @@ import { useAuth } from '@/contexts/AuthContext';
 interface NavigationProps {
   currentPage: string;
   onPageChange: (page: string) => void;
+  isSidebarCollapsed: boolean;
+  onToggleSidebar: () => void;
 }
 
-const Navigation = ({ currentPage, onPageChange }: NavigationProps) => {
+const Navigation = ({ currentPage, onPageChange, isSidebarCollapsed, onToggleSidebar }: NavigationProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { logout, user } = useAuth();
 
@@ -52,6 +54,17 @@ const Navigation = ({ currentPage, onPageChange }: NavigationProps) => {
 
   return (
     <>
+      {/* Desktop Toggle Button */}
+      <div className="hidden lg:block fixed top-4 left-4 z-50">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={onToggleSidebar}
+        >
+          {isSidebarCollapsed ? <Menu /> : <X />}
+        </Button>
+      </div>
+
       {/* Mobile Menu Button */}
       <div className="lg:hidden fixed top-4 left-4 z-50">
         <Button
@@ -75,7 +88,8 @@ const Navigation = ({ currentPage, onPageChange }: NavigationProps) => {
       <nav className={cn(
         "fixed top-0 left-0 h-full w-64 bg-card border-r border-border z-40 transition-transform duration-300 flex flex-col",
         "lg:translate-x-0",
-        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+        isSidebarCollapsed && "lg:-translate-x-full"
       )}>
         <div className="p-6 flex-1">
           {/* Logo */}

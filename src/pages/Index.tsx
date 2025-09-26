@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const { user } = useAuth();
 
   const handlePageChange = (page: string) => {
@@ -60,9 +61,14 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation currentPage={currentPage} onPageChange={handlePageChange} />
+      <Navigation 
+        currentPage={currentPage} 
+        onPageChange={handlePageChange}
+        isSidebarCollapsed={isSidebarCollapsed}
+        onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+      />
       
-      <main className="lg:ml-64 p-6">
+      <main className={`p-6 transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-0' : 'lg:ml-64'}`}>
         {renderCurrentPage()}
       </main>
     </div>
