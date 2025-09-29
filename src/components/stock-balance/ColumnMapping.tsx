@@ -10,6 +10,7 @@ import type { ColumnMapping as ColumnMappingType } from '@/utils/stockBalancePro
 interface ColumnMappingProps {
   headers: string[];
   detectedMapping: ColumnMappingType;
+  detectedType: 'estoque' | 'perdas';
   onComplete: (mapping: ColumnMappingType, periodo: string) => void;
   onBack: () => void;
   isProcessing: boolean;
@@ -30,7 +31,7 @@ const OPTIONAL_FIELDS = {
   diferenca_monetaria: 'Diferença Monetária'
 };
 
-const ColumnMapping = ({ headers, detectedMapping, onComplete, onBack, isProcessing }: ColumnMappingProps) => {
+const ColumnMapping = ({ headers, detectedMapping, detectedType, onComplete, onBack, isProcessing }: ColumnMappingProps) => {
   const [mapping, setMapping] = useState<ColumnMappingType>(detectedMapping);
   const [periodo, setPeriodo] = useState('');
 
@@ -68,6 +69,9 @@ const ColumnMapping = ({ headers, detectedMapping, onComplete, onBack, isProcess
           <h2 className="text-2xl font-semibold text-foreground">Mapeamento de Colunas</h2>
           <p className="text-muted-foreground">
             Configure como as colunas do arquivo devem ser interpretadas
+          </p>
+          <p className="text-sm text-primary font-medium mt-1">
+            Tipo detectado: {detectedType === 'perdas' ? 'Perdas/Avarias' : 'Estoque Normal'}
           </p>
         </div>
       </div>

@@ -12,6 +12,7 @@ import ColumnMapping from './ColumnMapping';
 import { 
   parseStockBalanceFile, 
   detectColumns, 
+  detectBalanceType,
   processStockBalanceData,
   validateFile,
   type ColumnMapping as ColumnMappingType 
@@ -33,6 +34,7 @@ const UploadBalance = ({ onSuccess }: UploadBalanceProps) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<'upload' | 'mapping' | 'processing'>('upload');
+  const [detectedType, setDetectedType] = useState<'estoque' | 'perdas'>('estoque');
   
   const { toast } = useToast();
   const { createBalanco, createItens, saveMapeamento, deleteBalanco } = useStockBalanceActions();
@@ -58,8 +60,10 @@ const UploadBalance = ({ onSuccess }: UploadBalanceProps) => {
       setUploadProgress(60);
       
       const mapping = detectColumns(fileHeaders);
+      const balanceType = detectBalanceType(fileHeaders);
       setDetectedMapping(mapping);
       setFinalMapping(mapping);
+      setDetectedType(balanceType);
       setUploadProgress(100);
       
       setStep('mapping');
@@ -93,16 +97,23 @@ const UploadBalance = ({ onSuccess }: UploadBalanceProps) => {
     setIsProcessing(true);
 
     try {
-      // Process the data
-      const processed = processStockBalanceData(rawData, headers, mapping);
+      // Process the data with detected type
+      const processed = processStockBalanceData(rawData, headers, mapping, detectedType);
       
       // Save column mapping for future use
       await saveMapeamento.mutateAsync(mapping);
       
-      // Create balance record
+      // Determine balance name based on type
+      const baseName = file.name;
+      const balanceName = detectedType === 'perdas' 
+        ? `${baseName} (Perdas/Avarias)`
+        : baseName;
+      
+      // Create balance record with type
       const balanco = await createBalanco.mutateAsync({
-        nome: file.name,
+        nome: balanceName,
         periodo,
+        tipo_balanco: detectedType,
         total_itens: processed.summary.total_itens,
         itens_negativos: processed.summary.itens_negativos,
         itens_positivos: processed.summary.itens_positivos,
@@ -121,7 +132,7 @@ const UploadBalance = ({ onSuccess }: UploadBalanceProps) => {
       
       toast({
         title: "Sucesso!",
-        description: `Balanço processado com ${processed.items.length} itens.`
+        description: `${detectedType === 'perdas' ? 'Relatório de perdas' : 'Balanço'} processado com ${processed.items.length} itens.`
       });
       
       // Reset form
@@ -130,6 +141,7 @@ const UploadBalance = ({ onSuccess }: UploadBalanceProps) => {
       setRawData([]);
       setDetectedMapping({});
       setFinalMapping({});
+      setDetectedType('estoque');
       setStep('upload');
       
       onSuccess();
@@ -143,13 +155,14 @@ const UploadBalance = ({ onSuccess }: UploadBalanceProps) => {
     } finally {
       setIsProcessing(false);
     }
-  }, [file, rawData, headers, createBalanco, createItens, saveMapeamento, toast, onSuccess]);
+  }, [file, rawData, headers, detectedType, createBalanco, createItens, saveMapeamento, toast, onSuccess]);
 
   if (step === 'mapping') {
     return (
       <ColumnMapping
         headers={headers}
         detectedMapping={detectedMapping}
+        detectedType={detectedType}
         onComplete={handleMappingComplete}
         onBack={() => setStep('upload')}
         isProcessing={isProcessing}
@@ -266,17 +279,22 @@ const UploadBalance = ({ onSuccess }: UploadBalanceProps) => {
                   className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <FileSpreadsheet className="h-4 w-4 text-primary" />
-                      <h4 className="font-medium text-foreground">{balanco.nome}</h4>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        balanco.status === 'processado' 
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                          : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                      }`}>
-                        {balanco.status}
-                      </span>
-                    </div>
+                      <div className="flex items-center gap-2">
+                        <FileSpreadsheet className="h-4 w-4 text-primary" />
+                        <h4 className="font-medium text-foreground">{balanco.nome}</h4>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          balanco.status === 'processado' 
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                        }`}>
+                          {balanco.status}
+                        </span>
+                        {balanco.tipo_balanco === 'perdas' && (
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                            Perdas/Avarias
+                          </span>
+                        )}
+                      </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />

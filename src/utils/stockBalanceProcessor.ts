@@ -32,13 +32,16 @@ const COLUMN_ALIASES = {
   codigo: ['cod', 'codigo', 'código', 'code'],
   descricao: ['descricao', 'descrição', 'description', 'desc'],
   quantidade_sistema: ['quantidade', 'qtd', 'qtd_sistema', 'quantity', 'system_qty'],
-  quantidade_real: ['real', 'qtd_real', 'real_qty', 'counted'],
+  quantidade_real: ['real', 'qtd_real', 'real_qty', 'counted', 'qtd_perdida', 'perdas', 'avarias', 'danos', 'vencimento'],
   diferenca_quantidade: ['dif.qtdxrea', 'dif_qtdxreal', 'dif_qtd_real', 'diferenca', 'difference'],
   unitario: ['unitario', 'preço unitário', 'preco_unit', 'unit_price', 'price'],
   valor_sistema: ['qtd x preço', 'valor_sistema', 'system_value'],
   valor_real: ['real x unitário', 'valor_real', 'real_value'],
   diferenca_monetaria: ['dif real/estoque', 'dif_monetaria', 'monetary_diff']
 };
+
+// Palavras-chave que indicam relatório de perdas/avarias
+const LOSS_KEYWORDS = ['perdas', 'avarias', 'danos', 'vencimento', 'danificados', 'estragados'];
 
 export function detectColumns(headers: string[]): ColumnMapping {
   const mapping: ColumnMapping = {};
@@ -55,6 +58,16 @@ export function detectColumns(headers: string[]): ColumnMapping {
   });
   
   return mapping;
+}
+
+export function detectBalanceType(headers: string[]): 'estoque' | 'perdas' {
+  const normalizedHeaders = headers.map(h => h.toLowerCase().trim());
+  
+  const hasLossKeywords = normalizedHeaders.some(header =>
+    LOSS_KEYWORDS.some(keyword => header.includes(keyword))
+  );
+  
+  return hasLossKeywords ? 'perdas' : 'estoque';
 }
 
 export function parseStockBalanceFile(file: File): Promise<{ headers: string[]; data: any[] }> {
@@ -92,7 +105,8 @@ export function parseStockBalanceFile(file: File): Promise<{ headers: string[]; 
 export function processStockBalanceData(
   rawData: any[], 
   headers: string[], 
-  mapping: ColumnMapping
+  mapping: ColumnMapping,
+  tipoBalanco: 'estoque' | 'perdas' = 'estoque'
 ): ProcessedStockBalance {
   const items: StockBalanceItem[] = [];
   
@@ -113,6 +127,21 @@ export function processStockBalanceData(
         (item as any)[key] = value;
       }
     });
+    
+    // Adjust quantities based on balance type
+    if (tipoBalanco === 'perdas') {
+      // Para relatório de perdas: sistema = 0, real = quantidade perdida
+      item.quantidade_sistema = 0;
+      if (!item.quantidade_real) {
+        item.quantidade_real = 0;
+      }
+    } else {
+      // Para relatório de estoque normal
+      if (!item.quantidade_sistema) item.quantidade_sistema = 0;
+      if (!item.quantidade_real) item.quantidade_real = 0;
+    }
+    
+    if (!item.unitario) item.unitario = 0;
     
     // Calculate missing fields
     if (item.quantidade_sistema !== undefined && item.quantidade_real !== undefined && item.diferenca_quantidade === undefined) {

@@ -25,6 +25,7 @@ export type Database = {
           periodo: string
           resultado_monetario: number | null
           status: string
+          tipo_balanco: string
           total_itens: number | null
           updated_at: string
           user_id: string | null
@@ -39,6 +40,7 @@ export type Database = {
           periodo: string
           resultado_monetario?: number | null
           status?: string
+          tipo_balanco?: string
           total_itens?: number | null
           updated_at?: string
           user_id?: string | null
@@ -53,6 +55,7 @@ export type Database = {
           periodo?: string
           resultado_monetario?: number | null
           status?: string
+          tipo_balanco?: string
           total_itens?: number | null
           updated_at?: string
           user_id?: string | null

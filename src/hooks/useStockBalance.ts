@@ -12,6 +12,7 @@ export interface BalancoEstoque {
   resultado_monetario: number;
   status: string;
   user_id?: string;
+  tipo_balanco: string;
   created_at: string;
   updated_at: string;
 }
