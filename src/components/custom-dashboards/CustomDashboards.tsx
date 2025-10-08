@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, BarChart3, Settings, Share2 } from 'lucide-react';
+import { Plus, BarChart3, Settings, Share2, Download } from 'lucide-react';
+import { toast } from 'sonner';
 import DashboardSelector from './DashboardSelector';
 import DataEntry from './DataEntry';
 import DataTable from './DataTable';
@@ -10,15 +11,36 @@ import ChartsView from './ChartsView';
 import ShareDashboard from './ShareDashboard';
 import { useCustomDashboards } from '@/hooks/useCustomDashboards';
 import { useCustomEntries } from '@/hooks/useCustomEntries';
+import { prepareCustomDashboardData, generateCustomDashboardPDF } from '@/utils/customDashboardPdfGenerator';
 
 const CustomDashboards = () => {
   const [selectedDashboardId, setSelectedDashboardId] = useState<string>('');
   const [showDataEntry, setShowDataEntry] = useState(false);
   const [showDataTable, setShowDataTable] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const chartsRef = useRef<HTMLDivElement>(null);
   
   const { data: dashboards, isLoading: loadingDashboards } = useCustomDashboards();
   const { data: entries, isLoading: loadingEntries } = useCustomEntries(selectedDashboardId);
+
+  const handleGeneratePDF = async () => {
+    if (!selectedDashboard || !entries || entries.length === 0) {
+      toast.error('Nenhum dado disponível para gerar o relatório');
+      return;
+    }
+
+    try {
+      toast.info('Gerando relatório PDF...');
+      
+      const pdfData = prepareCustomDashboardData(entries, selectedDashboard.nome);
+      await generateCustomDashboardPDF(pdfData, chartsRef.current || undefined);
+      
+      toast.success('Relatório PDF gerado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast.error('Erro ao gerar relatório PDF');
+    }
+  };
 
   if (loadingDashboards) {
     return (
@@ -66,6 +88,15 @@ const CustomDashboards = () => {
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline"
+                  onClick={handleGeneratePDF}
+                  className="flex items-center gap-2"
+                  disabled={!entries || entries.length === 0}
+                >
+                  <Download className="h-4 w-4" />
+                  Baixar Relatório PDF
+                </Button>
                 <Button 
                   variant="outline"
                   onClick={() => setShowShareDialog(true)}
@@ -124,10 +155,12 @@ const CustomDashboards = () => {
 
           {/* Charts View */}
           {!loadingEntries && (
-            <ChartsView 
-              entries={entries || []}
-              dashboardName={selectedDashboard.nome}
-            />
+            <div ref={chartsRef}>
+              <ChartsView 
+                entries={entries || []}
+                dashboardName={selectedDashboard.nome}
+              />
+            </div>
           )}
         </>
       )}
