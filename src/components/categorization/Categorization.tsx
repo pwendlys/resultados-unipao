@@ -18,6 +18,7 @@ const Categorization = () => {
     to: undefined,
   });
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchType, setSearchType] = useState<'description' | 'value'>('description');
   const [showOnlyUncategorized, setShowOnlyUncategorized] = useState(false);
   const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
@@ -29,7 +30,7 @@ const Categorization = () => {
   const { toast } = useToast();
 
   // Filter transactions based on search term, date range, and uncategorized filter
-  const filteredTransactions = filterTransactions(transactions, searchTerm, dateRange, showOnlyUncategorized);
+  const filteredTransactions = filterTransactions(transactions, searchTerm, dateRange, showOnlyUncategorized, searchType);
 
   // Pagination
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -133,16 +134,18 @@ const Categorization = () => {
       </div>
 
       {/* Filters */}
-      <CategoryFilters
-        selectedAccount={selectedAccount}
-        setSelectedAccount={setSelectedAccount}
-        dateRange={dateRange}
-        setDateRange={setDateRange}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        showOnlyUncategorized={showOnlyUncategorized}
-        setShowOnlyUncategorized={setShowOnlyUncategorized}
-      />
+        <CategoryFilters
+          selectedAccount={selectedAccount}
+          setSelectedAccount={setSelectedAccount}
+          dateRange={dateRange}
+          setDateRange={setDateRange}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          searchType={searchType}
+          setSearchType={setSearchType}
+          showOnlyUncategorized={showOnlyUncategorized}
+          setShowOnlyUncategorized={setShowOnlyUncategorized}
+        />
 
       {/* Bulk Actions Bar */}
       <BulkActionsBar

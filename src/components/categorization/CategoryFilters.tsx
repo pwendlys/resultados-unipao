@@ -26,6 +26,8 @@ interface CategoryFiltersProps {
   setDateRange: (range: DateRange | undefined) => void;
   searchTerm: string;
   setSearchTerm: (term: string) => void;
+  searchType: 'description' | 'value';
+  setSearchType: (type: 'description' | 'value') => void;
   showOnlyUncategorized: boolean;
   setShowOnlyUncategorized: (show: boolean) => void;
 }
@@ -37,6 +39,8 @@ const CategoryFilters = ({
   setDateRange,
   searchTerm,
   setSearchTerm,
+  searchType,
+  setSearchType,
   showOnlyUncategorized,
   setShowOnlyUncategorized
 }: CategoryFiltersProps) => {
@@ -96,16 +100,32 @@ const CategoryFilters = ({
           </Popover>
         </div>
 
-        {/* Search Filter */}
-        <div>
-          <Label htmlFor="search">Pesquisar Descrição</Label>
-          <Input
-            type="search"
-            id="search"
-            placeholder="Pesquisar por descrição..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        {/* Search Filter with Type Selector */}
+        <div className="space-y-2">
+          <Label htmlFor="search">Pesquisar Transação</Label>
+          <div className="flex gap-2">
+            <Select value={searchType} onValueChange={setSearchType}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-background z-50">
+                <SelectItem value="description">Descrição</SelectItem>
+                <SelectItem value="value">Valor</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              type="search"
+              id="search"
+              placeholder={
+                searchType === 'description' 
+                  ? 'Pesquisar por descrição...' 
+                  : 'Pesquisar por valor (ex: 100.50)...'
+              }
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1"
+            />
+          </div>
         </div>
       </div>
 

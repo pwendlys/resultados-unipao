@@ -6,13 +6,28 @@ export const filterTransactions = (
   transactions: Transaction[],
   searchTerm: string,
   dateRange: DateRange | undefined,
-  showOnlyUncategorized: boolean = false
+  showOnlyUncategorized: boolean = false,
+  searchType: 'description' | 'value' = 'description'
 ): Transaction[] => {
   return transactions?.filter(transaction => {
-    const searchTermLower = searchTerm.toLowerCase();
-    const descriptionLower = transaction.description.toLowerCase();
-
-    const matchesSearchTerm = descriptionLower.includes(searchTermLower);
+    const searchTermLower = searchTerm.toLowerCase().trim();
+    
+    let matchesSearchTerm = true;
+    
+    if (searchTermLower) {
+      if (searchType === 'description') {
+        const descriptionLower = transaction.description.toLowerCase();
+        matchesSearchTerm = descriptionLower.includes(searchTermLower);
+      } else if (searchType === 'value') {
+        const transactionValue = Math.abs(Number(transaction.amount)).toString();
+        const formattedValue = Number(transaction.amount).toFixed(2);
+        
+        matchesSearchTerm = 
+          transactionValue.includes(searchTermLower) ||
+          formattedValue.includes(searchTermLower) ||
+          transactionValue.replace('.', ',').includes(searchTermLower);
+      }
+    }
 
     let transactionDate;
     try {
