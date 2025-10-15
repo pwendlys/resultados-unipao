@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Download, Plus } from 'lucide-react';
@@ -14,6 +14,7 @@ export default function AssetsLiabilities() {
   const [showForm, setShowForm] = useState(false);
   const { data: records, isLoading } = useAssetsLiabilities();
   const { toast } = useToast();
+  const chartsRef = useRef<HTMLDivElement>(null);
 
   const handleGeneratePDF = async () => {
     if (!records || records.length === 0) {
@@ -26,7 +27,16 @@ export default function AssetsLiabilities() {
     }
 
     try {
-      await generateAssetsLiabilitiesPDF(records);
+      toast({
+        title: "Gerando PDF...",
+        description: "Por favor, aguarde enquanto capturamos os gráficos."
+      });
+
+      // Buscar elementos dos gráficos
+      const chartElements = chartsRef.current?.querySelectorAll('[data-chart-capture]') || [];
+      
+      await generateAssetsLiabilitiesPDF(records, Array.from(chartElements) as HTMLElement[]);
+      
       toast({
         title: "PDF gerado com sucesso!",
         description: "O arquivo foi baixado automaticamente."
@@ -83,7 +93,9 @@ export default function AssetsLiabilities() {
           </TabsContent>
 
           <TabsContent value="graficos" className="mt-6">
-            <Charts data={records} />
+            <div ref={chartsRef}>
+              <Charts data={records} />
+            </div>
           </TabsContent>
 
           <TabsContent value="historico" className="mt-6">

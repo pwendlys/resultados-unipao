@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { AssetsLiabilities } from '@/hooks/useAssetsLiabilities';
 
-export async function generateAssetsLiabilitiesPDF(records: AssetsLiabilities[]) {
+export async function generateAssetsLiabilitiesPDF(records: AssetsLiabilities[], chartElements: HTMLElement[] = []) {
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
@@ -15,6 +15,12 @@ export async function generateAssetsLiabilitiesPDF(records: AssetsLiabilities[])
   }
 
   const latestRecord = records[0];
+
+  // Função auxiliar para formatar data corretamente (evita problema de fuso horário)
+  const formatDate = (dateString: string) => {
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
+  };
 
   // Função auxiliar para formatar moeda
   const formatCurrency = (value: number) => {
@@ -38,7 +44,7 @@ export async function generateAssetsLiabilitiesPDF(records: AssetsLiabilities[])
   yPosition += 10;
   pdf.setFontSize(10);
   pdf.setFont('helvetica', 'normal');
-  pdf.text(`Data de Referência: ${new Date(latestRecord.data_referencia).toLocaleDateString('pt-BR')}`, pageWidth / 2, yPosition, { align: 'center' });
+  pdf.text(`Data de Referência: ${formatDate(latestRecord.data_referencia)}`, pageWidth / 2, yPosition, { align: 'center' });
   
   yPosition += 10;
   pdf.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, pageWidth / 2, yPosition, { align: 'center' });
@@ -140,6 +146,49 @@ export async function generateAssetsLiabilitiesPDF(records: AssetsLiabilities[])
     yPosition += splitObservacoes.length * 6;
   }
 
+  // Adicionar página de gráficos se houver elementos
+  if (chartElements.length > 0) {
+    pdf.addPage();
+    yPosition = 20;
+
+    pdf.setFontSize(16);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Análise Gráfica', pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 15;
+
+    // Capturar e adicionar cada gráfico
+    for (const element of chartElements) {
+      // Verificar se há espaço na página
+      if (yPosition > pageHeight - 100) {
+        pdf.addPage();
+        yPosition = 20;
+      }
+
+      try {
+        const canvas = await html2canvas(element, {
+          scale: 2,
+          backgroundColor: '#ffffff',
+          logging: false,
+          useCORS: true
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const imgWidth = pageWidth - 30; // Margem de 15mm em cada lado
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        // Limitar altura máxima
+        const maxHeight = 80;
+        const finalHeight = Math.min(imgHeight, maxHeight);
+        const finalWidth = (canvas.width * finalHeight) / canvas.height;
+
+        pdf.addImage(imgData, 'PNG', 15, yPosition, finalWidth, finalHeight);
+        yPosition += finalHeight + 10;
+      } catch (error) {
+        console.error('Erro ao capturar gráfico:', error);
+      }
+    }
+  }
+
   // Histórico (se houver mais de um registro)
   if (records.length > 1) {
     pdf.addPage();
@@ -175,7 +224,7 @@ export async function generateAssetsLiabilitiesPDF(records: AssetsLiabilities[])
       const recTotalPassivos = Number(record.a_pagar) + Number(record.joia) + Number(record.aporte);
       const recResultado = recTotalAtivos - recTotalPassivos;
 
-      pdf.text(new Date(record.data_referencia).toLocaleDateString('pt-BR'), 20, yPosition);
+      pdf.text(formatDate(record.data_referencia), 20, yPosition);
       pdf.text(formatCurrency(recTotalAtivos), 60, yPosition, { align: 'right' });
       pdf.text(formatCurrency(recTotalPassivos), 110, yPosition, { align: 'right' });
       

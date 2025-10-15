@@ -71,7 +71,7 @@ export default function Charts({ data }: ChartsProps) {
     <div className="space-y-6">
       {/* Gráfico de Barras - Evolução Temporal */}
       {evolucaoData.length > 1 && (
-        <Card>
+        <Card data-chart-capture="evolucao-barras">
           <CardHeader>
             <CardTitle>Evolução de Ativos e Passivos</CardTitle>
           </CardHeader>
@@ -104,7 +104,7 @@ export default function Charts({ data }: ChartsProps) {
 
       {/* Gráfico de Linha - Resultado ao Longo do Tempo */}
       {evolucaoData.length > 1 && (
-        <Card>
+        <Card data-chart-capture="tendencia-linha">
           <CardHeader>
             <CardTitle>Tendência do Resultado</CardTitle>
           </CardHeader>
@@ -141,7 +141,7 @@ export default function Charts({ data }: ChartsProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Gráfico de Pizza - Ativos vs Passivos */}
-        <Card>
+        <Card data-chart-capture="ativos-passivos-pizza">
           <CardHeader>
             <CardTitle>Ativos vs Passivos</CardTitle>
           </CardHeader>
@@ -181,7 +181,7 @@ export default function Charts({ data }: ChartsProps) {
 
         {/* Gráfico de Pizza - Composição dos Ativos */}
         {ativosComposicao.length > 0 && (
-          <Card>
+          <Card data-chart-capture="composicao-ativos">
             <CardHeader>
               <CardTitle>Composição dos Ativos</CardTitle>
             </CardHeader>
@@ -221,7 +221,7 @@ export default function Charts({ data }: ChartsProps) {
 
         {/* Gráfico de Pizza - Composição dos Passivos */}
         {passivosComposicao.length > 0 && (
-          <Card>
+          <Card data-chart-capture="composicao-passivos">
             <CardHeader>
               <CardTitle>Composição dos Passivos</CardTitle>
             </CardHeader>
