@@ -7,6 +7,7 @@ import UploadFinanceiro from '@/components/financial/UploadFinanceiro';
 import Categorization from '@/components/categorization/Categorization';
 import RelatoriosFinanceiros from '@/components/financial/RelatoriosFinanceiros';
 import StockBalance from '@/components/stock-balance/StockBalance';
+import AssetsLiabilities from '@/components/assets-liabilities/AssetsLiabilities';
 import Settings from '@/components/settings/Settings';
 import Reports from '@/components/reports/Reports';
 import CustomReports from '@/components/custom-reports/CustomReports';
@@ -48,6 +49,8 @@ const Index = () => {
         return <RelatoriosFinanceiros />;
       case 'stock-balance':
         return <StockBalance />;
+      case 'assets-liabilities':
+        return <AssetsLiabilities />;
       case 'custom-reports':
         return <CustomReports />;
       case 'custom-dashboards':

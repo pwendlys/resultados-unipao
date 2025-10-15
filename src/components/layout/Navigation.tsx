@@ -14,7 +14,8 @@ import {
   DollarSign,
   TrendingUp,
   PieChart,
-  Package
+  Package,
+  Scale
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -38,6 +39,7 @@ const Navigation = ({ currentPage, onPageChange, isSidebarCollapsed, onToggleSid
     { id: 'reports', label: 'Relatórios Unipão', icon: BarChart3 },
     { id: 'relatorios-financeiros', label: 'Relatórios Financeiros', icon: TrendingUp },
     { id: 'stock-balance', label: 'Balanço de Estoque', icon: Package },
+    { id: 'assets-liabilities', label: 'Ativos e Passivos', icon: Scale },
     { id: 'custom-reports', label: 'Relatórios Personalizados', icon: Presentation },
     { id: 'custom-dashboards', label: 'Dashboards Personalizados', icon: PieChart },
     { id: 'settings', label: 'Configurações e Compartilhar', icon: Settings },

@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      ativos_passivos: {
+        Row: {
+          a_pagar: number | null
+          a_receber: number | null
+          aporte: number | null
+          created_at: string
+          data_referencia: string
+          estoque: number | null
+          id: string
+          investimento: number | null
+          joia: number | null
+          observacoes: string | null
+          saldo_do_dia: number | null
+          updated_at: string
+          user_id: string | null
+          vencida: number | null
+        }
+        Insert: {
+          a_pagar?: number | null
+          a_receber?: number | null
+          aporte?: number | null
+          created_at?: string
+          data_referencia: string
+          estoque?: number | null
+          id?: string
+          investimento?: number | null
+          joia?: number | null
+          observacoes?: string | null
+          saldo_do_dia?: number | null
+          updated_at?: string
+          user_id?: string | null
+          vencida?: number | null
+        }
+        Update: {
+          a_pagar?: number | null
+          a_receber?: number | null
+          aporte?: number | null
+          created_at?: string
+          data_referencia?: string
+          estoque?: number | null
+          id?: string
+          investimento?: number | null
+          joia?: number | null
+          observacoes?: string | null
+          saldo_do_dia?: number | null
+          updated_at?: string
+          user_id?: string | null
+          vencida?: number | null
+        }
+        Relationships: []
+      }
       balancos_estoque: {
         Row: {
           created_at: string
