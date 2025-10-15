@@ -32,8 +32,13 @@ export default function AssetsLiabilities() {
         description: "Por favor, aguarde enquanto capturamos os gráficos."
       });
 
+      // Aguardar um pouco para garantir que os gráficos estejam renderizados
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Buscar elementos dos gráficos
       const chartElements = chartsRef.current?.querySelectorAll('[data-chart-capture]') || [];
+      
+      console.log('Elementos de gráfico encontrados:', chartElements.length);
       
       await generateAssetsLiabilitiesPDF(records, Array.from(chartElements) as HTMLElement[]);
       
@@ -42,6 +47,7 @@ export default function AssetsLiabilities() {
         description: "O arquivo foi baixado automaticamente."
       });
     } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
       toast({
         title: "Erro ao gerar PDF",
         description: "Ocorreu um erro ao gerar o arquivo PDF.",
@@ -81,27 +87,36 @@ export default function AssetsLiabilities() {
 
       {/* Tabs */}
       {!isLoading && (
-        <Tabs defaultValue="visao-geral" className="w-full">
-          <TabsList>
-            <TabsTrigger value="visao-geral">Visão Geral</TabsTrigger>
-            <TabsTrigger value="graficos">Gráficos</TabsTrigger>
-            <TabsTrigger value="historico">Histórico</TabsTrigger>
-          </TabsList>
+        <>
+          <Tabs defaultValue="visao-geral" className="w-full">
+            <TabsList>
+              <TabsTrigger value="visao-geral">Visão Geral</TabsTrigger>
+              <TabsTrigger value="graficos">Gráficos</TabsTrigger>
+              <TabsTrigger value="historico">Histórico</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="visao-geral" className="mt-6">
-            <SummaryCards data={records?.[0]} />
-          </TabsContent>
+            <TabsContent value="visao-geral" className="mt-6">
+              <SummaryCards data={records?.[0]} />
+            </TabsContent>
 
-          <TabsContent value="graficos" className="mt-6">
+            <TabsContent value="graficos" className="mt-6">
+              <div ref={chartsRef}>
+                <Charts data={records} />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="historico" className="mt-6">
+              <DataTable data={records} />
+            </TabsContent>
+          </Tabs>
+
+          {/* Renderizar gráficos ocultos para captura em PDF */}
+          <div style={{ position: 'absolute', left: '-9999px', top: 0, width: '1200px' }}>
             <div ref={chartsRef}>
               <Charts data={records} />
             </div>
-          </TabsContent>
-
-          <TabsContent value="historico" className="mt-6">
-            <DataTable data={records} />
-          </TabsContent>
-        </Tabs>
+          </div>
+        </>
       )}
 
       {/* Modal de Formulário */}
