@@ -76,7 +76,13 @@ export default function Charts({ data }: ChartsProps) {
             <CardTitle>Evolução de Ativos e Passivos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
+            <ChartContainer
+              config={{
+                Ativos: { label: "Ativos", color: "hsl(142, 76%, 45%)" },
+                Passivos: { label: "Passivos", color: "hsl(0, 84%, 60%)" }
+              }}
+              className="h-[300px]"
+            >
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={evolucaoData}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -91,7 +97,7 @@ export default function Charts({ data }: ChartsProps) {
                   <Bar dataKey="Passivos" fill="#ef4444" />
                 </BarChart>
               </ResponsiveContainer>
-            </div>
+            </ChartContainer>
           </CardContent>
         </Card>
       )}
@@ -103,7 +109,12 @@ export default function Charts({ data }: ChartsProps) {
             <CardTitle>Tendência do Resultado</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
+            <ChartContainer
+              config={{
+                Resultado: { label: "Resultado", color: "hsl(217, 91%, 60%)" }
+              }}
+              className="h-[300px]"
+            >
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={evolucaoData}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -123,7 +134,7 @@ export default function Charts({ data }: ChartsProps) {
                   />
                 </LineChart>
               </ResponsiveContainer>
-            </div>
+            </ChartContainer>
           </CardContent>
         </Card>
       )}
@@ -135,7 +146,13 @@ export default function Charts({ data }: ChartsProps) {
             <CardTitle>Ativos vs Passivos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
+            <ChartContainer
+              config={{
+                Ativos: { label: "Ativos", color: "hsl(142, 76%, 45%)" },
+                Passivos: { label: "Passivos", color: "hsl(0, 84%, 60%)" }
+              }}
+              className="h-[300px]"
+            >
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -158,7 +175,7 @@ export default function Charts({ data }: ChartsProps) {
                   />
                 </PieChart>
               </ResponsiveContainer>
-            </div>
+            </ChartContainer>
           </CardContent>
         </Card>
 
@@ -169,7 +186,12 @@ export default function Charts({ data }: ChartsProps) {
               <CardTitle>Composição dos Ativos</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px]">
+              <ChartContainer
+                config={{
+                  value: { label: "Valor", color: "hsl(142, 76%, 45%)" }
+                }}
+                className="h-[300px]"
+              >
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -192,7 +214,7 @@ export default function Charts({ data }: ChartsProps) {
                     />
                   </PieChart>
                 </ResponsiveContainer>
-              </div>
+              </ChartContainer>
             </CardContent>
           </Card>
         )}
@@ -204,7 +226,12 @@ export default function Charts({ data }: ChartsProps) {
               <CardTitle>Composição dos Passivos</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px]">
+              <ChartContainer
+                config={{
+                  value: { label: "Valor", color: "hsl(0, 84%, 60%)" }
+                }}
+                className="h-[300px]"
+              >
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -227,7 +254,7 @@ export default function Charts({ data }: ChartsProps) {
                     />
                   </PieChart>
                 </ResponsiveContainer>
-              </div>
+              </ChartContainer>
             </CardContent>
           </Card>
         )}
