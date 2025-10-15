@@ -73,14 +73,15 @@ export default function DataForm({ onClose, onSuccess, editData }: DataFormProps
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>
             {editData ? 'Editar Registro' : 'Novo Registro de Ativos e Passivos'}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="flex-1 overflow-y-auto px-1">
+          <form onSubmit={handleSubmit} id="assets-form" className="space-y-6">
           {/* Data de Referência */}
           <div>
             <Label htmlFor="data_referencia">Data de Referência *</Label>
@@ -224,16 +225,21 @@ export default function DataForm({ onClose, onSuccess, editData }: DataFormProps
               rows={3}
             />
           </div>
+          </form>
+        </div>
 
-          <div className="flex gap-2 justify-end">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-              {editData ? 'Atualizar' : 'Salvar'}
-            </Button>
-          </div>
-        </form>
+        <div className="flex gap-2 justify-end pt-4 border-t">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button 
+            type="submit" 
+            form="assets-form"
+            disabled={createMutation.isPending || updateMutation.isPending}
+          >
+            {editData ? 'Atualizar' : 'Salvar'}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
