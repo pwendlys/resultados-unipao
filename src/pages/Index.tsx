@@ -12,6 +12,7 @@ import Settings from '@/components/settings/Settings';
 import Reports from '@/components/reports/Reports';
 import CustomReports from '@/components/custom-reports/CustomReports';
 import CustomDashboards from '@/components/custom-dashboards/CustomDashboards';
+import ResultadosUnipao from '@/components/cooperado/ResultadosUnipao';
 import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
@@ -20,8 +21,8 @@ const Index = () => {
   const { user } = useAuth();
 
   const handlePageChange = (page: string) => {
-    if (user?.role === 'cooperado' && page !== 'custom-reports') {
-      setCurrentPage('custom-reports');
+    if (user?.role === 'cooperado' && page !== 'custom-reports' && page !== 'resultados-unipao') {
+      setCurrentPage('resultados-unipao');
       return;
     }
     setCurrentPage(page);
@@ -29,7 +30,7 @@ const Index = () => {
 
   useEffect(() => {
     if (user?.role === 'cooperado') {
-      setCurrentPage('custom-reports');
+      setCurrentPage('resultados-unipao');
     }
   }, [user]);
 
@@ -55,6 +56,8 @@ const Index = () => {
         return <CustomReports />;
       case 'custom-dashboards':
         return <CustomDashboards />;
+      case 'resultados-unipao':
+        return <ResultadosUnipao />;
       case 'settings':
         return <Settings />;
       default:

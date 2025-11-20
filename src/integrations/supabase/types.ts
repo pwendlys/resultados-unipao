@@ -438,6 +438,7 @@ export type Database = {
           expires_at: string | null
           id: string
           is_active: boolean
+          sent_to_cooperado: boolean | null
           share_id: string
           title: string
           updated_at: string
@@ -450,6 +451,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           is_active?: boolean
+          sent_to_cooperado?: boolean | null
           share_id: string
           title: string
           updated_at?: string
@@ -462,6 +464,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           is_active?: boolean
+          sent_to_cooperado?: boolean | null
           share_id?: string
           title?: string
           updated_at?: string
