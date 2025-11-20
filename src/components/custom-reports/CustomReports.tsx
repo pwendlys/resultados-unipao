@@ -1,13 +1,15 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, FileText, Eye } from 'lucide-react';
+import { Download, FileText, Eye, Send } from 'lucide-react';
 import { useTransactionsByAccount } from '@/hooks/useSupabaseData';
 import { useCategories } from '@/hooks/useCategories';
 import { useToast } from '@/hooks/use-toast';
 import { ReportBuilder } from './ReportBuilder';
 import ReportPreview from './ReportPreview';
 import { generateCustomReport } from '@/utils/customPdfGenerator';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface CustomReportConfig {
   selectedAccounts: string[];
@@ -33,12 +35,14 @@ const [reportConfig, setReportConfig] = useState<CustomReportConfig>({
 });
   const [showPreview, setShowPreview] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSendingToCooperado, setIsSendingToCooperado] = useState(false);
 
   // Usar o hook correto baseado na conta selecionada
   const selectedAccount = reportConfig.selectedAccounts.length === 1 ? reportConfig.selectedAccounts[0] : 'ALL';
   const { data: transactions = [], isLoading: transactionsLoading } = useTransactionsByAccount(selectedAccount);
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const handleGenerateReport = async () => {
     if (isExporting) return;
@@ -74,6 +78,52 @@ const [reportConfig, setReportConfig] = useState<CustomReportConfig>({
       });
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleSendToCooperado = async () => {
+    if (isSendingToCooperado) return;
+    
+    try {
+      setIsSendingToCooperado(true);
+      const filteredData = getFilteredData();
+      
+      if (filteredData.filteredTransactions.length === 0) {
+        toast({
+          title: "Nenhuma Transação",
+          description: "Não há transações para enviar ao cooperado.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Criar registro na tabela shared_reports
+      const { error } = await supabase
+        .from('shared_reports')
+        .insert([{
+          title: reportConfig.reportTitle,
+          config: reportConfig as any,
+          data: filteredData as any,
+          share_id: crypto.randomUUID(),
+          sent_to_cooperado: true,
+          is_active: true
+        }]);
+
+      if (error) throw error;
+
+      toast({
+        title: "Relatório Enviado!",
+        description: "O relatório foi enviado para o painel do cooperado com sucesso.",
+      });
+    } catch (error) {
+      console.error('Erro ao enviar relatório:', error);
+      toast({
+        title: "Erro ao Enviar",
+        description: "Não foi possível enviar o relatório ao cooperado.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingToCooperado(false);
     }
   };
 
