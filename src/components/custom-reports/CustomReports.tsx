@@ -126,6 +126,47 @@ const [reportConfig, setReportConfig] = useState<CustomReportConfig>({
     }
   };
 
+  // Função auxiliar para parsear diferentes formatos de data
+  const parseTransactionDate = (dateStr: string): Date | null => {
+    if (!dateStr) return null;
+
+    // Formato DD/MM/YYYY
+    if (dateStr.includes('/')) {
+      const parts = dateStr.split('/');
+      if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1; // Mês é 0-indexed
+        const year = parseInt(parts[2], 10);
+        
+        if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+          const date = new Date(year, month, day);
+          if (!isNaN(date.getTime())) {
+            return date;
+          }
+        }
+      }
+    }
+    
+    // Formato YYYY-MM-DD ou similar
+    const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      const year = parseInt(isoMatch[1], 10);
+      const month = parseInt(isoMatch[2], 10) - 1;
+      const day = parseInt(isoMatch[3], 10);
+      
+      if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+        const date = new Date(year, month, day);
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+      }
+    }
+    
+    // Fallback: tentar new Date() direto
+    const date = new Date(dateStr);
+    return isNaN(date.getTime()) ? null : date;
+  };
+
   const getFilteredData = () => {
     console.log('Filtrando dados com configuração:', reportConfig);
     console.log('Transações recebidas do hook:', transactions.length);
@@ -148,41 +189,33 @@ const [reportConfig, setReportConfig] = useState<CustomReportConfig>({
       console.log('Transações após filtro de contas:', filteredTransactions.length);
     }
 
-    // Filtrar por período
+    // Filtrar por período (reforçado)
     if (reportConfig.dateFrom || reportConfig.dateTo) {
-      filteredTransactions = filteredTransactions.filter(transaction => {
-        let transactionDate;
-        try {
-          if (transaction.date.includes('/')) {
-            const [day, month, year] = transaction.date.split('/');
-            transactionDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-          } else {
-            transactionDate = new Date(transaction.date);
-          }
-        } catch (error) {
-          console.error('Erro ao converter data da transação:', transaction.date, error);
-          return false;
+      const dateFromOnly = reportConfig.dateFrom 
+        ? new Date(reportConfig.dateFrom.getFullYear(), reportConfig.dateFrom.getMonth(), reportConfig.dateFrom.getDate()) 
+        : null;
+      const dateToOnly = reportConfig.dateTo 
+        ? new Date(reportConfig.dateTo.getFullYear(), reportConfig.dateTo.getMonth(), reportConfig.dateTo.getDate()) 
+        : null;
+
+      filteredTransactions = filteredTransactions.filter((transaction) => {
+        const parsed = parseTransactionDate(transaction.date);
+        
+        if (!parsed) {
+          console.warn('Data de transação inválida (mantida no relatório):', transaction.date);
+          return true; // Manter transação mesmo com data inválida
         }
         
-        const transactionDateOnly = new Date(transactionDate.getFullYear(), transactionDate.getMonth(), transactionDate.getDate());
+        const transactionDateOnly = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
         
-        if (reportConfig.dateFrom && reportConfig.dateTo) {
-          const dateFromOnly = new Date(reportConfig.dateFrom.getFullYear(), reportConfig.dateFrom.getMonth(), reportConfig.dateFrom.getDate());
-          const dateToOnly = new Date(reportConfig.dateTo.getFullYear(), reportConfig.dateTo.getMonth(), reportConfig.dateTo.getDate());
-          return transactionDateOnly >= dateFromOnly && transactionDateOnly <= dateToOnly;
-        } else if (reportConfig.dateFrom) {
-          const dateFromOnly = new Date(reportConfig.dateFrom.getFullYear(), reportConfig.dateFrom.getMonth(), reportConfig.dateFrom.getDate());
-          return transactionDateOnly >= dateFromOnly;
-        } else if (reportConfig.dateTo) {
-          const dateToOnly = new Date(reportConfig.dateTo.getFullYear(), reportConfig.dateTo.getMonth(), reportConfig.dateTo.getDate());
-          return transactionDateOnly <= dateToOnly;
-        }
+        if (dateFromOnly && transactionDateOnly < dateFromOnly) return false;
+        if (dateToOnly && transactionDateOnly > dateToOnly) return false;
         
         return true;
       });
-    }
 
-    console.log('Transações após filtro de período:', filteredTransactions.length);
+      console.log('Transações após filtro de período:', filteredTransactions.length);
+    }
 
     // Filtrar por tipo (entrada/saída)
     if (!reportConfig.includeEntries || !reportConfig.includeExits) {
