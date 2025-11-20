@@ -13,7 +13,8 @@ import {
   Settings,
   Building2,
   Filter,
-  FileText
+  FileText,
+  AlertCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -43,11 +44,27 @@ export const ReportBuilder = ({ config, onConfigChange, categories }: ReportBuil
     updateConfig({ selectedAccounts: newAccounts });
   };
 
+  const selectAllAccounts = () => {
+    updateConfig({ selectedAccounts: ACCOUNT_TYPES.map(a => a.value) });
+  };
+
+  const clearAllAccounts = () => {
+    updateConfig({ selectedAccounts: [] });
+  };
+
   const toggleCategory = (categoryName: string) => {
     const newCategories = config.selectedCategories.includes(categoryName)
       ? config.selectedCategories.filter(c => c !== categoryName)
       : [...config.selectedCategories, categoryName];
     updateConfig({ selectedCategories: newCategories });
+  };
+
+  const selectAllCategories = () => {
+    updateConfig({ selectedCategories: categories.map(c => c.name) });
+  };
+
+  const clearAllCategories = () => {
+    updateConfig({ selectedCategories: [] });
   };
 
   const entryCategories = categories.filter(c => c.type === 'entrada');
@@ -143,7 +160,61 @@ export const ReportBuilder = ({ config, onConfigChange, categories }: ReportBuil
             Escolha as contas para incluir no relatório
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {/* Avisos e Controles Rápidos */}
+          <div className="space-y-3">
+            {config.selectedAccounts.length > 0 ? (
+              <div className="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 space-y-1">
+                  <p className="text-sm font-medium text-orange-900">
+                    {config.selectedAccounts.length} conta(s) selecionada(s) - Filtrando dados
+                  </p>
+                  <p className="text-xs text-orange-700">
+                    Apenas transações destas contas serão incluídas no relatório
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-blue-900">
+                    Todas as contas incluídas
+                  </p>
+                  <p className="text-xs text-blue-700">
+                    Nenhum filtro de conta aplicado - mostrando dados de todas as contas
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Botões de Controle Rápido */}
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={selectAllAccounts}
+                className="flex-1"
+              >
+                Selecionar Todas
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={clearAllAccounts}
+                className="flex-1"
+              >
+                Limpar Seleção
+              </Button>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Lista de Contas */}
           <div className="space-y-3">
             {ACCOUNT_TYPES.map((account) => (
               <div key={account.value} className="flex items-center space-x-2">
@@ -262,17 +333,70 @@ export const ReportBuilder = ({ config, onConfigChange, categories }: ReportBuil
       </Card>
 
       {/* Category Selection */}
-      <Card>
+      <Card className="lg:col-span-2">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Filter className="h-5 w-5" />
-            Filtros por Categoria
+            Filtro por Categorias
           </CardTitle>
           <CardDescription>
             Selecione categorias específicas (deixe vazio para incluir todas)
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {/* Avisos e Controles para Categorias */}
+          <div className="space-y-3">
+            {config.selectedCategories.length > 0 ? (
+              <div className="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 space-y-1">
+                  <p className="text-sm font-medium text-orange-900">
+                    {config.selectedCategories.length} categoria(s) selecionada(s) - Filtrando dados
+                  </p>
+                  <p className="text-xs text-orange-700">
+                    Apenas transações destas categorias serão incluídas no relatório
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-blue-900">
+                    Todas as categorias incluídas
+                  </p>
+                  <p className="text-xs text-blue-700">
+                    Nenhum filtro de categoria aplicado - mostrando dados de todas as categorias
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Botões de Controle Rápido para Categorias */}
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={selectAllCategories}
+                className="flex-1"
+              >
+                Selecionar Todas
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={clearAllCategories}
+                className="flex-1"
+              >
+                Limpar Seleção
+              </Button>
+            </div>
+          </div>
+
+          <Separator />
+
           <div className="space-y-4">
             {/* Entry Categories */}
             {entryCategories.length > 0 && (
