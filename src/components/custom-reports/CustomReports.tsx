@@ -187,6 +187,14 @@ const [reportConfig, setReportConfig] = useState<CustomReportConfig>({
       });
 
       console.log('Transações após filtro de contas:', filteredTransactions.length);
+      console.log('Contas selecionadas:', reportConfig.selectedAccounts);
+      
+      if (filteredTransactions.length === 0) {
+        console.warn('⚠️ AVISO: Filtro de contas resultou em 0 transações!');
+        console.warn('Contas disponíveis nos extratos:', Array.from(new Set(extratos.map(e => e.account_type))));
+      }
+    } else {
+      console.log('Nenhuma conta selecionada - incluindo todas as contas');
     }
 
     // Filtrar por período (reforçado)
@@ -230,12 +238,19 @@ const [reportConfig, setReportConfig] = useState<CustomReportConfig>({
 
     // Filtrar por categorias selecionadas
     if (reportConfig.selectedCategories.length > 0) {
-      filteredTransactions = filteredTransactions.filter(transaction => 
+      filteredTransactions = filteredTransactions.filter((transaction) => 
         transaction.category && reportConfig.selectedCategories.includes(transaction.category)
       );
+      console.log('Transações após filtro de categorias:', filteredTransactions.length);
+      console.log('Categorias selecionadas:', reportConfig.selectedCategories);
+      
+      if (filteredTransactions.length === 0) {
+        console.warn('⚠️ AVISO: Filtro de categorias resultou em 0 transações!');
+        console.warn('Categorias disponíveis:', Array.from(new Set(transactions.filter(t => t.category).map(t => t.category))));
+      }
+    } else {
+      console.log('Nenhuma categoria selecionada - incluindo todas as categorias');
     }
-
-    console.log('Transações após filtro de categoria:', filteredTransactions.length);
 
     // Calcular totais
     const categorizedTransactions = filteredTransactions.filter(t => t.status === 'categorizado');

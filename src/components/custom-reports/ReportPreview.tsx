@@ -17,6 +17,7 @@ import { CustomReportConfig } from './CustomReports';
 import { format } from 'date-fns';
 import { useState } from 'react';
 import { useSharedReportsActions } from '@/hooks/useSharedReports';
+import { cn } from '@/lib/utils';
 
 interface CategoryData {
   id: string;
@@ -168,8 +169,24 @@ const ReportPreview = ({ config, data, categories, isCooperadoView = false }: Re
           </div>
           <div className="text-center p-2 sm:p-0">
             <div className="text-xs sm:text-sm text-muted-foreground mb-1">Contas Selecionadas</div>
-            <div className="font-medium text-xs sm:text-sm break-words">
-              {config.selectedAccounts.length === 0 ? 'Todas as contas' : `${config.selectedAccounts.length} conta(s)`}
+            <div className={cn(
+              "font-medium text-xs sm:text-sm break-words",
+              config.selectedAccounts.length > 0 ? "text-orange-600" : "text-blue-600"
+            )}>
+              {config.selectedAccounts.length > 0 
+                ? `🔍 ${config.selectedAccounts.length} conta(s) filtrada(s)`
+                : '✅ Todas as contas'}
+            </div>
+          </div>
+          <div className="text-center p-2 sm:p-0">
+            <div className="text-xs sm:text-sm text-muted-foreground mb-1">Categorias Selecionadas</div>
+            <div className={cn(
+              "font-medium text-xs sm:text-sm break-words",
+              config.selectedCategories.length > 0 ? "text-orange-600" : "text-blue-600"
+            )}>
+              {config.selectedCategories.length > 0 
+                ? `🔍 ${config.selectedCategories.length} categoria(s) filtrada(s)`
+                : '✅ Todas as categorias'}
             </div>
           </div>
           <div className="text-center p-2 sm:p-0">
