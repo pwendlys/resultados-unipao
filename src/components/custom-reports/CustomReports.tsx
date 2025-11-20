@@ -252,6 +252,16 @@ const [reportConfig, setReportConfig] = useState<CustomReportConfig>({
             <Eye className="h-4 w-4 mr-2" />
             {showPreview ? 'Ocultar Preview' : 'Visualizar Preview'}
           </Button>
+          {user?.role === 'admin' && (
+            <Button 
+              onClick={handleSendToCooperado}
+              disabled={isSendingToCooperado || reportConfig.selectedAccounts.length === 0}
+              variant="secondary"
+            >
+              <Send className="h-4 w-4 mr-2" />
+              {isSendingToCooperado ? 'Enviando...' : 'Enviar p/ Cooperado'}
+            </Button>
+          )}
           <Button 
             onClick={handleGenerateReport}
             disabled={isExporting || reportConfig.selectedAccounts.length === 0}
