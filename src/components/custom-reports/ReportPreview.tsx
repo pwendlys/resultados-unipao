@@ -41,6 +41,7 @@ interface ReportPreviewProps {
   config: CustomReportConfig;
   data: CustomReportData;
   categories: any[];
+  isCooperadoView?: boolean;
 }
 
 const formatCurrency = (value: number) => {
@@ -50,7 +51,7 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
-const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
+const ReportPreview = ({ config, data, categories, isCooperadoView = false }: ReportPreviewProps) => {
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const { toast } = useToast();
@@ -330,17 +331,18 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
           </div>
         )}
 
-        {/* Seção de Compartilhamento */}
-        <Card className="border-blue-200 bg-blue-50/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-blue-900">
-              <Share2 className="h-5 w-5" />
-              Compartilhar com Cooperados
-            </CardTitle>
-            <CardDescription>
-              Gere um link permanente salvo no banco de dados para que os cooperados possam visualizar este relatório
-            </CardDescription>
-          </CardHeader>
+        {/* Seção de Compartilhamento - Apenas para Admin */}
+        {!isCooperadoView && (
+          <Card className="border-blue-200 bg-blue-50/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-blue-900">
+                <Share2 className="h-5 w-5" />
+                Compartilhar com Cooperados
+              </CardTitle>
+              <CardDescription>
+                Gere um link permanente salvo no banco de dados para que os cooperados possam visualizar este relatório
+              </CardDescription>
+            </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
               <Button 
@@ -394,6 +396,7 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
             )}
           </CardContent>
         </Card>
+        )}
 
         {data.categorizedTransactions.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">

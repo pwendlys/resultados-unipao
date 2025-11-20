@@ -185,6 +185,7 @@ const ResultadosUnipao = () => {
               data={selectedReport.data}
               config={selectedReport.config}
               categories={categories}
+              isCooperadoView={true}
             />
           )}
         </DialogContent>
