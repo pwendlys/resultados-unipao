@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, FileText, Eye, Send } from 'lucide-react';
-import { useTransactionsByAccount } from '@/hooks/useSupabaseData';
+import { useTransactionsByAccount, useExtratos } from '@/hooks/useSupabaseData';
 import { useCategories } from '@/hooks/useCategories';
 import { useToast } from '@/hooks/use-toast';
 import { ReportBuilder } from './ReportBuilder';
@@ -37,9 +37,9 @@ const [reportConfig, setReportConfig] = useState<CustomReportConfig>({
   const [isExporting, setIsExporting] = useState(false);
   const [isSendingToCooperado, setIsSendingToCooperado] = useState(false);
 
-  // Usar o hook correto baseado na conta selecionada
-  const selectedAccount = reportConfig.selectedAccounts.length === 1 ? reportConfig.selectedAccounts[0] : 'ALL';
-  const { data: transactions = [], isLoading: transactionsLoading } = useTransactionsByAccount(selectedAccount);
+  // Buscar todas as transações e extratos para permitir filtro múltiplo
+  const { data: transactions = [], isLoading: transactionsLoading } = useTransactionsByAccount('ALL');
+  const { data: extratos = [], isLoading: extratosLoading } = useExtratos();
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -50,7 +50,6 @@ const [reportConfig, setReportConfig] = useState<CustomReportConfig>({
     try {
       setIsExporting(true);
       console.log('Gerando relatório personalizado:', reportConfig);
-      console.log('Conta selecionada para filtro:', selectedAccount);
       
       const filteredData = getFilteredData();
       
@@ -132,6 +131,22 @@ const [reportConfig, setReportConfig] = useState<CustomReportConfig>({
     console.log('Transações recebidas do hook:', transactions.length);
     
     let filteredTransactions = transactions;
+
+    // Filtrar por contas selecionadas
+    if (reportConfig.selectedAccounts.length > 0) {
+      // Criar mapa de extrato_id para account_type
+      const extratoMap = new Map(
+        extratos.map(e => [e.id, e.account_type])
+      );
+
+      filteredTransactions = filteredTransactions.filter(transaction => {
+        if (!transaction.extrato_id) return false;
+        const accountType = extratoMap.get(transaction.extrato_id);
+        return accountType && reportConfig.selectedAccounts.includes(accountType);
+      });
+
+      console.log('Transações após filtro de contas:', filteredTransactions.length);
+    }
 
     // Filtrar por período
     if (reportConfig.dateFrom || reportConfig.dateTo) {
@@ -218,7 +233,7 @@ const [reportConfig, setReportConfig] = useState<CustomReportConfig>({
     };
   };
 
-  if (transactionsLoading || categoriesLoading) {
+  if (transactionsLoading || categoriesLoading || extratosLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -238,11 +253,6 @@ const [reportConfig, setReportConfig] = useState<CustomReportConfig>({
           <p className="text-muted-foreground">
             Crie relatórios operacionais personalizados com critérios específicos
           </p>
-          {selectedAccount !== 'ALL' && (
-            <p className="text-sm text-blue-600 mt-2">
-              Conta selecionada: {selectedAccount}
-            </p>
-          )}
         </div>
         <div className="flex gap-2">
           <Button 
