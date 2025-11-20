@@ -93,39 +93,41 @@ const ResultadosUnipao = () => {
           {reports.map((report) => (
             <Card key={report.id} className="hover:shadow-md transition-shadow">
               <CardHeader>
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
                   <div className="space-y-1 flex-1">
-                    <CardTitle className="text-xl">{report.title}</CardTitle>
-                    <CardDescription className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
+                    <CardTitle className="text-lg sm:text-xl leading-tight">{report.title}</CardTitle>
+                    <CardDescription className="flex items-center gap-2 text-xs sm:text-sm">
+                      <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                       Enviado em {formatDate(report.created_at)}
                     </CardDescription>
                   </div>
-                  <div className="flex gap-2 flex-shrink-0">
+                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setSelectedReport(report)}
+                      className="w-full sm:w-auto text-xs sm:text-sm"
                     >
-                      <Eye className="mr-2 h-4 w-4" />
+                      <Eye className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                       Visualizar
                     </Button>
                     <Button
                       size="sm"
                       onClick={() => handleDownloadPDF(report)}
                       disabled={isGeneratingPDF}
+                      className="w-full sm:w-auto text-xs sm:text-sm"
                     >
-                      <Download className="mr-2 h-4 w-4" />
+                      <Download className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                       {isGeneratingPDF ? "Gerando..." : "Baixar PDF"}
                     </Button>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Período:</span>
-                    <p className="font-medium">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs sm:text-sm">
+                  <div className="space-y-1">
+                    <span className="text-muted-foreground block text-xs">Período:</span>
+                    <p className="font-medium text-xs sm:text-sm break-words">
                       {report.config.dateFrom 
                         ? new Date(report.config.dateFrom).toLocaleDateString('pt-BR')
                         : 'Início'}{' '}
@@ -135,23 +137,26 @@ const ResultadosUnipao = () => {
                         : 'Fim'}
                     </p>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">Contas:</span>
-                    <p className="font-medium">
+                  <div className="space-y-1">
+                    <span className="text-muted-foreground block text-xs">Contas:</span>
+                    <p 
+                      className="font-medium text-xs sm:text-sm break-words line-clamp-2" 
+                      title={report.config.selectedAccounts?.length > 0 ? report.config.selectedAccounts.join(', ') : 'Todas as contas'}
+                    >
                       {report.config.selectedAccounts?.length > 0
                         ? report.config.selectedAccounts.join(', ')
                         : 'Todas'}
                     </p>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">Transações:</span>
-                    <p className="font-medium">
+                  <div className="space-y-1">
+                    <span className="text-muted-foreground block text-xs">Transações:</span>
+                    <p className="font-medium text-xs sm:text-sm">
                       {report.data.filteredTransactions?.length || 0}
                     </p>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">Resultado:</span>
-                    <p className={`font-medium ${
+                  <div className="space-y-1">
+                    <span className="text-muted-foreground block text-xs">Resultado:</span>
+                    <p className={`font-medium text-xs sm:text-sm ${
                       (report.data.netResult || 0) >= 0 
                         ? 'text-green-600' 
                         : 'text-red-600'
@@ -168,10 +173,10 @@ const ResultadosUnipao = () => {
 
       {/* Modal de Preview */}
       <Dialog open={!!selectedReport} onOpenChange={() => setSelectedReport(null)}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>{selectedReport?.title}</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-base sm:text-lg">{selectedReport?.title}</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
               Visualização detalhada do relatório
             </DialogDescription>
           </DialogHeader>

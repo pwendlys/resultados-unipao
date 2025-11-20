@@ -141,9 +141,9 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
-          Preview do Relatório: {config.reportTitle}
+        <CardTitle className="flex items-start gap-2 text-base sm:text-lg flex-wrap">
+          <FileText className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0 mt-0.5" />
+          <span className="break-words">Preview do Relatório: {config.reportTitle}</span>
         </CardTitle>
         <CardDescription>
           Visualização prévia dos dados que serão incluídos no relatório
@@ -151,10 +151,10 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Informações do Relatório */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="text-center">
-            <div className="text-sm text-muted-foreground">Período</div>
-            <div className="font-medium">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <div className="text-center p-2 sm:p-0">
+            <div className="text-xs sm:text-sm text-muted-foreground mb-1">Período</div>
+            <div className="font-medium text-xs sm:text-sm break-words">
               {config.dateFrom && config.dateTo 
                 ? `${format(config.dateFrom, 'dd/MM/yyyy')} até ${format(config.dateTo, 'dd/MM/yyyy')}`
                 : config.dateFrom 
@@ -165,33 +165,33 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
               }
             </div>
           </div>
-          <div className="text-center">
-            <div className="text-sm text-muted-foreground">Contas Selecionadas</div>
-            <div className="font-medium">
+          <div className="text-center p-2 sm:p-0">
+            <div className="text-xs sm:text-sm text-muted-foreground mb-1">Contas Selecionadas</div>
+            <div className="font-medium text-xs sm:text-sm break-words">
               {config.selectedAccounts.length === 0 ? 'Todas as contas' : `${config.selectedAccounts.length} conta(s)`}
             </div>
           </div>
-          <div className="text-center">
-            <div className="text-sm text-muted-foreground">Transações</div>
-            <div className="font-medium">{data.categorizedTransactions.length} categorizadas</div>
+          <div className="text-center p-2 sm:p-0">
+            <div className="text-xs sm:text-sm text-muted-foreground mb-1">Transações</div>
+            <div className="font-medium text-xs sm:text-sm">{data.categorizedTransactions.length} categorizadas</div>
           </div>
         </div>
 
         {/* Cards de Resumo */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
           {config.includeEntries && (
             <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total de Receitas</p>
-                    <p className="text-2xl font-bold text-green-600">{formatCurrency(data.totalEntries)}</p>
-                    <p className="text-xs text-muted-foreground">{data.entryTransactions.length} transações</p>
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs sm:text-sm text-muted-foreground">Total de Receitas</p>
+                    <p className="text-lg sm:text-2xl font-bold text-green-600 break-words">{formatCurrency(data.totalEntries)}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">{data.entryTransactions.length} transações</p>
                     {totalInterestEntries > 0 && (
-                      <p className="text-xs text-blue-600">Juros: {formatCurrency(totalInterestEntries)}</p>
+                      <p className="text-[10px] sm:text-xs text-blue-600">Juros: {formatCurrency(totalInterestEntries)}</p>
                     )}
                   </div>
-                  <TrendingUp className="h-8 w-8 text-green-600" />
+                  <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 flex-shrink-0" />
                 </div>
               </CardContent>
             </Card>
@@ -199,17 +199,17 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
 
           {config.includeExits && (
             <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total de Despesas</p>
-                    <p className="text-2xl font-bold text-red-600">{formatCurrency(data.totalExits)}</p>
-                    <p className="text-xs text-muted-foreground">{data.exitTransactions.length} transações</p>
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs sm:text-sm text-muted-foreground">Total de Despesas</p>
+                    <p className="text-lg sm:text-2xl font-bold text-red-600 break-words">{formatCurrency(data.totalExits)}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">{data.exitTransactions.length} transações</p>
                     {totalInterestExits > 0 && (
-                      <p className="text-xs text-blue-600">Juros: {formatCurrency(totalInterestExits)}</p>
+                      <p className="text-[10px] sm:text-xs text-blue-600">Juros: {formatCurrency(totalInterestExits)}</p>
                     )}
                   </div>
-                  <TrendingDown className="h-8 w-8 text-red-600" />
+                  <TrendingDown className="h-6 w-6 sm:h-8 sm:w-8 text-red-600 flex-shrink-0" />
                 </div>
               </CardContent>
             </Card>
@@ -217,18 +217,18 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
 
           {config.includeEntries && config.includeExits && (
             <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Resultado Líquido</p>
-                    <p className={`text-2xl font-bold ${data.netResult >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs sm:text-sm text-muted-foreground">Resultado Líquido</p>
+                    <p className={`text-lg sm:text-2xl font-bold break-words ${data.netResult >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {formatCurrency(data.netResult)}
                     </p>
-                    <Badge variant={data.netResult >= 0 ? 'default' : 'destructive'}>
+                    <Badge variant={data.netResult >= 0 ? 'default' : 'destructive'} className="text-[10px] sm:text-xs">
                       {data.netResult >= 0 ? 'Superávit' : 'Déficit'}
                     </Badge>
                   </div>
-                  <DollarSign className="h-8 w-8 text-blue-600" />
+                  <DollarSign className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
                 </div>
               </CardContent>
             </Card>
@@ -236,30 +236,30 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
 
           {totalInterest > 0 && (
             <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total de Juros</p>
-                    <p className="text-2xl font-bold text-blue-600">{formatCurrency(totalInterest)}</p>
-                    <p className="text-xs text-muted-foreground">
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs sm:text-sm text-muted-foreground">Total de Juros</p>
+                    <p className="text-lg sm:text-2xl font-bold text-blue-600 break-words">{formatCurrency(totalInterest)}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">
                       {data.categorizedTransactions.filter(t => (Number(t.juros) || 0) > 0).length} com juros
                     </p>
                   </div>
-                  <Calculator className="h-8 w-8 text-blue-600" />
+                  <Calculator className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
                 </div>
               </CardContent>
             </Card>
           )}
 
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total de Transações</p>
-                  <p className="text-2xl font-bold">{data.filteredTransactions.length}</p>
-                  <p className="text-xs text-muted-foreground">{data.categorizedTransactions.length} categorizadas</p>
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Total de Transações</p>
+                  <p className="text-lg sm:text-2xl font-bold break-words">{data.filteredTransactions.length}</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">{data.categorizedTransactions.length} categorizadas</p>
                 </div>
-                <FileText className="h-8 w-8 text-blue-600" />
+                <FileText className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
               </div>
             </CardContent>
           </Card>
@@ -267,20 +267,20 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
 
         {/* Categorias */}
         {data.categorizedTransactions.length > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {config.includeEntries && entryCategories.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg text-green-600">Receitas por Categoria</CardTitle>
-                  <CardDescription>Distribuição das receitas pelas principais categorias</CardDescription>
+                  <CardTitle className="text-base sm:text-lg text-green-600">Receitas por Categoria</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">Distribuição das receitas pelas principais categorias</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     {entryCategories.map((category: any, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="font-medium">{category.name}</div>
-                          <div className="text-sm text-muted-foreground">
+                      <div key={index} className="flex items-start sm:items-center justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm sm:text-base break-words">{category.name}</div>
+                          <div className="text-xs sm:text-sm text-muted-foreground">
                             {category.count} transações
                             {data.totalEntries > 0 && ` • ${((category.total / data.totalEntries) * 100).toFixed(1)}%`}
                             {category.totalInterest > 0 && (
@@ -288,8 +288,8 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
                             )}
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="font-bold text-green-600">{formatCurrency(category.total)}</div>
+                        <div className="text-right flex-shrink-0">
+                          <div className="font-bold text-sm sm:text-base text-green-600 whitespace-nowrap">{formatCurrency(category.total)}</div>
                         </div>
                       </div>
                     ))}
@@ -301,16 +301,16 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
             {config.includeExits && exitCategories.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg text-red-600">Despesas por Categoria</CardTitle>
-                  <CardDescription>Distribuição das despesas pelas principais categorias</CardDescription>
+                  <CardTitle className="text-base sm:text-lg text-red-600">Despesas por Categoria</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">Distribuição das despesas pelas principais categorias</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     {exitCategories.map((category: any, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="font-medium">{category.name}</div>
-                          <div className="text-sm text-muted-foreground">
+                      <div key={index} className="flex items-start sm:items-center justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm sm:text-base break-words">{category.name}</div>
+                          <div className="text-xs sm:text-sm text-muted-foreground">
                             {category.count} transações
                             {data.totalExits > 0 && ` • ${((category.total / data.totalExits) * 100).toFixed(1)}%`}
                             {category.totalInterest > 0 && (
@@ -318,8 +318,8 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
                             )}
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="font-bold text-red-600">{formatCurrency(category.total)}</div>
+                        <div className="text-right flex-shrink-0">
+                          <div className="font-bold text-sm sm:text-base text-red-600 whitespace-nowrap">{formatCurrency(category.total)}</div>
                         </div>
                       </div>
                     ))}
@@ -342,11 +342,11 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
               <Button 
                 onClick={generateShareLink} 
                 disabled={isGeneratingLink}
-                className="flex items-center gap-2"
+                className="flex items-center justify-center gap-2 w-full sm:w-auto text-sm"
               >
                 <Share2 className="h-4 w-4" />
                 {isGeneratingLink ? 'Gerando Link...' : shareLink ? 'Gerar Novo Link' : 'Gerar Link de Compartilhamento'}
@@ -355,16 +355,16 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
 
             {shareLink && (
               <div className="space-y-3">
-                <div className="flex items-center gap-2 p-3 bg-white border rounded-lg text-sm font-mono">
+                <div className="flex items-center gap-2 p-3 bg-white border rounded-lg text-xs sm:text-sm font-mono overflow-x-auto">
                   <span className="flex-1 truncate">{shareLink}</span>
                 </div>
                 
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => copyToClipboard(shareLink)}
-                    className="flex items-center gap-2"
+                    className="flex items-center justify-center gap-2 w-full sm:w-auto text-xs sm:text-sm"
                   >
                     <Copy className="h-4 w-4" />
                     Copiar Link
@@ -373,7 +373,7 @@ const ReportPreview = ({ config, data, categories }: ReportPreviewProps) => {
                     variant="outline"
                     size="sm"
                     onClick={() => openShareLink(shareLink)}
-                    className="flex items-center gap-2"
+                    className="flex items-center justify-center gap-2 w-full sm:w-auto text-xs sm:text-sm"
                   >
                     <ExternalLink className="h-4 w-4" />
                     Testar Acesso
