@@ -115,38 +115,40 @@ export const useTransactionsByAccount = (accountType?: string) => {
       console.log('Fetching transactions by account type:', accountType);
       
       if (!accountType || accountType === 'ALL') {
-        const { data, error } = await supabase
+        const { data, error, count } = await supabase
           .from('transactions')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(5000);
+          .select('*', { count: 'exact' })
+          .order('created_at', { ascending: false });
         
         if (error) {
           console.error('Error fetching all transactions:', error);
           throw error;
         }
+        console.log('✅ Transactions fetched (ALL):', data?.length || 0, '| Total in DB:', count);
+        console.log('📅 Sample dates:', data?.slice(0, 5).map(t => t.date));
         return data as Transaction[];
       }
       
       // Buscar transações por tipo de conta através dos extratos
-      const { data, error } = await supabase
+      const { data, error, count } = await supabase
         .from('transactions')
         .select(`
           *,
           extratos!inner(account_type)
-        `)
+        `, { count: 'exact' })
         .eq('extratos.account_type', accountType)
-        .order('created_at', { ascending: false })
-        .limit(5000);
+        .order('created_at', { ascending: false });
       
       if (error) {
         console.error('Error fetching transactions by account:', error);
         throw error;
       }
-      console.log('Transactions fetched by account:', data?.length || 0);
+      console.log(`✅ Transactions fetched (${accountType}):`, data?.length || 0, '| Total in DB:', count);
+      console.log('📅 Sample dates:', data?.slice(0, 5).map(t => t.date));
       return data as Transaction[];
     },
     staleTime: 0,
+    gcTime: 0,
     refetchOnMount: true,
   });
 };
