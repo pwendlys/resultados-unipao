@@ -47,8 +47,7 @@ const Navigation = ({ currentPage, onPageChange, isSidebarCollapsed, onToggleSid
 
   const itemsToShow = user?.role === 'cooperado'
     ? [
-        { id: 'resultados-unipao', label: 'Resultados Unipão', icon: FileText },
-        { id: 'custom-reports', label: 'Relatórios Personalizados', icon: Presentation }
+        { id: 'resultados-unipao', label: 'Resultados Unipão', icon: FileText }
       ]
     : menuItems;
 
