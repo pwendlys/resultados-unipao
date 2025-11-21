@@ -118,7 +118,8 @@ export const useTransactionsByAccount = (accountType?: string) => {
         const { data, error, count } = await supabase
           .from('transactions')
           .select('*', { count: 'exact' })
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .range(0, 19999);
         
         if (error) {
           console.error('Error fetching all transactions:', error);
@@ -137,7 +138,8 @@ export const useTransactionsByAccount = (accountType?: string) => {
           extratos!inner(account_type)
         `, { count: 'exact' })
         .eq('extratos.account_type', accountType)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(0, 19999);
       
       if (error) {
         console.error('Error fetching transactions by account:', error);
