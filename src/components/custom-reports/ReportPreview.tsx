@@ -2,6 +2,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { 
   TrendingUp, 
@@ -134,7 +135,7 @@ const ReportPreview = ({ config, data, categories, isCooperadoView = false }: Re
         return acc;
       }, {} as Record<string, any>);
 
-    return Object.values(categoryTotals).sort((a: any, b: any) => b.total - a.total).slice(0, 5);
+    return Object.values(categoryTotals).sort((a: any, b: any) => b.total - a.total);
   };
 
   const entryCategories = getCategoriesByType('entrada');
@@ -289,29 +290,33 @@ const ReportPreview = ({ config, data, categories, isCooperadoView = false }: Re
             {config.includeEntries && entryCategories.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base sm:text-lg text-green-600">Receitas por Categoria</CardTitle>
-                  <CardDescription className="text-xs sm:text-sm">Distribuição das receitas pelas principais categorias</CardDescription>
+                  <CardTitle className="text-base sm:text-lg text-green-600">
+                    Receitas por Categoria ({entryCategories.length})
+                  </CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">Distribuição completa das receitas por categoria</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {entryCategories.map((category: any, index) => (
-                      <div key={index} className="flex items-start sm:items-center justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm sm:text-base break-words">{category.name}</div>
-                          <div className="text-xs sm:text-sm text-muted-foreground">
-                            {category.count} transações
-                            {data.totalEntries > 0 && ` • ${((category.total / data.totalEntries) * 100).toFixed(1)}%`}
-                            {category.totalInterest > 0 && (
-                              <span className="text-blue-600"> • Juros: {formatCurrency(category.totalInterest)}</span>
-                            )}
+                  <ScrollArea className="h-[400px] pr-4">
+                    <div className="space-y-3">
+                      {entryCategories.map((category: any, index) => (
+                        <div key={index} className="flex items-start sm:items-center justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm sm:text-base break-words">{category.name}</div>
+                            <div className="text-xs sm:text-sm text-muted-foreground">
+                              {category.count} transações
+                              {data.totalEntries > 0 && ` • ${((category.total / data.totalEntries) * 100).toFixed(1)}%`}
+                              {category.totalInterest > 0 && (
+                                <span className="text-blue-600"> • Juros: {formatCurrency(category.totalInterest)}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <div className="font-bold text-sm sm:text-base text-green-600 whitespace-nowrap">{formatCurrency(category.total)}</div>
                           </div>
                         </div>
-                        <div className="text-right flex-shrink-0">
-                          <div className="font-bold text-sm sm:text-base text-green-600 whitespace-nowrap">{formatCurrency(category.total)}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
                 </CardContent>
               </Card>
             )}
@@ -319,29 +324,33 @@ const ReportPreview = ({ config, data, categories, isCooperadoView = false }: Re
             {config.includeExits && exitCategories.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base sm:text-lg text-red-600">Despesas por Categoria</CardTitle>
-                  <CardDescription className="text-xs sm:text-sm">Distribuição das despesas pelas principais categorias</CardDescription>
+                  <CardTitle className="text-base sm:text-lg text-red-600">
+                    Despesas por Categoria ({exitCategories.length})
+                  </CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">Distribuição completa das despesas por categoria</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {exitCategories.map((category: any, index) => (
-                      <div key={index} className="flex items-start sm:items-center justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm sm:text-base break-words">{category.name}</div>
-                          <div className="text-xs sm:text-sm text-muted-foreground">
-                            {category.count} transações
-                            {data.totalExits > 0 && ` • ${((category.total / data.totalExits) * 100).toFixed(1)}%`}
-                            {category.totalInterest > 0 && (
-                              <span className="text-blue-600"> • Juros: {formatCurrency(category.totalInterest)}</span>
-                            )}
+                  <ScrollArea className="h-[400px] pr-4">
+                    <div className="space-y-3">
+                      {exitCategories.map((category: any, index) => (
+                        <div key={index} className="flex items-start sm:items-center justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm sm:text-base break-words">{category.name}</div>
+                            <div className="text-xs sm:text-sm text-muted-foreground">
+                              {category.count} transações
+                              {data.totalExits > 0 && ` • ${((category.total / data.totalExits) * 100).toFixed(1)}%`}
+                              {category.totalInterest > 0 && (
+                                <span className="text-blue-600"> • Juros: {formatCurrency(category.totalInterest)}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <div className="font-bold text-sm sm:text-base text-red-600 whitespace-nowrap">{formatCurrency(category.total)}</div>
                           </div>
                         </div>
-                        <div className="text-right flex-shrink-0">
-                          <div className="font-bold text-sm sm:text-base text-red-600 whitespace-nowrap">{formatCurrency(category.total)}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
                 </CardContent>
               </Card>
             )}
