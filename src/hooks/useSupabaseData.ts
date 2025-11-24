@@ -1,3 +1,8 @@
+// ============================================================
+// VERSÃO 2.0 - RANGE 20K ATIVO - 2025-11-24 21:45:00
+// Este arquivo busca até 20.000 transações via .range(0, 19999)
+// ============================================================
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -112,9 +117,11 @@ export const useTransactionsByAccount = (accountType?: string) => {
   return useQuery({
     queryKey: ['transactions', accountType],
     queryFn: async () => {
+      console.log('🔄 useTransactionsByAccount v2.0 - RANGE 20K ATIVO -', new Date().toISOString());
       console.log('Fetching transactions by account type:', accountType);
       
       if (!accountType || accountType === 'ALL') {
+        console.log('📊 Query executada com .range(0, 19999) aplicado');
         const { data, error, count } = await supabase
           .from('transactions')
           .select('*', { count: 'exact' })
@@ -131,6 +138,7 @@ export const useTransactionsByAccount = (accountType?: string) => {
       }
       
       // Buscar transações por tipo de conta através dos extratos
+      console.log('📊 Query executada com .range(0, 19999) aplicado');
       const { data, error, count } = await supabase
         .from('transactions')
         .select(`
