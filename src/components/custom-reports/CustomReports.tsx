@@ -139,7 +139,8 @@ const [reportConfig, setReportConfig] = useState<CustomReportConfig>({
         const year = parseInt(parts[2], 10);
         
         if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-          const date = new Date(year, month, day);
+          // CRITICAL: Criar data com hora zerada explicitamente
+          const date = new Date(year, month, day, 0, 0, 0, 0);
           if (!isNaN(date.getTime())) {
             return date;
           }
@@ -155,16 +156,15 @@ const [reportConfig, setReportConfig] = useState<CustomReportConfig>({
       const day = parseInt(isoMatch[3], 10);
       
       if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
-        const date = new Date(year, month, day);
+        // CRITICAL: Criar data com hora zerada explicitamente
+        const date = new Date(year, month, day, 0, 0, 0, 0);
         if (!isNaN(date.getTime())) {
           return date;
         }
       }
     }
     
-    // Fallback: tentar new Date() direto
-    const date = new Date(dateStr);
-    return isNaN(date.getTime()) ? null : date;
+    return null;
   };
 
   const getFilteredData = () => {
@@ -188,10 +188,20 @@ const [reportConfig, setReportConfig] = useState<CustomReportConfig>({
 
       console.log('Transações após filtro de contas:', filteredTransactions.length);
       console.log('Contas selecionadas:', reportConfig.selectedAccounts);
+      console.log('📅 Amostra de datas antes do filtro de período:', filteredTransactions.slice(0, 5).map(t => t.date));
       
       if (filteredTransactions.length === 0) {
         console.warn('⚠️ AVISO: Filtro de contas resultou em 0 transações!');
         console.warn('Contas disponíveis nos extratos:', Array.from(new Set(extratos.map(e => e.account_type))));
+        return {
+          filteredTransactions: [],
+          categorizedTransactions: [],
+          entryTransactions: [],
+          exitTransactions: [],
+          totalEntries: 0,
+          totalExits: 0,
+          netResult: 0
+        };
       }
     } else {
       console.log('Nenhuma conta selecionada - incluindo todas as contas');
@@ -199,30 +209,54 @@ const [reportConfig, setReportConfig] = useState<CustomReportConfig>({
 
     // Filtrar por período (reforçado)
     if (reportConfig.dateFrom || reportConfig.dateTo) {
-      const dateFromOnly = reportConfig.dateFrom 
-        ? new Date(reportConfig.dateFrom.getFullYear(), reportConfig.dateFrom.getMonth(), reportConfig.dateFrom.getDate()) 
+      // CRITICAL: Normalizar as datas de configuração zerando horas
+      const dateFromNormalized = reportConfig.dateFrom 
+        ? new Date(
+            reportConfig.dateFrom.getFullYear(), 
+            reportConfig.dateFrom.getMonth(), 
+            reportConfig.dateFrom.getDate(),
+            0, 0, 0, 0
+          )
         : null;
-      const dateToOnly = reportConfig.dateTo 
-        ? new Date(reportConfig.dateTo.getFullYear(), reportConfig.dateTo.getMonth(), reportConfig.dateTo.getDate()) 
+        
+      const dateToNormalized = reportConfig.dateTo 
+        ? new Date(
+            reportConfig.dateTo.getFullYear(), 
+            reportConfig.dateTo.getMonth(), 
+            reportConfig.dateTo.getDate(),
+            23, 59, 59, 999
+          )
         : null;
+
+      console.log('🗓️ Filtro de período ativado:', {
+        dateFrom: dateFromNormalized?.toISOString(),
+        dateTo: dateToNormalized?.toISOString()
+      });
 
       filteredTransactions = filteredTransactions.filter((transaction) => {
         const parsed = parseTransactionDate(transaction.date);
         
         if (!parsed) {
-          console.warn('Data de transação inválida (mantida no relatório):', transaction.date);
-          return true; // Manter transação mesmo com data inválida
+          console.warn('⚠️ Data de transação inválida:', transaction.date, '- Transação excluída do relatório');
+          return false;
         }
         
-        const transactionDateOnly = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+        // CRITICAL: Comparar timestamps diretamente
+        const transactionTime = parsed.getTime();
         
-        if (dateFromOnly && transactionDateOnly < dateFromOnly) return false;
-        if (dateToOnly && transactionDateOnly > dateToOnly) return false;
+        if (dateFromNormalized && transactionTime < dateFromNormalized.getTime()) {
+          return false;
+        }
+        
+        if (dateToNormalized && transactionTime > dateToNormalized.getTime()) {
+          return false;
+        }
         
         return true;
       });
 
-      console.log('Transações após filtro de período:', filteredTransactions.length);
+      console.log('✅ Transações após filtro de período:', filteredTransactions.length);
+      console.log('📅 Amostra de datas mantidas:', filteredTransactions.slice(0, 5).map(t => t.date));
     }
 
     // Filtrar por tipo (entrada/saída)
