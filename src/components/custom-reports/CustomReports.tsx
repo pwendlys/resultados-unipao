@@ -171,6 +171,14 @@ const [reportConfig, setReportConfig] = useState<CustomReportConfig>({
     console.log('Filtrando dados com configuração:', reportConfig);
     console.log('Transações recebidas do hook:', transactions.length);
     
+    // VERIFICAÇÃO DE CACHE
+    if (transactions.length === 1000) {
+      console.error('⚠️ CACHE ATIVO! Ainda recebendo apenas 1000 transações. Total esperado: 3222+');
+      console.error('⚠️ Faça HARD REFRESH: Ctrl+Shift+R (Windows) ou Cmd+Shift+R (Mac)');
+      console.error('⚠️ OU abra em aba anônima para forçar atualização do código');
+    }
+    console.log(`✅ Transações carregadas: ${transactions.length} / 3222 esperadas`);
+    
     let filteredTransactions = transactions;
 
     // Filtrar por contas selecionadas
