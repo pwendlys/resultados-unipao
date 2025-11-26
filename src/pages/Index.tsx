@@ -11,6 +11,7 @@ import AssetsLiabilities from '@/components/assets-liabilities/AssetsLiabilities
 import Settings from '@/components/settings/Settings';
 import Reports from '@/components/reports/Reports';
 import CustomReports from '@/components/custom-reports/CustomReports';
+import SendReports from '@/components/send-reports/SendReports';
 import CustomDashboards from '@/components/custom-dashboards/CustomDashboards';
 import ResultadosUnipao from '@/components/cooperado/ResultadosUnipao';
 import { useAuth } from '@/contexts/AuthContext';
@@ -54,6 +55,8 @@ const Index = () => {
         return <AssetsLiabilities />;
       case 'custom-reports':
         return <CustomReports />;
+      case 'send-reports':
+        return <SendReports />;
       case 'custom-dashboards':
         return <CustomDashboards />;
       case 'resultados-unipao':
