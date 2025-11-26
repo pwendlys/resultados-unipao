@@ -98,9 +98,9 @@ const Navigation = ({ currentPage, onPageChange, isSidebarCollapsed, onToggleSid
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         isSidebarCollapsed && "lg:-translate-x-full"
       )}>
-        <div className="p-6 flex-1">
-          {/* Logo */}
-          <div className="flex items-center gap-3 mb-8">
+        {/* Logo - Fixed at top */}
+        <div className="p-6 pb-4">
+          <div className="flex items-center gap-3">
             <img 
               src="/lovable-uploads/4e1b96ec-ca5a-4872-8cc9-696a989df4ad.png" 
               alt="Unipão Logo" 
@@ -111,10 +111,12 @@ const Navigation = ({ currentPage, onPageChange, isSidebarCollapsed, onToggleSid
               <p className="text-sm text-muted-foreground">Sistema Financeiro</p>
             </div>
           </div>
+        </div>
 
-          {/* Menu Items with ScrollArea */}
-          <ScrollArea className="flex-1 pr-2">
-            <div className="space-y-2">
+        {/* Menu Items with ScrollArea - Takes remaining space */}
+        <div className="flex-1 overflow-hidden px-6">
+          <ScrollArea className="h-full pr-2">
+            <div className="space-y-2 pb-4">
               {itemsToShow.map((item) => {
                 const Icon = item.icon;
                 return (
@@ -139,7 +141,7 @@ const Navigation = ({ currentPage, onPageChange, isSidebarCollapsed, onToggleSid
           </ScrollArea>
         </div>
 
-        {/* Logout Button */}
+        {/* Logout Button - Fixed at bottom */}
         <div className="p-6 border-t border-border">
           <Button
             variant="outline"
