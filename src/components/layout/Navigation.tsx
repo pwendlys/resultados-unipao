@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   BarChart3, 
   FileText, 
@@ -15,7 +16,8 @@ import {
   TrendingUp,
   PieChart,
   Package,
-  Scale
+  Scale,
+  Send
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,6 +43,7 @@ const Navigation = ({ currentPage, onPageChange, isSidebarCollapsed, onToggleSid
     { id: 'stock-balance', label: 'Balanço de Estoque', icon: Package },
     { id: 'assets-liabilities', label: 'Ativos e Passivos', icon: Scale },
     { id: 'custom-reports', label: 'Relatórios Personalizados', icon: Presentation },
+    { id: 'send-reports', label: 'Relatórios Enviar', icon: Send },
     { id: 'custom-dashboards', label: 'Dashboards Personalizados', icon: PieChart },
     { id: 'settings', label: 'Configurações e Compartilhar', icon: Settings },
   ];
@@ -109,29 +112,31 @@ const Navigation = ({ currentPage, onPageChange, isSidebarCollapsed, onToggleSid
             </div>
           </div>
 
-          {/* Menu Items */}
-          <div className="space-y-2">
-            {itemsToShow.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Button
-                  key={item.id}
-                  variant={currentPage === item.id ? "default" : "ghost"}
-                  className={cn(
-                    "w-full justify-start gap-3",
-                    currentPage === item.id && "bg-primary text-primary-foreground"
-                  )}
-                  onClick={() => {
-                    onPageChange(item.id);
-                    setIsMobileMenuOpen(false);
-                  }}
-                >
-                  <Icon className="h-5 w-5" />
-                  {item.label}
-                </Button>
-              );
-            })}
-          </div>
+          {/* Menu Items with ScrollArea */}
+          <ScrollArea className="flex-1 pr-2">
+            <div className="space-y-2">
+              {itemsToShow.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Button
+                    key={item.id}
+                    variant={currentPage === item.id ? "default" : "ghost"}
+                    className={cn(
+                      "w-full justify-start gap-3",
+                      currentPage === item.id && "bg-primary text-primary-foreground"
+                    )}
+                    onClick={() => {
+                      onPageChange(item.id);
+                      setIsMobileMenuOpen(false);
+                    }}
+                  >
+                    <Icon className="h-5 w-5" />
+                    {item.label}
+                  </Button>
+                );
+              })}
+            </div>
+          </ScrollArea>
         </div>
 
         {/* Logout Button */}
