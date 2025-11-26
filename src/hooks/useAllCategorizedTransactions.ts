@@ -21,30 +21,62 @@ export interface CategorizedTransaction {
   updated_at: string;
 }
 
-// Hook que busca EXCLUSIVAMENTE transações categorizadas
+// Hook que busca EXCLUSIVAMENTE transações categorizadas com paginação automática
 export const useAllCategorizedTransactions = () => {
   return useQuery({
     queryKey: ['all-categorized-transactions'],
     queryFn: async () => {
-      console.log('🔄 useAllCategorizedTransactions - Buscando transações categorizadas...');
+      console.log('🔄 useAllCategorizedTransactions - Iniciando busca PAGINADA...');
       
-      const { data, error, count } = await supabase
-        .from('transactions')
-        .select('*', { count: 'exact' })
-        .eq('status', 'categorizado')
-        .range(0, 49999)
-        .order('date', { ascending: false });
+      const PAGE_SIZE = 1000;
+      let allTransactions: CategorizedTransaction[] = [];
+      let page = 0;
+      let hasMore = true;
       
-      if (error) {
-        console.error('❌ Erro ao buscar transações categorizadas:', error);
-        throw error;
+      while (hasMore) {
+        const from = page * PAGE_SIZE;
+        const to = from + PAGE_SIZE - 1;
+        
+        console.log(`📄 Buscando página ${page + 1}: registros ${from} a ${to}`);
+        
+        const { data, error } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('status', 'categorizado')
+          .order('date', { ascending: false })
+          .range(from, to);
+        
+        if (error) {
+          console.error('❌ Erro ao buscar transações categorizadas:', error);
+          throw error;
+        }
+        
+        if (data && data.length > 0) {
+          allTransactions = [...allTransactions, ...(data as CategorizedTransaction[])];
+          console.log(`✅ Página ${page + 1}: ${data.length} transações (total acumulado: ${allTransactions.length})`);
+          
+          // Se retornou menos que PAGE_SIZE, não há mais páginas
+          if (data.length < PAGE_SIZE) {
+            hasMore = false;
+          }
+        } else {
+          hasMore = false;
+        }
+        
+        page++;
+        
+        // Segurança: evitar loop infinito
+        if (page > 100) {
+          console.warn('⚠️ Limite de 100 páginas atingido');
+          hasMore = false;
+        }
       }
       
-      console.log(`✅ Transações categorizadas carregadas: ${data?.length || 0}`);
-      console.log(`📊 Total no banco (count): ${count}`);
-      console.log(`📅 Amostra de datas:`, data?.slice(0, 3).map(t => t.date));
+      console.log(`🎉 BUSCA COMPLETA! Total: ${allTransactions.length} transações categorizadas`);
+      console.log(`📅 Transações mais recentes:`, allTransactions.slice(0, 3).map(t => t.date));
+      console.log(`📅 Transações mais antigas:`, allTransactions.slice(-3).map(t => t.date));
       
-      return data as CategorizedTransaction[];
+      return allTransactions;
     },
     staleTime: 1000 * 60 * 5, // 5 minutos
   });
