@@ -8,6 +8,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { 
   Calendar as CalendarIcon,
   Settings,
@@ -118,6 +119,31 @@ export const SendReportBuilder = ({ config, onConfigChange, categories }: SendRe
                 </Label>
               </div>
             </div>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-3">
+            <Label>Detalhamento das Transações</Label>
+            <RadioGroup
+              value={config.detailGrouping ?? 'date'}
+              onValueChange={(val) =>
+                updateConfig({ detailGrouping: val as 'date' | 'category' })
+              }
+              className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem id="send-group-date" value="date" />
+                <Label htmlFor="send-group-date">Ordenar por Data</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem id="send-group-category" value="category" />
+                <Label htmlFor="send-group-category">Agrupar por Categoria</Label>
+              </div>
+            </RadioGroup>
+            <p className="text-sm text-muted-foreground">
+              Define como o "DETALHAMENTO DAS TRANSAÇÕES" será organizado no PDF.
+            </p>
           </div>
         </CardContent>
       </Card>

@@ -17,6 +17,7 @@ export interface SendReportConfig {
   includeExits: boolean;
   selectedCategories: string[];
   reportTitle: string;
+  detailGrouping?: 'date' | 'category';
 }
 
 const SendReports = () => {
@@ -28,6 +29,7 @@ const SendReports = () => {
     includeExits: true,
     selectedCategories: [],
     reportTitle: 'Relatório de Transações Categorizadas',
+    detailGrouping: 'date',
   });
   const [showPreview, setShowPreview] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -218,6 +220,7 @@ const SendReports = () => {
         includeExits: true,
         selectedCategories: [],
         reportTitle: 'Relatório de Transações Categorizadas',
+        detailGrouping: 'date',
       });
       setShowPreview(false);
     } catch (error) {
