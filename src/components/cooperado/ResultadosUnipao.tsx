@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText, Download, Eye, Calendar, Loader2 } from 'lucide-react';
@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { generateCustomReport } from '@/utils/customPdfGenerator';
 import ReportPreview from '@/components/custom-reports/ReportPreview';
 import { useCategories } from '@/hooks/useCategories';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -20,7 +21,59 @@ const ResultadosUnipao = () => {
   const { data: categories = [] } = useCategories();
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  const [selectedYear, setSelectedYear] = useState<string>('all');
   const { toast } = useToast();
+
+  // Função para extrair mês e ano do período do relatório
+  const getReportPeriodInfo = (report: any) => {
+    const dateFrom = report.config.dateFrom ? new Date(report.config.dateFrom) : null;
+    return {
+      month: dateFrom ? dateFrom.getMonth() + 1 : null,
+      year: dateFrom ? dateFrom.getFullYear() : null
+    };
+  };
+
+  // Extrair anos disponíveis dinamicamente
+  const availableYears = useMemo(() => {
+    if (!reports) return [];
+    const years = new Set<number>();
+    reports.forEach(report => {
+      const { year } = getReportPeriodInfo(report);
+      if (year) years.add(year);
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [reports]);
+
+  // Filtrar e ordenar relatórios
+  const filteredAndSortedReports = useMemo(() => {
+    if (!reports) return [];
+    
+    let filtered = [...reports];
+    
+    // Filtrar por mês
+    if (selectedMonth !== 'all') {
+      filtered = filtered.filter(report => {
+        const { month } = getReportPeriodInfo(report);
+        return month === parseInt(selectedMonth);
+      });
+    }
+    
+    // Filtrar por ano
+    if (selectedYear !== 'all') {
+      filtered = filtered.filter(report => {
+        const { year } = getReportPeriodInfo(report);
+        return year === parseInt(selectedYear);
+      });
+    }
+    
+    // Ordenar por data (mais recente primeiro)
+    return filtered.sort((a, b) => {
+      const dateA = a.config.dateFrom ? new Date(a.config.dateFrom).getTime() : 0;
+      const dateB = b.config.dateFrom ? new Date(b.config.dateFrom).getTime() : 0;
+      return dateB - dateA;
+    });
+  }, [reports, selectedMonth, selectedYear]);
 
   const handleDownloadPDF = async (report: any) => {
     setIsGeneratingPDF(true);
@@ -77,6 +130,59 @@ const ResultadosUnipao = () => {
         </p>
       </div>
 
+      {/* Filtros */}
+      <div className="flex flex-col sm:flex-row gap-4 p-4 bg-muted/30 rounded-lg">
+        <div className="flex-1">
+          <label className="text-sm font-medium mb-2 block">Filtrar por Mês</label>
+          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+            <SelectTrigger>
+              <SelectValue placeholder="Todos os meses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os meses</SelectItem>
+              <SelectItem value="1">Janeiro</SelectItem>
+              <SelectItem value="2">Fevereiro</SelectItem>
+              <SelectItem value="3">Março</SelectItem>
+              <SelectItem value="4">Abril</SelectItem>
+              <SelectItem value="5">Maio</SelectItem>
+              <SelectItem value="6">Junho</SelectItem>
+              <SelectItem value="7">Julho</SelectItem>
+              <SelectItem value="8">Agosto</SelectItem>
+              <SelectItem value="9">Setembro</SelectItem>
+              <SelectItem value="10">Outubro</SelectItem>
+              <SelectItem value="11">Novembro</SelectItem>
+              <SelectItem value="12">Dezembro</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="flex-1">
+          <label className="text-sm font-medium mb-2 block">Filtrar por Ano</label>
+          <Select value={selectedYear} onValueChange={setSelectedYear}>
+            <SelectTrigger>
+              <SelectValue placeholder="Todos os anos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os anos</SelectItem>
+              {availableYears.map(year => (
+                <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        
+        {(selectedMonth !== 'all' || selectedYear !== 'all') && (
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => { setSelectedMonth('all'); setSelectedYear('all'); }}
+            className="self-end"
+          >
+            Limpar filtros
+          </Button>
+        )}
+      </div>
+
       {/* Lista de Relatórios */}
       {!reports || reports.length === 0 ? (
         <Card>
@@ -88,9 +194,26 @@ const ResultadosUnipao = () => {
             </p>
           </CardContent>
         </Card>
+      ) : filteredAndSortedReports.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-lg font-medium">Nenhum relatório encontrado</p>
+            <p className="text-sm text-muted-foreground">
+              Não há relatórios para o período selecionado
+            </p>
+            <Button 
+              variant="outline" 
+              className="mt-4"
+              onClick={() => { setSelectedMonth('all'); setSelectedYear('all'); }}
+            >
+              Ver todos os relatórios
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid gap-4">
-          {reports.map((report) => (
+          {filteredAndSortedReports.map((report) => (
             <Card key={report.id} className="hover:shadow-md transition-shadow">
               <CardHeader>
                 <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
