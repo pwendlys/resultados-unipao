@@ -540,7 +540,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      soft_delete_shared_report: {
+        Args: { report_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

@@ -124,11 +124,9 @@ export const useSharedReportsActions = () => {
 
   const deleteSharedReport = useMutation({
     mutationFn: async (id: string) => {
-      console.log('Deactivating shared report:', id);
+      console.log('Deactivating shared report via RPC:', id);
       const { error } = await supabase
-        .from('shared_reports')
-        .update({ is_active: false })
-        .eq('id', id);
+        .rpc('soft_delete_shared_report', { report_id: id });
       
       if (error) {
         console.error('Error deactivating shared report:', error);
