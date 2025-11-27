@@ -125,25 +125,22 @@ export const useSharedReportsActions = () => {
   const deleteSharedReport = useMutation({
     mutationFn: async (id: string) => {
       console.log('Deactivating shared report:', id);
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('shared_reports')
         .update({ is_active: false })
-        .eq('id', id)
-        .select()
-        .single();
+        .eq('id', id);
       
       if (error) {
         console.error('Error deactivating shared report:', error);
         throw error;
       }
-      console.log('Shared report deactivated successfully:', data);
-      return data;
+      console.log('Shared report deactivated successfully:', id);
+      return { id };
     },
     onSuccess: (data) => {
-      if (data) {
-        console.log('Invalidating shared reports queries after deactivating report:', data.id);
-        queryClient.invalidateQueries({ queryKey: ['shared-reports'] });
-      }
+      console.log('Invalidating shared reports queries after deactivating report:', data?.id);
+      queryClient.invalidateQueries({ queryKey: ['shared-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['cooperado-reports'] });
     },
   });
 
