@@ -23,6 +23,7 @@ export default function DataForm({ onClose, onSuccess, editData }: DataFormProps
     a_pagar: editData?.a_pagar ?? 0,
     joia: editData?.joia ?? 0,
     aporte: editData?.aporte ?? 0,
+    balanco: editData?.balanco ?? 0,
     data_referencia: editData?.data_referencia ?? new Date().toISOString().split('T')[0],
     observacoes: editData?.observacoes ?? ''
   });
@@ -41,7 +42,8 @@ export default function DataForm({ onClose, onSuccess, editData }: DataFormProps
   const calcularTotalPassivos = () => {
     return Number(formData.a_pagar) + 
            Number(formData.joia) + 
-           Number(formData.aporte);
+           Number(formData.aporte) +
+           Number(formData.balanco);
   };
 
   const calcularResultado = () => {
@@ -191,6 +193,16 @@ export default function DataForm({ onClose, onSuccess, editData }: DataFormProps
                   step="0.01"
                   value={formData.aporte}
                   onChange={(e) => handleNumberChange('aporte', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="balanco">Balanço</Label>
+                <Input
+                  type="number"
+                  id="balanco"
+                  step="0.01"
+                  value={formData.balanco}
+                  onChange={(e) => handleNumberChange('balanco', e.target.value)}
                 />
               </div>
               <div className="flex items-end">

@@ -19,7 +19,7 @@ export default function SummaryCards({ data }: SummaryCardsProps) {
     : 0;
 
   const totalPassivos = data 
-    ? Number(data.a_pagar) + Number(data.joia) + Number(data.aporte)
+    ? Number(data.a_pagar) + Number(data.joia) + Number(data.aporte) + Number(data.balanco)
     : 0;
 
   const resultado = totalAtivos - totalPassivos;
@@ -135,6 +135,10 @@ export default function SummaryCards({ data }: SummaryCardsProps) {
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Aporte</span>
                 <span className="font-medium">{formatCurrency(Number(data.aporte))}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Balanço</span>
+                <span className="font-medium">{formatCurrency(Number(data.balanco))}</span>
               </div>
               <div className="flex justify-between pt-3 border-t mt-auto">
                 <span className="font-bold">Total</span>
