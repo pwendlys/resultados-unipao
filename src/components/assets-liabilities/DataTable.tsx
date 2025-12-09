@@ -70,7 +70,7 @@ export default function DataTable({ data }: DataTableProps) {
                 {data.map((record) => {
                   const totalAtivos = Number(record.saldo_do_dia) + Number(record.a_receber) + 
                                      Number(record.vencida) + Number(record.estoque) + Number(record.investimento);
-                  const totalPassivos = Number(record.a_pagar) + Number(record.joia) + Number(record.aporte);
+                  const totalPassivos = Number(record.a_pagar) + Number(record.joia) + Number(record.aporte) + Number(record.balanco);
                   const resultado = totalAtivos - totalPassivos;
 
                   return (

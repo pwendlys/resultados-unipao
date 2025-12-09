@@ -19,6 +19,7 @@ export type Database = {
           a_pagar: number | null
           a_receber: number | null
           aporte: number | null
+          balanco: number | null
           created_at: string
           data_referencia: string
           estoque: number | null
@@ -35,6 +36,7 @@ export type Database = {
           a_pagar?: number | null
           a_receber?: number | null
           aporte?: number | null
+          balanco?: number | null
           created_at?: string
           data_referencia: string
           estoque?: number | null
@@ -51,6 +53,7 @@ export type Database = {
           a_pagar?: number | null
           a_receber?: number | null
           aporte?: number | null
+          balanco?: number | null
           created_at?: string
           data_referencia?: string
           estoque?: number | null

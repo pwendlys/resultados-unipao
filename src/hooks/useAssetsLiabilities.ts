@@ -12,6 +12,7 @@ export interface AssetsLiabilities {
   a_pagar: number;
   joia: number;
   aporte: number;
+  balanco: number;
   data_referencia: string;
   observacoes?: string;
   created_at: string;

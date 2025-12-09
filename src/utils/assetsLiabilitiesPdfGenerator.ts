@@ -33,7 +33,7 @@ export async function generateAssetsLiabilitiesPDF(records: AssetsLiabilities[],
   // Calcular totais
   const totalAtivos = Number(latestRecord.saldo_do_dia) + Number(latestRecord.a_receber) + 
                      Number(latestRecord.vencida) + Number(latestRecord.estoque) + Number(latestRecord.investimento);
-  const totalPassivos = Number(latestRecord.a_pagar) + Number(latestRecord.joia) + Number(latestRecord.aporte);
+  const totalPassivos = Number(latestRecord.a_pagar) + Number(latestRecord.joia) + Number(latestRecord.aporte) + Number(latestRecord.balanco);
   const resultado = totalAtivos - totalPassivos;
 
   // Cabeçalho
@@ -103,7 +103,8 @@ export async function generateAssetsLiabilitiesPDF(records: AssetsLiabilities[],
   const passivosData = [
     { label: 'A Pagar', value: Number(latestRecord.a_pagar) },
     { label: 'Joia', value: Number(latestRecord.joia) },
-    { label: 'Aporte', value: Number(latestRecord.aporte) }
+    { label: 'Aporte', value: Number(latestRecord.aporte) },
+    { label: 'Balanço', value: Number(latestRecord.balanco) }
   ];
 
   passivosData.forEach(item => {
@@ -221,7 +222,7 @@ export async function generateAssetsLiabilitiesPDF(records: AssetsLiabilities[],
 
       const recTotalAtivos = Number(record.saldo_do_dia) + Number(record.a_receber) + 
                             Number(record.vencida) + Number(record.estoque) + Number(record.investimento);
-      const recTotalPassivos = Number(record.a_pagar) + Number(record.joia) + Number(record.aporte);
+      const recTotalPassivos = Number(record.a_pagar) + Number(record.joia) + Number(record.aporte) + Number(record.balanco);
       const recResultado = recTotalAtivos - recTotalPassivos;
 
       pdf.text(formatDate(record.data_referencia), 20, yPosition);

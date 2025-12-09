@@ -40,14 +40,15 @@ export default function Charts({ data }: ChartsProps) {
   const passivosComposicao = [
     { name: 'A Pagar', value: Number(latestRecord.a_pagar), color: '#ef4444' },
     { name: 'Joia', value: Number(latestRecord.joia), color: '#dc2626' },
-    { name: 'Aporte', value: Number(latestRecord.aporte), color: '#b91c1c' }
+    { name: 'Aporte', value: Number(latestRecord.aporte), color: '#b91c1c' },
+    { name: 'Balanço', value: Number(latestRecord.balanco), color: '#991b1b' }
   ].filter(item => item.value > 0);
 
   // Dados para evolução temporal (últimos registros)
   const evolucaoData = data.slice(0, 10).reverse().map(record => {
     const totalAtivos = Number(record.saldo_do_dia) + Number(record.a_receber) + 
                        Number(record.vencida) + Number(record.estoque) + Number(record.investimento);
-    const totalPassivos = Number(record.a_pagar) + Number(record.joia) + Number(record.aporte);
+    const totalPassivos = Number(record.a_pagar) + Number(record.joia) + Number(record.aporte) + Number(record.balanco);
     
     return {
       data: new Date(record.data_referencia).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
@@ -60,7 +61,7 @@ export default function Charts({ data }: ChartsProps) {
   // Dados para comparação Ativos vs Passivos (registro mais recente)
   const totalAtivos = Number(latestRecord.saldo_do_dia) + Number(latestRecord.a_receber) + 
                      Number(latestRecord.vencida) + Number(latestRecord.estoque) + Number(latestRecord.investimento);
-  const totalPassivos = Number(latestRecord.a_pagar) + Number(latestRecord.joia) + Number(latestRecord.aporte);
+  const totalPassivos = Number(latestRecord.a_pagar) + Number(latestRecord.joia) + Number(latestRecord.aporte) + Number(latestRecord.balanco);
 
   const comparacaoData = [
     { name: 'Ativos', value: totalAtivos, color: '#22c55e' },
