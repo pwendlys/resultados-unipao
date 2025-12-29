@@ -11,12 +11,14 @@ export interface CategorizedTransaction {
   extrato_id: string | null;
   date: string;
   description: string;
+  description_raw: string | null;
   amount: number;
   type: 'entrada' | 'saida';
   category: string | null;
   status: string;
   juros: number | null;
   observacao: string | null;
+  entry_index: number | null;
   created_at: string;
   updated_at: string;
 }

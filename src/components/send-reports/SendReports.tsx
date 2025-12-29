@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Send, Eye } from 'lucide-react';
+import { Send, Eye, Shield } from 'lucide-react';
 import { useAllCategorizedTransactions } from '@/hooks/useAllCategorizedTransactions';
 import { useExtratos } from '@/hooks/useSupabaseData';
 import { useCategories } from '@/hooks/useCategories';
@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { SendReportBuilder } from './SendReportBuilder';
 import SendReportPreview from './SendReportPreview';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface SendReportConfig {
   selectedAccounts: string[];
@@ -33,12 +34,14 @@ const SendReports = () => {
   });
   const [showPreview, setShowPreview] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isSendingFiscal, setIsSendingFiscal] = useState(false);
 
   // Hook dedicado para transações categorizadas
   const { data: categorizedTransactions = [], isLoading: transactionsLoading } = useAllCategorizedTransactions();
   const { data: extratos = [], isLoading: extratosLoading } = useExtratos();
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Função para parsear datas (DD/MM/YYYY -> Date)
   const parseTransactionDate = (dateStr: string): Date | null => {
@@ -235,6 +238,94 @@ const SendReports = () => {
     }
   };
 
+  const handleSendToFiscal = async () => {
+    if (isSendingFiscal) return;
+    
+    try {
+      setIsSendingFiscal(true);
+      const filteredData = getFilteredData();
+      
+      if (filteredData.filteredTransactions.length === 0) {
+        toast({
+          title: "Nenhuma Transação",
+          description: "Não há transações categorizadas para enviar ao fiscal.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Identificar o extrato e tipo de conta
+      const accountType = reportConfig.selectedAccounts[0] || 'conta_corrente';
+      const competencia = reportConfig.dateFrom 
+        ? `${reportConfig.dateFrom.getMonth() + 1}/${reportConfig.dateFrom.getFullYear()}`
+        : new Date().toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' });
+
+      // Buscar extrato_id das transações
+      const extratoId = filteredData.filteredTransactions[0]?.extrato_id || null;
+
+      // Criar relatório fiscal
+      const { data: fiscalReport, error: reportError } = await supabase
+        .from('fiscal_reports')
+        .insert([{
+          title: reportConfig.reportTitle,
+          competencia,
+          account_type: accountType,
+          extrato_id: extratoId,
+          sent_by: user?.email || 'admin',
+          total_entries: filteredData.filteredTransactions.length,
+          pending_count: filteredData.filteredTransactions.length,
+          approved_count: 0,
+          flagged_count: 0,
+          status: 'open'
+        }])
+        .select()
+        .single();
+
+      if (reportError) throw reportError;
+
+      // Criar fiscal_reviews para cada transação
+      const reviews = filteredData.filteredTransactions.map((transaction, index) => ({
+        fiscal_report_id: fiscalReport.id,
+        transaction_id: transaction.id,
+        entry_index: transaction.entry_index ?? index + 1,
+        status: 'pending'
+      }));
+
+      const { error: reviewsError } = await supabase
+        .from('fiscal_reviews')
+        .insert(reviews);
+
+      if (reviewsError) throw reviewsError;
+
+      toast({
+        title: "Enviado para Fiscal!",
+        description: `Relatório com ${filteredData.filteredTransactions.length} transações criado para revisão fiscal.`,
+      });
+
+      // Limpar formulário
+      setReportConfig({
+        selectedAccounts: [],
+        dateFrom: undefined,
+        dateTo: undefined,
+        includeEntries: true,
+        includeExits: true,
+        selectedCategories: [],
+        reportTitle: 'Relatório de Transações Categorizadas',
+        detailGrouping: 'date',
+      });
+      setShowPreview(false);
+    } catch (error) {
+      console.error('Erro ao enviar para fiscal:', error);
+      toast({
+        title: "Erro ao Enviar",
+        description: "Não foi possível criar o relatório fiscal.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingFiscal(false);
+    }
+  };
+
   if (transactionsLoading || categoriesLoading || extratosLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -259,13 +350,21 @@ const SendReports = () => {
             ✅ {categorizedTransactions.length} transações categorizadas disponíveis no banco de dados
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button 
             onClick={() => setShowPreview(!showPreview)}
             variant="outline"
           >
             <Eye className="h-4 w-4 mr-2" />
             {showPreview ? 'Ocultar Preview' : 'Visualizar Preview'}
+          </Button>
+          <Button 
+            onClick={handleSendToFiscal}
+            disabled={isSendingFiscal || reportConfig.selectedAccounts.length === 0}
+            variant="secondary"
+          >
+            <Shield className="h-4 w-4 mr-2" />
+            {isSendingFiscal ? 'Enviando...' : 'Enviar para Fiscal'}
           </Button>
           <Button 
             onClick={handleSendToCooperado}
