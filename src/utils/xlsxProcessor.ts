@@ -4,8 +4,10 @@ import * as XLSX from 'xlsx';
 export interface ParsedTransaction {
   date: string;
   description: string;
+  description_raw: string;
   amount: number;
   type: 'entrada' | 'saida';
+  entry_index: number;
 }
 
 export const parseXLSX = (file: File): Promise<ParsedTransaction[]> => {
@@ -23,6 +25,7 @@ export const parseXLSX = (file: File): Promise<ParsedTransaction[]> => {
         console.log('XLSX raw data:', jsonData);
         
         const transactions: ParsedTransaction[] = [];
+        let entryIndex = 1;
         
         // Processar dados do extrato bancário
         for (let i = 0; i < jsonData.length; i++) {
@@ -146,11 +149,17 @@ export const parseXLSX = (file: File): Promise<ParsedTransaction[]> => {
             fullDescription = `${documentValue || 'Transação'} - ${dateStr}`;
           }
           
-          const transaction = {
+          // Build raw description from row data
+          const rawParts = [dateStr, documentValue, descriptionValue, amountStr].filter(Boolean);
+          const descriptionRaw = rawParts.join(' | ') + (additionalInfo.length > 0 ? ' | ' + additionalInfo.join(' | ') : '');
+          
+          const transaction: ParsedTransaction = {
             date: formatDate(dateStr),
             description: fullDescription,
+            description_raw: descriptionRaw,
             amount: amount,
-            type: type
+            type: type,
+            entry_index: entryIndex++
           };
           
           console.log(`Transaction ${i} created:`, transaction);

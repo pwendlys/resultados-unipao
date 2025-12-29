@@ -2,13 +2,17 @@
 export interface CSVTransaction {
   date: string;
   description: string;
+  description_raw: string;
   amount: number;
   type: 'entrada' | 'saida';
+  entry_index: number;
 }
 
 export const parseCSV = (csvContent: string): CSVTransaction[] => {
   const lines = csvContent.split('\n').filter(line => line.trim());
   const transactions: CSVTransaction[] = [];
+  
+  let entryIndex = 1;
   
   // Skip header line
   for (let i = 1; i < lines.length; i++) {
@@ -28,8 +32,10 @@ export const parseCSV = (csvContent: string): CSVTransaction[] => {
         transactions.push({
           date: formatDate(date),
           description,
+          description_raw: line,
           amount: Math.abs(amount),
-          type: amount < 0 ? 'saida' : 'entrada'
+          type: amount < 0 ? 'saida' : 'entrada',
+          entry_index: entryIndex++
         });
       }
     }

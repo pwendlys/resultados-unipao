@@ -146,11 +146,13 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
           resolve(transactions.map(t => ({
             date: t.date,
             description: t.description,
+            description_raw: t.description_raw,
             amount: t.amount,
             type: t.type,
             category: '',
             status: 'pendente',
-            suggested: false
+            suggested: false,
+            entry_index: t.entry_index
           })));
         } catch (error) {
           reject(error);
@@ -170,11 +172,13 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
       const processedTransactions = transactions.map(t => ({
         date: t.date,
         description: t.description,
+        description_raw: t.description_raw,
         amount: t.amount,
         type: t.type,
         category: '',
         status: 'pendente',
-        suggested: false
+        suggested: false,
+        entry_index: t.entry_index
       }));
       
       console.log('Processed transactions for database:', processedTransactions);
@@ -198,11 +202,13 @@ const UploadExtrato = ({ onNavigateToPage }: UploadExtratoProps) => {
           const processedTransactions = transactions.map(t => ({
             date: t.date,
             description: t.description,
+            description_raw: t.description_raw,
             amount: t.amount,
             type: t.type,
             category: '',
             status: 'pendente',
-            suggested: false
+            suggested: false,
+            entry_index: t.entry_index
           }));
           
           resolve(processedTransactions);
