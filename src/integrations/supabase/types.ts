@@ -298,6 +298,151 @@ export type Database = {
         }
         Relationships: []
       }
+      fiscal_report_assignees: {
+        Row: {
+          created_at: string | null
+          fiscal_report_id: string
+          fiscal_user_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string | null
+          fiscal_report_id: string
+          fiscal_user_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string | null
+          fiscal_report_id?: string
+          fiscal_user_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_report_assignees_fiscal_report_id_fkey"
+            columns: ["fiscal_report_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_reports: {
+        Row: {
+          account_type: string
+          approved_count: number | null
+          competencia: string
+          created_at: string | null
+          extrato_id: string | null
+          flagged_count: number | null
+          id: string
+          pdf_url: string | null
+          pending_count: number | null
+          sent_at: string | null
+          sent_by: string | null
+          status: string
+          title: string
+          total_entries: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          account_type: string
+          approved_count?: number | null
+          competencia: string
+          created_at?: string | null
+          extrato_id?: string | null
+          flagged_count?: number | null
+          id?: string
+          pdf_url?: string | null
+          pending_count?: number | null
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+          title: string
+          total_entries?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          account_type?: string
+          approved_count?: number | null
+          competencia?: string
+          created_at?: string | null
+          extrato_id?: string | null
+          flagged_count?: number | null
+          id?: string
+          pdf_url?: string | null
+          pending_count?: number | null
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+          title?: string
+          total_entries?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_reports_extrato_id_fkey"
+            columns: ["extrato_id"]
+            isOneToOne: false
+            referencedRelation: "extratos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_reviews: {
+        Row: {
+          created_at: string | null
+          entry_index: number
+          fiscal_report_id: string
+          id: string
+          observation: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          transaction_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          entry_index: number
+          fiscal_report_id: string
+          id?: string
+          observation?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          transaction_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          entry_index?: number
+          fiscal_report_id?: string
+          id?: string
+          observation?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          transaction_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_reviews_fiscal_report_id_fkey"
+            columns: ["fiscal_report_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_reviews_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       itens_balanco: {
         Row: {
           balanco_id: string
@@ -489,6 +634,8 @@ export type Database = {
           created_at: string
           date: string
           description: string
+          description_raw: string | null
+          entry_index: number | null
           extrato_id: string | null
           id: string
           juros: number | null
@@ -504,6 +651,8 @@ export type Database = {
           created_at?: string
           date: string
           description: string
+          description_raw?: string | null
+          entry_index?: number | null
           extrato_id?: string | null
           id?: string
           juros?: number | null
@@ -519,6 +668,8 @@ export type Database = {
           created_at?: string
           date?: string
           description?: string
+          description_raw?: string | null
+          entry_index?: number | null
           extrato_id?: string | null
           id?: string
           juros?: number | null
@@ -538,18 +689,46 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       soft_delete_shared_report: {
         Args: { report_id: string }
         Returns: undefined
       }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "fiscal"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -676,6 +855,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "fiscal"],
+    },
   },
 } as const
