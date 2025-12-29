@@ -2,62 +2,36 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
-  BarChart3, 
-  FileText, 
-  Upload, 
-  Settings, 
-  Home,
+  Shield,
+  FileCheck,
   Menu,
   X,
-  Presentation,
   LogOut,
-  DollarSign,
-  TrendingUp,
-  PieChart,
-  Package,
-  Scale,
-  Send,
-  Shield
+  Home
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
-interface NavigationProps {
+interface FiscalNavigationProps {
   currentPage: string;
   onPageChange: (page: string) => void;
   isSidebarCollapsed: boolean;
   onToggleSidebar: () => void;
 }
 
-const Navigation = ({ currentPage, onPageChange, isSidebarCollapsed, onToggleSidebar }: NavigationProps) => {
+const FiscalNavigation = ({ 
+  currentPage, 
+  onPageChange, 
+  isSidebarCollapsed, 
+  onToggleSidebar 
+}: FiscalNavigationProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { logout, user } = useAuth();
+  const { logout } = useAuth();
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home },
-    { id: 'upload', label: 'Upload Extrato', icon: Upload },
-    { id: 'upload-financeiro', label: 'Upload Financeiro', icon: DollarSign },
-    { id: 'categorization', label: 'Categorização', icon: FileText },
-    { id: 'reports', label: 'Relatórios Unipão', icon: BarChart3 },
-    { id: 'relatorios-financeiros', label: 'Relatórios Financeiros', icon: TrendingUp },
-    { id: 'stock-balance', label: 'Balanço de Estoque', icon: Package },
-    { id: 'assets-liabilities', label: 'Ativos e Passivos', icon: Scale },
-    { id: 'custom-reports', label: 'Relatórios Personalizados', icon: Presentation },
-    { id: 'send-reports', label: 'Relatórios Enviar', icon: Send },
-    { id: 'custom-dashboards', label: 'Dashboards Personalizados', icon: PieChart },
-    { id: 'settings', label: 'Configurações e Compartilhar', icon: Settings },
+    { id: 'fiscal-dashboard', label: 'Painel Fiscal', icon: Home },
+    { id: 'fiscal-reports', label: 'Relatórios para Revisão', icon: FileCheck },
   ];
-
-  // Menu item para acessar área fiscal (apenas admin)
-  const fiscalAccessItem = { id: 'fiscal-access', label: 'Área Fiscal', icon: Shield };
-
-  const itemsToShow = user?.role === 'cooperado'
-    ? [
-        { id: 'resultados-unipao', label: 'Resultados Unipão', icon: FileText }
-      ]
-    : user?.role === 'admin' 
-      ? [...menuItems, fiscalAccessItem]
-      : menuItems;
 
   const handleLogout = () => {
     logout();
@@ -106,23 +80,19 @@ const Navigation = ({ currentPage, onPageChange, isSidebarCollapsed, onToggleSid
         {/* Logo - Fixed at top */}
         <div className="p-6 pb-4">
           <div className="flex items-center gap-3">
-            <img 
-              src="/lovable-uploads/4e1b96ec-ca5a-4872-8cc9-696a989df4ad.png" 
-              alt="Unipão Logo" 
-              className="h-12 w-12 object-contain"
-            />
+            <Shield className="h-10 w-10 text-primary" />
             <div>
-              <h1 className="text-xl font-bold text-primary">Resultados Unipão</h1>
-              <p className="text-sm text-muted-foreground">Sistema Financeiro</p>
+              <h1 className="text-xl font-bold text-primary">Área Fiscal</h1>
+              <p className="text-sm text-muted-foreground">Sistema de Revisão</p>
             </div>
           </div>
         </div>
 
-        {/* Menu Items with ScrollArea - Takes remaining space */}
+        {/* Menu Items with ScrollArea */}
         <div className="flex-1 overflow-hidden px-6">
           <ScrollArea className="h-full pr-2">
             <div className="space-y-2 pb-4">
-              {itemsToShow.map((item) => {
+              {menuItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <Button
@@ -130,14 +100,9 @@ const Navigation = ({ currentPage, onPageChange, isSidebarCollapsed, onToggleSid
                     variant={currentPage === item.id ? "default" : "ghost"}
                     className={cn(
                       "w-full justify-start gap-3",
-                      currentPage === item.id && "bg-primary text-primary-foreground",
-                      item.id === 'fiscal-access' && "border-primary/30 bg-primary/5 hover:bg-primary/10"
+                      currentPage === item.id && "bg-primary text-primary-foreground"
                     )}
                     onClick={() => {
-                      if (item.id === 'fiscal-access') {
-                        window.location.href = '/fiscal';
-                        return;
-                      }
                       onPageChange(item.id);
                       setIsMobileMenuOpen(false);
                     }}
@@ -151,7 +116,7 @@ const Navigation = ({ currentPage, onPageChange, isSidebarCollapsed, onToggleSid
           </ScrollArea>
         </div>
 
-        {/* Logout Button - Fixed at bottom */}
+        {/* Logout Button */}
         <div className="p-6 border-t border-border">
           <Button
             variant="outline"
@@ -167,4 +132,4 @@ const Navigation = ({ currentPage, onPageChange, isSidebarCollapsed, onToggleSid
   );
 };
 
-export default Navigation;
+export default FiscalNavigation;
