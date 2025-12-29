@@ -1,14 +1,18 @@
 
+export interface OFXTransaction {
+  date: string;
+  description: string;
+  description_raw: string;
+  amount: number;
+  type: 'entrada' | 'saida';
+  entry_index: number;
+}
+
 // Função para processar arquivos OFX e extrair transações
-export const parseOFX = (ofxContent: string) => {
+export const parseOFX = (ofxContent: string): OFXTransaction[] => {
   console.log('Starting OFX parsing...');
   
-  const transactions: Array<{
-    date: string;
-    description: string;
-    amount: number;
-    type: 'entrada' | 'saida';
-  }> = [];
+  const transactions: OFXTransaction[] = [];
 
   try {
     // Remover quebras de linha e espaços extras
@@ -23,6 +27,8 @@ export const parseOFX = (ofxContent: string) => {
     }
 
     console.log(`Found ${transactionMatches.length} transactions in OFX`);
+
+    let entryIndex = 1;
 
     transactionMatches.forEach((transactionBlock) => {
       try {
@@ -43,13 +49,18 @@ export const parseOFX = (ofxContent: string) => {
           const formattedDate = `${day}/${month}/${year}`;
           
           // Descrição pode vir de MEMO ou NAME
-          const description = memoMatch?.[1]?.trim() || nameMatch?.[1]?.trim() || 'Transação OFX';
+          const memo = memoMatch?.[1]?.trim() || '';
+          const name = nameMatch?.[1]?.trim() || '';
+          const description = memo || name || 'Transação OFX';
+          const descriptionRaw = [name, memo].filter(Boolean).join(' - ') || transactionBlock;
           
           transactions.push({
             date: formattedDate,
             description: description,
+            description_raw: descriptionRaw,
             amount: Math.abs(amount),
-            type: amount >= 0 ? 'entrada' : 'saida'
+            type: amount >= 0 ? 'entrada' : 'saida',
+            entry_index: entryIndex++
           });
         }
       } catch (error) {
