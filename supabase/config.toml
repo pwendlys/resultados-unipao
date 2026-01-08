@@ -1,1 +1,4 @@
 project_id = "snacxcwytxwldgaqlany"
+
+[functions.create-fiscal-user]
+verify_jwt = false
