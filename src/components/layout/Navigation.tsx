@@ -17,7 +17,8 @@ import {
   Package,
   Scale,
   Send,
-  Shield
+  Shield,
+  UserPlus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -48,15 +49,16 @@ const Navigation = ({ currentPage, onPageChange, isSidebarCollapsed, onToggleSid
     { id: 'settings', label: 'Configurações e Compartilhar', icon: Settings },
   ];
 
-  // Menu item para acessar área fiscal (apenas admin)
+  // Menu items para admin (área fiscal e criar usuário fiscal)
   const fiscalAccessItem = { id: 'fiscal-access', label: 'Área Fiscal', icon: Shield };
+  const createFiscalUserItem = { id: 'criar-fiscal', label: 'Criar Usuário Fiscal', icon: UserPlus };
 
   const itemsToShow = user?.role === 'cooperado'
     ? [
         { id: 'resultados-unipao', label: 'Resultados Unipão', icon: FileText }
       ]
     : user?.role === 'admin' 
-      ? [...menuItems, fiscalAccessItem]
+      ? [...menuItems, fiscalAccessItem, createFiscalUserItem]
       : menuItems;
 
   const handleLogout = () => {
@@ -131,11 +133,15 @@ const Navigation = ({ currentPage, onPageChange, isSidebarCollapsed, onToggleSid
                     className={cn(
                       "w-full justify-start gap-3",
                       currentPage === item.id && "bg-primary text-primary-foreground",
-                      item.id === 'fiscal-access' && "border-primary/30 bg-primary/5 hover:bg-primary/10"
+                      (item.id === 'fiscal-access' || item.id === 'criar-fiscal') && "border-primary/30 bg-primary/5 hover:bg-primary/10"
                     )}
                     onClick={() => {
                       if (item.id === 'fiscal-access') {
                         window.location.href = '/fiscal';
+                        return;
+                      }
+                      if (item.id === 'criar-fiscal') {
+                        window.location.href = '/admin/criar-fiscal';
                         return;
                       }
                       onPageChange(item.id);
