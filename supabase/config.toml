@@ -2,3 +2,6 @@ project_id = "snacxcwytxwldgaqlany"
 
 [functions.create-fiscal-user]
 verify_jwt = false
+
+[functions.reset-fiscal-password]
+verify_jwt = false
