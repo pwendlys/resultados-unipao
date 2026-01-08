@@ -50,33 +50,17 @@ const CreateFiscalUser = () => {
     setIsLoading(true);
 
     try {
-      // Create user with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/fiscal/login`,
-        },
+      // Call Edge Function to create user with Admin API (allows any email)
+      const { data, error } = await supabase.functions.invoke('create-fiscal-user', {
+        body: { email, password },
       });
 
-      if (authError) {
-        throw authError;
+      if (error) {
+        throw new Error(error.message || 'Erro ao criar usuário');
       }
 
-      if (!authData.user) {
-        throw new Error('Erro ao criar usuário');
-      }
-
-      // Insert fiscal role into user_roles table
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: authData.user.id,
-          role: 'fiscal' as const,
-        });
-
-      if (roleError) {
-        throw roleError;
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
       toast({
