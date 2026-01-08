@@ -48,18 +48,69 @@ serve(async (req) => {
       email_confirm: true, // User is already confirmed, can login immediately
     });
 
+    let userId: string;
+    let isExistingUser = false;
+
     if (createError) {
-      console.error('Error creating user:', createError);
-      return new Response(
-        JSON.stringify({ error: createError.message }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      // Check if user already exists
+      if (createError.message.includes('already been registered') || (createError as any).code === 'email_exists') {
+        console.log('User already exists, checking for fiscal role...');
+        
+        // Fetch existing user by email
+        const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+        
+        if (listError) {
+          console.error('Error listing users:', listError);
+          return new Response(
+            JSON.stringify({ error: 'Erro ao buscar usuário existente' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const existingUser = existingUsers.users.find(u => u.email === email);
+        
+        if (!existingUser) {
+          return new Response(
+            JSON.stringify({ error: 'Usuário não encontrado' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        userId = existingUser.id;
+        isExistingUser = true;
+      } else {
+        console.error('Error creating user:', createError);
+        return new Response(
+          JSON.stringify({ error: createError.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      if (!userData.user) {
+        return new Response(
+          JSON.stringify({ error: 'Erro ao criar usuário' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      userId = userData.user.id;
     }
 
-    if (!userData.user) {
+    // Check if user already has fiscal role
+    const { data: existingRole } = await supabaseAdmin
+      .from('user_roles')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('role', 'fiscal')
+      .single();
+
+    if (existingRole) {
       return new Response(
-        JSON.stringify({ error: 'Erro ao criar usuário' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          success: true, 
+          message: 'Usuário já possui role fiscal',
+          user: { id: userId, email }
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -67,25 +118,31 @@ serve(async (req) => {
     const { error: roleError } = await supabaseAdmin
       .from('user_roles')
       .insert({
-        user_id: userData.user.id,
+        user_id: userId,
         role: 'fiscal',
       });
 
     if (roleError) {
       console.error('Error inserting role:', roleError);
-      // Try to delete the created user if role insertion fails
-      await supabaseAdmin.auth.admin.deleteUser(userData.user.id);
+      // Only delete user if we just created them
+      if (!isExistingUser) {
+        await supabaseAdmin.auth.admin.deleteUser(userId);
+      }
       return new Response(
         JSON.stringify({ error: 'Erro ao atribuir role fiscal: ' + roleError.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    const message = isExistingUser 
+      ? 'Role fiscal adicionada ao usuário existente com sucesso'
+      : 'Usuário fiscal criado com sucesso';
+
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Usuário fiscal criado com sucesso',
-        user: { id: userData.user.id, email: userData.user.email }
+        message,
+        user: { id: userId, email }
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
