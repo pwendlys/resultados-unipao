@@ -1,22 +1,75 @@
-import React from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import LoginPage from './LoginPage';
+import React, { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Session } from '@supabase/supabase-js';
+import FiscalLoginPage from './FiscalLoginPage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShieldX } from 'lucide-react';
+import { ShieldX, Loader2 } from 'lucide-react';
 
 interface FiscalProtectedRouteProps {
   children: React.ReactNode;
 }
 
 const FiscalProtectedRoute: React.FC<FiscalProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, user } = useAuth();
+  const [session, setSession] = useState<Session | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  if (!isAuthenticated) {
-    return <LoginPage />;
+  useEffect(() => {
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setSession(session);
+        
+        if (session?.user) {
+          // Fetch user role from user_roles table
+          const { data } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', session.user.id)
+            .in('role', ['fiscal', 'admin'])
+            .maybeSingle();
+          
+          setUserRole(data?.role || null);
+        } else {
+          setUserRole(null);
+        }
+        setLoading(false);
+      }
+    );
+
+    // Then check initial session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      setSession(session);
+      
+      if (session?.user) {
+        const { data } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .in('role', ['fiscal', 'admin'])
+          .maybeSingle();
+        
+        setUserRole(data?.role || null);
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
-  // Permitir acesso para admin e fiscal
-  const userRole = user?.role as string | undefined;
+  if (!session) {
+    return <FiscalLoginPage />;
+  }
+
+  // Check if user has fiscal or admin role
   if (userRole !== 'admin' && userRole !== 'fiscal') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
