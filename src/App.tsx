@@ -6,8 +6,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import FiscalProtectedRoute from "@/components/auth/FiscalProtectedRoute";
+import FiscalLoginPage from "@/components/auth/FiscalLoginPage";
 import Index from "./pages/Index";
 import FiscalIndex from "./pages/FiscalIndex";
+import CreateFiscalUser from "./pages/CreateFiscalUser";
 import SharedReports from "./pages/SharedReports";
 import SharedCustomReport from "./pages/SharedCustomReport";
 import SharedCustomDashboard from "./pages/SharedCustomDashboard";
@@ -37,6 +39,15 @@ const App = () => (
                 <FiscalProtectedRoute>
                   <FiscalIndex />
                 </FiscalProtectedRoute>
+              } 
+            />
+            <Route path="/fiscal/login" element={<FiscalLoginPage />} />
+            <Route 
+              path="/admin/criar-fiscal" 
+              element={
+                <ProtectedRoute>
+                  <CreateFiscalUser />
+                </ProtectedRoute>
               } 
             />
             <Route path="/relatorios-compartilhados/:shareId" element={<SharedReports />} />
