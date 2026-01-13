@@ -1,5 +1,5 @@
-
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -99,6 +99,19 @@ const LoginPage = () => {
             </form>
           </CardContent>
         </Card>
+
+        {/* Link para área fiscal */}
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground">
+            É um usuário fiscal?{' '}
+            <Link 
+              to="/fiscal-login" 
+              className="text-primary hover:underline font-medium"
+            >
+              Acessar área fiscal
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
