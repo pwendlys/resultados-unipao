@@ -10,7 +10,7 @@ import {
   Home
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FiscalNavigationProps {
   currentPage: string;
@@ -26,15 +26,14 @@ const FiscalNavigation = ({
   onToggleSidebar 
 }: FiscalNavigationProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { logout } = useAuth();
 
   const menuItems = [
     { id: 'fiscal-dashboard', label: 'Painel Fiscal', icon: Home },
     { id: 'fiscal-reports', label: 'Relatórios para Revisão', icon: FileCheck },
   ];
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setIsMobileMenuOpen(false);
   };
 
