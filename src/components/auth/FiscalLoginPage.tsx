@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Shield, Eye, EyeOff } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const FiscalLoginPage = () => {
   const [email, setEmail] = useState('');
@@ -138,6 +138,19 @@ const FiscalLoginPage = () => {
               {isLoading ? "Entrando..." : "Entrar"}
             </Button>
           </form>
+
+          {/* Link para login principal */}
+          <div className="text-center mt-4 pt-4 border-t">
+            <p className="text-sm text-muted-foreground">
+              É um usuário administrativo?{' '}
+              <Link 
+                to="/" 
+                className="text-primary hover:underline font-medium"
+              >
+                Acessar login principal
+              </Link>
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
