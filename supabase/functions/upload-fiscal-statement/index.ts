@@ -20,12 +20,11 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
 
     let userId: string | null = null;
-    let uploaderName = "admin";
 
     if (isAdminRequest) {
-      // Admin request - use service role
+      // Admin request - use service role, no user ID
       console.log("Processing admin upload request");
-      userId = "admin";
+      // userId stays null for admin
     } else {
       // Regular user - validate JWT
       if (!authHeader?.startsWith("Bearer ")) {
@@ -124,7 +123,7 @@ Deno.serve(async (req) => {
         file_path: filePath,
         file_name: file.name,
         file_type: "statement_pdf",
-        uploaded_by: uploaderName,
+        uploaded_by: userId, // null for admin, user_id for fiscal users
       });
 
     if (insertError) {
