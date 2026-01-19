@@ -21,12 +21,19 @@ export const useTreasurerReportsSummary = () => {
   const query = useQuery({
     queryKey: ['treasurer-reports-summary'],
     queryFn: async (): Promise<TreasurerReportSummary[]> => {
+      console.log('[Treasurer] Fetching reports summary...');
+      
       // Fetch all reports
       const { data: reports, error: reportsError } = await supabase
         .from('fiscal_reports')
         .select('id, total_entries, status, pdf_url');
 
-      if (reportsError) throw reportsError;
+      if (reportsError) {
+        console.error('[Treasurer] Error fetching reports:', reportsError);
+        throw reportsError;
+      }
+      console.log('[Treasurer] Reports fetched:', reports?.length, reports);
+      
       if (!reports || reports.length === 0) return [];
 
       // Fetch all user reviews
@@ -34,14 +41,22 @@ export const useTreasurerReportsSummary = () => {
         .from('fiscal_user_reviews')
         .select('report_id, transaction_id, user_id, status, observation, diligence_ack, diligence_created_by');
 
-      if (reviewsError) throw reviewsError;
+      if (reviewsError) {
+        console.error('[Treasurer] Error fetching reviews:', reviewsError);
+        throw reviewsError;
+      }
+      console.log('[Treasurer] Reviews fetched:', allReviews?.length, allReviews);
 
       // Fetch all signatures
       const { data: allSignatures, error: signaturesError } = await supabase
         .from('fiscal_report_signatures')
         .select('report_id, user_id');
 
-      if (signaturesError) throw signaturesError;
+      if (signaturesError) {
+        console.error('[Treasurer] Error fetching signatures:', signaturesError);
+        throw signaturesError;
+      }
+      console.log('[Treasurer] Signatures fetched:', allSignatures?.length, allSignatures);
 
       // Build summaries for each report
       const summaries: TreasurerReportSummary[] = reports.map((report) => {
@@ -107,7 +122,7 @@ export const useTreasurerReportsSummary = () => {
           allDiligencesConfirmed
         );
 
-        return {
+        const summary = {
           reportId: report.id,
           totalTransactions,
           approvedTransactions,
@@ -119,8 +134,12 @@ export const useTreasurerReportsSummary = () => {
           isFinished,
           hasFinalPdf: !!report.pdf_url,
         };
+        
+        console.log(`[Treasurer] Report ${report.id} summary:`, summary);
+        return summary;
       });
 
+      console.log('[Treasurer] Final summaries:', summaries);
       return summaries;
     },
     staleTime: 30000, // 30 seconds

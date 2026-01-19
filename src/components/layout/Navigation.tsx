@@ -30,9 +30,15 @@ interface NavigationProps {
   onToggleSidebar: () => void;
 }
 
+// Allowlist de emails autorizados para acesso à área de tesouraria
+const TREASURY_ALLOWED_EMAILS = ['arthur@tesoureiro.com', 'adm@adm.com'];
+
 const Navigation = ({ currentPage, onPageChange, isSidebarCollapsed, onToggleSidebar }: NavigationProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { logout, user } = useAuth();
+
+  // Verifica se o usuário tem acesso à área de tesouraria
+  const canAccessTreasury = TREASURY_ALLOWED_EMAILS.includes(user?.email?.toLowerCase() ?? '');
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
@@ -49,7 +55,7 @@ const Navigation = ({ currentPage, onPageChange, isSidebarCollapsed, onToggleSid
     { id: 'settings', label: 'Configurações e Compartilhar', icon: Settings },
   ];
 
-  // Menu items para admin (criar usuário fiscal - sem área fiscal, que é exclusiva do tesoureiro)
+  // Menu items para admin (criar usuário fiscal)
   const createFiscalUserItem = { id: 'criar-fiscal', label: 'Criar Usuário Fiscal', icon: UserPlus };
 
   // Menu items para tesoureiro
@@ -58,15 +64,29 @@ const Navigation = ({ currentPage, onPageChange, isSidebarCollapsed, onToggleSid
     { id: 'tesoureiro-fiscal', label: 'Área Fiscal', icon: Shield },
   ];
 
-  const itemsToShow = user?.role === 'cooperado'
-    ? [
-        { id: 'resultados-unipao', label: 'Resultados Unipão', icon: FileText }
-      ]
-    : user?.role === 'tesoureiro'
-      ? treasurerItems
-      : user?.role === 'admin' 
-        ? [...menuItems, createFiscalUserItem]
-        : menuItems;
+  // Determina quais itens mostrar baseado na role E no allowlist de emails
+  const getMenuItems = () => {
+    if (user?.role === 'cooperado') {
+      return [{ id: 'resultados-unipao', label: 'Resultados Unipão', icon: FileText }];
+    }
+    
+    if (user?.role === 'tesoureiro') {
+      return treasurerItems;
+    }
+    
+    // Para admin: mostra menu padrão + criar fiscal + (área tesoureiro se na allowlist)
+    if (user?.role === 'admin') {
+      const items = [...menuItems, createFiscalUserItem];
+      if (canAccessTreasury) {
+        return [...items, ...treasurerItems];
+      }
+      return items;
+    }
+    
+    return menuItems;
+  };
+
+  const itemsToShow = getMenuItems();
 
   const handleLogout = () => {
     logout();
