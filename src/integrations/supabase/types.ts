@@ -400,6 +400,51 @@ export type Database = {
           },
         ]
       }
+      fiscal_report_transaction_order: {
+        Row: {
+          created_at: string | null
+          id: string
+          matched: boolean | null
+          report_id: string
+          sort_index: number
+          transaction_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          matched?: boolean | null
+          report_id: string
+          sort_index: number
+          transaction_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          matched?: boolean | null
+          report_id?: string
+          sort_index?: number
+          transaction_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_report_transaction_order_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_report_transaction_order_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fiscal_reports: {
         Row: {
           account_type: string
