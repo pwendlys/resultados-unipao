@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -7,8 +8,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AlertTriangle, Check, Clock, User } from 'lucide-react';
-import { useFiscalReviews } from '@/hooks/useFiscalReviews';
-import { useTransactionDiligenceStatus } from '@/hooks/useFiscalUserReviews';
+import { useTransactionDiligenceStatus, useAllFiscalUserReviews } from '@/hooks/useFiscalUserReviews';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FiscalDiligencesModalProps {
   open: boolean;
@@ -17,26 +18,65 @@ interface FiscalDiligencesModalProps {
   reportTitle: string;
 }
 
+// Hook to get transactions for a report
+const useReportTransactions = (reportId: string | undefined, transactionIds: string[]) => {
+  return useQuery({
+    queryKey: ['report-transactions-for-diligences', reportId, transactionIds.length],
+    queryFn: async () => {
+      if (!reportId || transactionIds.length === 0) return {};
+      
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('id, date, description, amount, type')
+        .in('id', transactionIds);
+
+      if (error) {
+        console.error('Error fetching transactions for diligences:', error);
+        return {};
+      }
+
+      // Map by id for quick lookup
+      const map: Record<string, { date: string; description: string; amount: number; type: string }> = {};
+      for (const tx of data || []) {
+        map[tx.id] = tx;
+      }
+      return map;
+    },
+    enabled: !!reportId && transactionIds.length > 0,
+  });
+};
+
 const FiscalDiligencesModal = ({
   open,
   onOpenChange,
   reportId,
   reportTitle,
 }: FiscalDiligencesModalProps) => {
-  const { data: reviews = [] } = useFiscalReviews(reportId || undefined);
-  const { data: diligenceStatus = {} } = useTransactionDiligenceStatus(reportId || undefined);
+  // Use the CORRECT hook that reads from fiscal_user_reviews
+  const { data: diligenceStatus = {} } = useTransactionDiligenceStatus(open ? reportId : undefined);
+  
+  // Get list of transaction IDs with diligences
+  const diligenceTransactionIds = Object.entries(diligenceStatus)
+    .filter(([_, d]) => d.isDiligence)
+    .map(([txId]) => txId);
 
-  // Filter transactions with diligences
+  // Fetch transaction details
+  const { data: transactionsMap = {} } = useReportTransactions(
+    open ? reportId : undefined, 
+    diligenceTransactionIds
+  );
+
+  // Build diligence entries with transaction data
   const diligenceEntries = Object.entries(diligenceStatus)
     .filter(([_, d]) => d.isDiligence)
     .map(([txId, d]) => {
-      const review = reviews.find(r => r.transaction_id === txId);
+      const tx = transactionsMap[txId];
       return {
         transactionId: txId,
-        date: review?.transaction?.date || '-',
-        description: review?.transaction?.description || 'Transação não encontrada',
-        amount: review?.transaction?.amount || 0,
-        type: review?.transaction?.type || 'unknown',
+        date: tx?.date || '-',
+        description: tx?.description || 'Carregando...',
+        amount: tx?.amount || 0,
+        type: tx?.type || 'unknown',
         observation: d.divergentObservation || 'Sem observação',
         createdBy: d.diligenceCreatorName || 'Desconhecido',
         createdAt: d.diligenceCreatedAt,

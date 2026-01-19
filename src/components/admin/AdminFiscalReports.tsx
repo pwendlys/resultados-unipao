@@ -27,18 +27,17 @@ import {
   Eye, 
   Download, 
   FileText,
-  CheckCircle,
-  Clock,
   AlertCircle,
   PenTool,
   FileUp,
   ExternalLink
 } from 'lucide-react';
 import { useAllFiscalReports, useFiscalReportsActions } from '@/hooks/useFiscalReports';
+import { useFiscalReportFile } from '@/hooks/useFiscalReportFiles';
+import { useAdminReportStats } from '@/hooks/useAdminReportStats';
+import { useTransactionDiligenceStatus } from '@/hooks/useFiscalUserReviews';
 import { useFiscalReviews } from '@/hooks/useFiscalReviews';
 import { useFiscalSignatures } from '@/hooks/useFiscalSignatures';
-import { useFiscalReportFile } from '@/hooks/useFiscalReportFiles';
-import { useTransactionDiligenceStatus } from '@/hooks/useFiscalUserReviews';
 import { useToast } from '@/hooks/use-toast';
 import { generateFiscalPDF } from '@/utils/fiscalPdfGenerator';
 import FiscalSignaturesModal from '@/components/fiscal/FiscalSignaturesModal';
@@ -259,27 +258,28 @@ interface ReportRowProps {
 
 const ReportRow = ({ report, onViewSignatures, onViewDiligences, onNavigateToReport, onDelete, onUploadStatement, getStatusBadge }: ReportRowProps) => {
   const { toast } = useToast();
+  const { data: attachedFile } = useFiscalReportFile(report.id);
+  
+  // Use the new aggregated stats hook that reads from the CORRECT tables
+  const { data: stats } = useAdminReportStats(report.id, report.total_entries || 0);
+  
+  // For PDF export, we still need the old reviews and diligence data
   const { data: reviews = [] } = useFiscalReviews(report.id);
   const { data: signatures = [] } = useFiscalSignatures(report.id);
-  const { data: attachedFile } = useFiscalReportFile(report.id);
   const { data: diligenceStatus = {} } = useTransactionDiligenceStatus(report.id);
 
-  const totalReviews = reviews.length || report.total_entries || 0;
-  const approvedCount = reviews.filter(r => r.status === 'approved').length || report.approved_count || 0;
-  const flaggedCount = reviews.filter(r => r.status === 'flagged').length || report.flagged_count || 0;
-  const pendingCount = reviews.filter(r => r.status === 'pending').length || report.pending_count || 0;
+  // Use stats from the new hook (calculated from fiscal_user_reviews)
+  const approvedCount = stats?.approvedTransactions ?? 0;
+  const pendingCount = stats?.pendingTransactions ?? report.total_entries ?? 0;
+  const diligenceCount = stats?.diligenceCount ?? 0;
+  const allDiligencesConfirmed = stats?.allDiligencesConfirmed ?? true;
+  const signatureCount = stats?.signatureCount ?? 0;
+  const isFinished = stats?.isFinished ?? false;
   
-  // Count diligences
-  const diligenceEntries = Object.entries(diligenceStatus).filter(([_, d]) => d.isDiligence);
-  const diligenceCount = diligenceEntries.length;
-  const allDiligencesConfirmed = diligenceEntries.every(([_, d]) => d.ackCount >= 3);
-  
-  const progressPercentage = totalReviews > 0 
-    ? Math.round((approvedCount + flaggedCount) / totalReviews * 100) 
+  const totalTransactions = report.total_entries || 0;
+  const progressPercentage = totalTransactions > 0 
+    ? Math.round(approvedCount / totalTransactions * 100) 
     : 0;
-
-  const signatureCount = signatures.length;
-  const isFinished = report.status === 'finished' || (pendingCount === 0 && allDiligencesConfirmed && signatureCount >= 3);
 
   const handleExportPDF = () => {
     if (!isFinished) {
@@ -297,13 +297,8 @@ const ReportRow = ({ report, onViewSignatures, onViewDiligences, onNavigateToRep
     });
   };
 
-  // Derive status based on real data
-  const derivedStatus = (() => {
-    if (pendingCount === 0 && signatureCount >= 3 && (diligenceCount === 0 || allDiligencesConfirmed)) {
-      return 'finished';
-    }
-    return report.status;
-  })();
+  // Derive status based on real aggregated data
+  const derivedStatus = isFinished ? 'finished' : report.status;
 
   return (
     <TableRow>
@@ -315,11 +310,11 @@ const ReportRow = ({ report, onViewSignatures, onViewDiligences, onNavigateToRep
         <div className="flex items-center gap-2 min-w-[150px]">
           <Progress value={progressPercentage} className="h-2 w-16" />
           <div className="flex items-center gap-1 text-xs">
-            <span className="text-green-600">{approvedCount}</span>
+            <span className="text-green-600" title="Aprovadas (3/3 revisões)">{approvedCount}</span>
             <span>/</span>
-            <span className="text-muted-foreground">{pendingCount}</span>
+            <span className="text-muted-foreground" title="Pendentes">{pendingCount}</span>
             <span>/</span>
-            <span className="text-destructive">{flaggedCount}</span>
+            <span className="text-orange-600" title="Diligências">{diligenceCount}</span>
           </div>
         </div>
       </TableCell>
