@@ -66,9 +66,13 @@ export const useFiscalSignaturesActions = () => {
       }
     },
     onSuccess: (_, variables) => {
+      // Invalidar assinaturas do relatório específico
       queryClient.invalidateQueries({ queryKey: ['fiscal-signatures', variables.reportId] });
-      queryClient.invalidateQueries({ queryKey: ['fiscal-reports'] });
-      queryClient.invalidateQueries({ queryKey: ['fiscal-report'] });
+      // Invalidar TODAS as listas de relatórios (admin e fiscal)
+      queryClient.invalidateQueries({ queryKey: ['all-fiscal-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['fiscal-reports'] }); // partial match para useFiscalReports
+      // Invalidar detalhe do relatório específico
+      queryClient.invalidateQueries({ queryKey: ['fiscal-report', variables.reportId] });
     },
   });
 

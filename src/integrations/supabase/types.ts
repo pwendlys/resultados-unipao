@@ -478,6 +478,30 @@ export type Database = {
           },
         ]
       }
+      fiscal_user_profiles: {
+        Row: {
+          created_at: string | null
+          default_signature_data: string | null
+          default_signature_updated_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          default_signature_data?: string | null
+          default_signature_updated_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          default_signature_data?: string | null
+          default_signature_updated_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       itens_balanco: {
         Row: {
           balanco_id: string

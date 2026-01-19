@@ -8,7 +8,9 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Eraser, Check, X } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Eraser, Check, X, Save, History } from 'lucide-react';
 
 interface FiscalSignatureModalProps {
   open: boolean;
@@ -16,6 +18,8 @@ interface FiscalSignatureModalProps {
   onSubmit: (signatureData: string) => void;
   isSubmitting?: boolean;
   hasAlreadySigned?: boolean;
+  savedSignature?: string | null;
+  onSaveAsDefault?: (signatureData: string) => void;
 }
 
 const FiscalSignatureModal = ({
@@ -24,10 +28,14 @@ const FiscalSignatureModal = ({
   onSubmit,
   isSubmitting = false,
   hasAlreadySigned = false,
+  savedSignature = null,
+  onSaveAsDefault,
 }: FiscalSignatureModalProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
+  const [saveAsDefault, setSaveAsDefault] = useState(false);
+  const [useSavedSignature, setUseSavedSignature] = useState(false);
 
   useEffect(() => {
     if (open && canvasRef.current) {
@@ -42,8 +50,35 @@ const FiscalSignatureModal = ({
         ctx.lineJoin = 'round';
       }
       setHasSignature(false);
+      setSaveAsDefault(false);
+      setUseSavedSignature(false);
     }
   }, [open]);
+
+  // Load saved signature into canvas when user toggles useSavedSignature
+  useEffect(() => {
+    if (useSavedSignature && savedSignature && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const img = new Image();
+        img.onload = () => {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          // Center the image
+          const scale = Math.min(
+            canvas.width / img.width,
+            canvas.height / img.height
+          ) * 0.9;
+          const x = (canvas.width - img.width * scale) / 2;
+          const y = (canvas.height - img.height * scale) / 2;
+          ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+          setHasSignature(true);
+        };
+        img.src = savedSignature;
+      }
+    }
+  }, [useSavedSignature, savedSignature]);
 
   const getCoordinates = (e: React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current;
@@ -72,6 +107,12 @@ const FiscalSignatureModal = ({
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     if (!ctx) return;
+
+    // If using saved signature, clear and start fresh
+    if (useSavedSignature) {
+      setUseSavedSignature(false);
+      clearCanvas();
+    }
 
     setIsDrawing(true);
     setHasSignature(true);
@@ -105,6 +146,11 @@ const FiscalSignatureModal = ({
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     setHasSignature(false);
+    setUseSavedSignature(false);
+  };
+
+  const handleUseSaved = () => {
+    setUseSavedSignature(true);
   };
 
   const handleSubmit = () => {
@@ -112,6 +158,12 @@ const FiscalSignatureModal = ({
     if (!canvas) return;
 
     const signatureData = canvas.toDataURL('image/png');
+    
+    // If user wants to save as default and callback is provided
+    if (saveAsDefault && onSaveAsDefault) {
+      onSaveAsDefault(signatureData);
+    }
+    
     onSubmit(signatureData);
   };
 
@@ -154,6 +206,27 @@ const FiscalSignatureModal = ({
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Saved signature option */}
+          {savedSignature && !useSavedSignature && (
+            <div className="flex items-center justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleUseSaved}
+                className="gap-2"
+              >
+                <History className="h-4 w-4" />
+                Usar assinatura salva
+              </Button>
+            </div>
+          )}
+
+          {useSavedSignature && (
+            <div className="text-center text-sm text-green-600 font-medium">
+              ✓ Usando assinatura salva
+            </div>
+          )}
+
           <div className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-2 bg-white">
             <canvas
               ref={canvasRef}
@@ -171,8 +244,24 @@ const FiscalSignatureModal = ({
           </div>
 
           <p className="text-xs text-muted-foreground text-center">
-            Use o mouse ou toque para desenhar sua assinatura
+            {useSavedSignature 
+              ? 'Clique no canvas para desenhar uma nova assinatura'
+              : 'Use o mouse ou toque para desenhar sua assinatura'}
           </p>
+
+          {/* Save as default option */}
+          {onSaveAsDefault && !savedSignature && (
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="saveDefault"
+                checked={saveAsDefault}
+                onCheckedChange={(checked) => setSaveAsDefault(checked === true)}
+              />
+              <Label htmlFor="saveDefault" className="text-sm cursor-pointer">
+                Salvar como minha assinatura padrão
+              </Label>
+            </div>
+          )}
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
