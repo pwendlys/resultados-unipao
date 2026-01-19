@@ -14,6 +14,7 @@ import CustomReports from '@/components/custom-reports/CustomReports';
 import SendReports from '@/components/send-reports/SendReports';
 import CustomDashboards from '@/components/custom-dashboards/CustomDashboards';
 import ResultadosUnipao from '@/components/cooperado/ResultadosUnipao';
+import AdminFiscalReports from '@/components/admin/AdminFiscalReports';
 import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
@@ -61,6 +62,8 @@ const Index = () => {
         return <CustomDashboards />;
       case 'resultados-unipao':
         return <ResultadosUnipao />;
+      case 'admin-fiscal-reports':
+        return <AdminFiscalReports onNavigateToPage={setCurrentPage} />;
       case 'settings':
         return <Settings />;
       default:

@@ -224,9 +224,27 @@ export const useFiscalReportsActions = () => {
     },
   });
 
+  const deleteFiscalReport = useMutation({
+    mutationFn: async (reportId: string) => {
+      // Cascade delete is configured, so deleting the report will delete reviews and signatures
+      const { error } = await supabase
+        .from('fiscal_reports')
+        .delete()
+        .eq('id', reportId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fiscal-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['all-fiscal-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['fiscal-report'] });
+    },
+  });
+
   return {
     createFiscalReport,
     createFiscalAssignees,
     updateFiscalReportStatus,
+    deleteFiscalReport,
   };
 };

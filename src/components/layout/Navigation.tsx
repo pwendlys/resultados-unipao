@@ -137,7 +137,9 @@ const Navigation = ({ currentPage, onPageChange, isSidebarCollapsed, onToggleSid
                     )}
                     onClick={() => {
                       if (item.id === 'fiscal-access') {
-                        window.location.href = '/fiscal';
+                        // Admins see fiscal reports management page
+                        onPageChange('admin-fiscal-reports');
+                        setIsMobileMenuOpen(false);
                         return;
                       }
                       if (item.id === 'criar-fiscal') {

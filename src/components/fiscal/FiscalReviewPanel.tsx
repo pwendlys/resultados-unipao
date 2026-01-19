@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,8 @@ import {
   Clock,
   Search,
   Filter,
-  Download
+  Download,
+  PenTool
 } from 'lucide-react';
 import { 
   Select,
@@ -22,11 +23,14 @@ import {
 } from '@/components/ui/select';
 import { useFiscalReportById } from '@/hooks/useFiscalReports';
 import { useFiscalReviews, useFiscalReviewsActions, FiscalReview } from '@/hooks/useFiscalReviews';
+import { useFiscalSignatures, useFiscalSignaturesActions } from '@/hooks/useFiscalSignatures';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import FiscalReviewItem from './FiscalReviewItem';
 import FiscalObservationModal from './FiscalObservationModal';
+import FiscalSignatureModal from './FiscalSignatureModal';
 import { generateFiscalPDF } from '@/utils/fiscalPdfGenerator';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FiscalReviewPanelProps {
   reportId: string;
@@ -36,9 +40,11 @@ interface FiscalReviewPanelProps {
 const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { data: report, isLoading: reportLoading } = useFiscalReportById(reportId);
+  const { data: report, isLoading: reportLoading, refetch: refetchReport } = useFiscalReportById(reportId);
   const { data: reviews = [], isLoading: reviewsLoading } = useFiscalReviews(reportId);
+  const { data: signatures = [], refetch: refetchSignatures } = useFiscalSignatures(reportId);
   const { updateReviewStatus, bulkUpdateReviewStatus } = useFiscalReviewsActions();
+  const { createSignature } = useFiscalSignaturesActions();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -46,6 +52,47 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
     open: boolean;
     review: FiscalReview | null;
   }>({ open: false, review: null });
+  const [signatureModalOpen, setSignatureModalOpen] = useState(false);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+
+  // Get auth user id for signatures
+  useEffect(() => {
+    const getAuthUser = async () => {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      setAuthUserId(authUser?.id || null);
+    };
+    getAuthUser();
+  }, []);
+
+  // Check if current user has signed
+  const hasUserSigned = authUserId ? signatures.some(sig => sig.user_id === authUserId) : false;
+  const signatureCount = signatures.length;
+
+  // Sort reviews: pending > flagged > approved, then by date DESC within each group
+  const sortReviews = (reviewsToSort: FiscalReview[]) => {
+    return [...reviewsToSort].sort((a, b) => {
+      const statusOrder: Record<string, number> = { pending: 0, flagged: 1, approved: 2 };
+      const statusDiff = (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0);
+      if (statusDiff !== 0) return statusDiff;
+      
+      // Within same status, sort by date DESC (most recent first)
+      const dateA = a.transaction?.date || '';
+      const dateB = b.transaction?.date || '';
+      
+      // Parse DD/MM/YYYY format
+      const parseDate = (d: string) => {
+        if (!d) return 0;
+        const parts = d.split('/');
+        if (parts.length === 3) {
+          const [day, month, year] = parts;
+          return new Date(`${year}-${month}-${day}`).getTime();
+        }
+        return new Date(d).getTime();
+      };
+      
+      return parseDate(dateB) - parseDate(dateA);
+    });
+  };
 
   const filteredReviews = reviews.filter(review => {
     const matchesSearch = searchTerm === '' || 
@@ -58,6 +105,9 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
     return matchesSearch && matchesStatus;
   });
 
+  // Apply sorting to filtered reviews
+  const sortedFilteredReviews = sortReviews(filteredReviews);
+
   const stats = {
     total: reviews.length,
     approved: reviews.filter(r => r.status === 'approved').length,
@@ -68,6 +118,10 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
   const progressPercentage = stats.total > 0 
     ? Math.round((stats.approved + stats.flagged) / stats.total * 100) 
     : 0;
+
+  // Check if eligible for signing
+  const canSign = stats.pending === 0 && stats.flagged === 0 && !hasUserSigned;
+  const isFinished = report?.status === 'finished' || (stats.pending === 0 && stats.flagged === 0 && signatureCount >= 3);
 
   const handleApprove = async (review: FiscalReview) => {
     try {
@@ -131,6 +185,15 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
         title: "Aprovados em Lote",
         description: `${pendingIds.length} lançamentos aprovados.`,
       });
+
+      // After approving all, check if we should open signature modal
+      const newFlaggedCount = reviews.filter(r => r.status === 'flagged').length;
+      if (newFlaggedCount === 0 && !hasUserSigned) {
+        // Small delay to let the UI update
+        setTimeout(() => {
+          setSignatureModalOpen(true);
+        }, 500);
+      }
     } catch (error) {
       toast({
         title: "Erro",
@@ -140,9 +203,47 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
     }
   };
 
+  const handleSubmitSignature = async (signatureData: string) => {
+    if (!authUserId || !reportId) return;
+
+    try {
+      await createSignature.mutateAsync({
+        reportId,
+        userId: authUserId,
+        signatureData,
+        displayName: user?.email || undefined,
+      });
+      
+      toast({
+        title: "Assinatura registrada",
+        description: "Sua assinatura foi salva com sucesso.",
+      });
+      
+      setSignatureModalOpen(false);
+      refetchSignatures();
+      refetchReport();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao assinar",
+        description: error.message || "Não foi possível registrar sua assinatura.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleExportPDF = () => {
     if (!report) return;
-    generateFiscalPDF(report, reviews);
+    
+    if (!isFinished) {
+      toast({
+        title: "PDF não disponível",
+        description: "O PDF só pode ser exportado quando o relatório estiver concluído (3 assinaturas).",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    generateFiscalPDF(report, reviews, signatures);
     toast({
       title: "PDF Gerado",
       description: "O relatório foi exportado com sucesso.",
@@ -189,6 +290,9 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
             {report.competencia} • {report.account_type}
           </p>
         </div>
+        {isFinished && (
+          <Badge className="bg-green-500">Concluído</Badge>
+        )}
       </div>
 
       {/* Summary Bar */}
@@ -200,7 +304,7 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
           </div>
           <Progress value={progressPercentage} className="h-3 mb-3" />
           
-          <div className="flex justify-center gap-6">
+          <div className="flex flex-wrap justify-center gap-4 md:gap-6">
             <div className="flex items-center gap-1 text-green-600">
               <CheckCircle className="h-4 w-4" />
               <span className="font-medium">{stats.approved}</span>
@@ -215,6 +319,13 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
               <AlertTriangle className="h-4 w-4" />
               <span className="font-medium">{stats.flagged}</span>
               <span className="text-muted-foreground text-xs">Divergentes</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <PenTool className="h-4 w-4 text-muted-foreground" />
+              <span className={signatureCount >= 3 ? 'text-green-600 font-medium' : 'font-medium'}>
+                {signatureCount}/3
+              </span>
+              <span className="text-muted-foreground text-xs">Assinaturas</span>
             </div>
           </div>
         </CardContent>
@@ -231,7 +342,25 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
           <CheckCircle className="h-4 w-4 mr-2" />
           Aprovar Todos Pendentes ({stats.pending})
         </Button>
-        <Button variant="outline" size="sm" onClick={handleExportPDF}>
+        
+        {canSign && (
+          <Button 
+            size="sm"
+            onClick={() => setSignatureModalOpen(true)}
+            className="bg-primary"
+          >
+            <PenTool className="h-4 w-4 mr-2" />
+            Assinar Relatório
+          </Button>
+        )}
+        
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleExportPDF}
+          disabled={!isFinished}
+          title={isFinished ? "Exportar PDF" : "Disponível apenas quando concluído"}
+        >
           <Download className="h-4 w-4 mr-2" />
           Exportar PDF
         </Button>
@@ -264,7 +393,7 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
 
       {/* Reviews List */}
       <div className="space-y-2">
-        {filteredReviews.length === 0 ? (
+        {sortedFilteredReviews.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center">
               <p className="text-muted-foreground">
@@ -275,7 +404,7 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
             </CardContent>
           </Card>
         ) : (
-          filteredReviews.map((review) => (
+          sortedFilteredReviews.map((review) => (
             <FiscalReviewItem
               key={review.id}
               review={review}
@@ -292,6 +421,15 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
         onOpenChange={(open) => setObservationModal({ open, review: open ? observationModal.review : null })}
         onSubmit={handleSubmitObservation}
         transaction={observationModal.review?.transaction || null}
+      />
+
+      {/* Signature Modal */}
+      <FiscalSignatureModal
+        open={signatureModalOpen}
+        onOpenChange={setSignatureModalOpen}
+        onSubmit={handleSubmitSignature}
+        isSubmitting={createSignature.isPending}
+        hasAlreadySigned={hasUserSigned}
       />
     </div>
   );

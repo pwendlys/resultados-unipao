@@ -327,6 +327,41 @@ export type Database = {
           },
         ]
       }
+      fiscal_report_signatures: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          report_id: string
+          signature_data: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          report_id: string
+          signature_data: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          report_id?: string
+          signature_data?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_report_signatures_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fiscal_reports: {
         Row: {
           account_type: string
