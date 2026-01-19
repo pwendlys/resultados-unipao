@@ -38,62 +38,33 @@ export const useFiscalReports = () => {
   return useQuery({
     queryKey: ['fiscal-reports', user?.email],
     queryFn: async () => {
-      console.log('Fetching fiscal reports for user:', user?.email);
+      console.log('Fetching fiscal reports for user:', user?.email, 'role:', user?.role);
       
-      // Buscar relatórios atribuídos ao usuário atual
-      const { data: assignees, error: assigneesError } = await supabase
-        .from('fiscal_report_assignees')
-        .select('fiscal_report_id')
-        .eq('fiscal_user_id', user?.email || '');
+      // Se for admin ou fiscal, buscar todos os relatórios (conceito de Conselho Fiscal)
+      if (user?.role === 'admin' || user?.role === 'fiscal') {
+        const { data, error } = await supabase
+          .from('fiscal_reports')
+          .select(`
+            *,
+            extratos (
+              name,
+              bank,
+              period
+            )
+          `)
+          .order('created_at', { ascending: false });
 
-      if (assigneesError) {
-        console.error('Error fetching assignees:', assigneesError);
-        throw assigneesError;
-      }
-
-      const reportIds = assignees?.map(a => a.fiscal_report_id) || [];
-      
-      if (reportIds.length === 0) {
-        // Se for admin, buscar todos os relatórios
-        if (user?.role === 'admin') {
-          const { data, error } = await supabase
-            .from('fiscal_reports')
-            .select(`
-              *,
-              extratos (
-                name,
-                bank,
-                period
-              )
-            `)
-            .order('created_at', { ascending: false });
-
-          if (error) throw error;
-          return data as FiscalReport[];
+        if (error) {
+          console.error('Error fetching fiscal reports:', error);
+          throw error;
         }
-        return [];
+        
+        console.log('Fiscal reports fetched:', data?.length);
+        return data as FiscalReport[];
       }
-
-      const { data, error } = await supabase
-        .from('fiscal_reports')
-        .select(`
-          *,
-          extratos (
-            name,
-            bank,
-            period
-          )
-        `)
-        .in('id', reportIds)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching fiscal reports:', error);
-        throw error;
-      }
-
-      console.log('Fiscal reports fetched:', data?.length);
-      return data as FiscalReport[];
+      
+      // Usuários sem role fiscal/admin não veem nada
+      return [];
     },
     enabled: !!user?.email,
   });

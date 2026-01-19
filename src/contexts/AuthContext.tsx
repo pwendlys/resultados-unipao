@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-type UserRole = 'admin' | 'cooperado';
+type UserRole = 'admin' | 'cooperado' | 'fiscal';
 
 interface UserInfo {
   email: string;
