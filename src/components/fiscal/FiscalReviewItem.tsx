@@ -10,7 +10,8 @@ import {
   ChevronUp,
   Folder,
   Users,
-  AlertCircle
+  AlertCircle,
+  Eye
 } from 'lucide-react';
 import { FiscalReview } from '@/hooks/useFiscalReviews';
 import { cn } from '@/lib/utils';
@@ -22,6 +23,10 @@ interface FiscalReviewItemProps {
   approvalCount?: number;
   isDiligence?: boolean;
   diligenceAckCount?: number;
+  reviewCount?: number;           // NEW: How many fiscals reviewed
+  diligenceCreatorName?: string;  // NEW: Who created the diligence
+  diligenceCreatedAt?: string;    // NEW: When diligence was created
+  diligenceObservation?: string;  // NEW: Reason/observation for diligence
   onApprove: () => void;
   onFlag: () => void;
   onConfirmDiligence?: () => void;
@@ -34,6 +39,10 @@ const FiscalReviewItem = ({
   approvalCount = 0, 
   isDiligence = false,
   diligenceAckCount = 0,
+  reviewCount = 0,
+  diligenceCreatorName,
+  diligenceCreatedAt,
+  diligenceObservation,
   onApprove, 
   onFlag,
   onConfirmDiligence
@@ -46,6 +55,14 @@ const FiscalReviewItem = ({
       style: 'currency',
       currency: 'BRL'
     }).format(value);
+  };
+
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return {
+      date: date.toLocaleDateString('pt-BR'),
+      time: date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    };
   };
 
   // Get status info based on the current fiscal user's review status
@@ -115,20 +132,32 @@ const FiscalReviewItem = ({
                 {transaction?.type === 'entrada' ? 'C' : 'D'}
               </Badge>
               
-              {/* Diligence badge - shows when any fiscal marked as divergent */}
+              {/* Diligence badges - shows when any fiscal marked as divergent */}
               {isDiligence && (
-                <Badge 
-                  variant="outline" 
-                  className={cn(
-                    "text-xs flex items-center gap-1",
-                    diligenceAckCount >= 3 
-                      ? "border-green-500 text-green-600 bg-green-50" 
-                      : "border-orange-500 text-orange-600 bg-orange-50"
-                  )}
-                >
-                  <AlertCircle className="h-3 w-3" />
-                  Diligência {diligenceAckCount}/3
-                </Badge>
+                <>
+                  {/* Reviewed badge - counts fiscals who made a decision */}
+                  <Badge 
+                    variant="outline" 
+                    className="text-xs flex items-center gap-1 text-blue-600 border-blue-500"
+                  >
+                    <Eye className="h-3 w-3" />
+                    Revisado {reviewCount}/3
+                  </Badge>
+                  
+                  {/* Diligence ack badge */}
+                  <Badge 
+                    variant="outline" 
+                    className={cn(
+                      "text-xs flex items-center gap-1",
+                      diligenceAckCount >= 3 
+                        ? "border-green-500 text-green-600 bg-green-50" 
+                        : "border-orange-500 text-orange-600 bg-orange-50"
+                    )}
+                  >
+                    <AlertCircle className="h-3 w-3" />
+                    Ciência {diligenceAckCount}/3
+                  </Badge>
+                </>
               )}
               
               {/* Approval count badge - only show if not in diligence */}
@@ -166,10 +195,30 @@ const FiscalReviewItem = ({
               )}
             </div>
 
-            {/* Divergence/Diligence notice */}
+            {/* Diligence details block - shows who created and the reason */}
             {isDiligence && (
-              <div className="mt-2 p-2 bg-orange-100 rounded text-sm text-orange-800">
-                <strong>⚠️ Diligência:</strong> Este lançamento foi marcado como divergente por um fiscal.
+              <div className="mt-2 p-3 bg-orange-100 border border-orange-200 rounded-lg text-sm space-y-1">
+                {/* Creator info */}
+                <div className="flex items-start gap-2 text-orange-700">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="font-medium">Marcado por:</span>{' '}
+                    <span>{diligenceCreatorName || 'Fiscal'}</span>
+                    {diligenceCreatedAt && (
+                      <span className="text-orange-600 ml-1">
+                        em {formatDateTime(diligenceCreatedAt).date} às {formatDateTime(diligenceCreatedAt).time}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Reason/observation */}
+                {diligenceObservation && (
+                  <div className="text-orange-800 pl-6">
+                    <span className="font-medium">Motivo:</span>{' '}
+                    <span>{diligenceObservation}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
