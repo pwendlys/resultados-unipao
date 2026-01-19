@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Eye, EyeOff } from 'lucide-react';
 
 const LoginPage = () => {
@@ -12,15 +13,32 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
 
-    const success = login(email, password);
-    if (!success) {
-      setError('Email ou senha incorretos');
+    try {
+      // Login no AuthContext (mantém compatibilidade com sistema existente)
+      const success = login(email, password);
+      
+      if (success) {
+        // Para admin, também fazer login no Supabase Auth para operações de Storage/RLS
+        if (email === 'adm@adm.com') {
+          try {
+            await supabase.auth.signInWithPassword({ email, password });
+          } catch (err) {
+            console.warn('Supabase auth login failed, continuing with local auth');
+          }
+        }
+      } else {
+        setError('Email ou senha incorretos');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -93,8 +111,8 @@ const LoginPage = () => {
                 <div className="text-destructive text-sm">{error}</div>
               )}
 
-              <Button type="submit" className="w-full">
-                Entrar
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? 'Entrando...' : 'Entrar'}
               </Button>
             </form>
           </CardContent>
