@@ -17,11 +17,19 @@ import ResultadosUnipao from '@/components/cooperado/ResultadosUnipao';
 import TreasurerDashboard from '@/components/treasurer/TreasurerDashboard';
 import TreasurerFiscalArea from '@/components/treasurer/TreasurerFiscalArea';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+
+// Allowlist de emails autorizados para acesso à área de tesouraria
+const TREASURY_ALLOWED_EMAILS = ['arthur@tesoureiro.com', 'adm@adm.com'];
 
 const Index = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const { user } = useAuth();
+  const { toast } = useToast();
+
+  // Verifica se o usuário tem acesso à área de tesouraria
+  const canAccessTreasury = TREASURY_ALLOWED_EMAILS.includes(user?.email?.toLowerCase() ?? '');
 
   const handlePageChange = (page: string) => {
     // Cooperado restrictions
@@ -32,6 +40,16 @@ const Index = () => {
     // Tesoureiro restrictions - can only access tesoureiro pages
     if (user?.role === 'tesoureiro' && !page.startsWith('tesoureiro')) {
       setCurrentPage('tesoureiro-dashboard');
+      return;
+    }
+    // Treasury access guard - check allowlist for tesoureiro pages
+    if (page.startsWith('tesoureiro') && !canAccessTreasury && user?.role !== 'tesoureiro') {
+      toast({
+        title: "Acesso restrito",
+        description: "Você não tem permissão para acessar esta área.",
+        variant: "destructive",
+      });
+      setCurrentPage('dashboard');
       return;
     }
     setCurrentPage(page);
