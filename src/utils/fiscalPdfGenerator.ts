@@ -93,38 +93,58 @@ export const generateFiscalPDF = (
     }
   });
 
-  // Signatures section (only if signatures exist)
-  if (signatures && signatures.length > 0) {
+  // Signatures section - ONLY if report is concluded (3+ signatures)
+  if (signatures && signatures.length >= 3) {
     doc.addPage();
     yPos = 20;
     
+    // Formal section title
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('ASSINATURAS DO CONSELHO FISCAL', pageWidth / 2, yPos, { align: 'center' });
+    doc.text('DECLARAÇÃO DE CIÊNCIA E APROVAÇÃO DO CONSELHO FISCAL', pageWidth / 2, yPos, { align: 'center' });
     
+    // Institutional declaration text
     yPos += 15;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Total de assinaturas: ${signatures.length}`, 14, yPos);
     
-    yPos += 15;
+    const declarationText = `Declaramos, para os devidos fins, que o presente relatório financeiro referente à competência ${report.competencia} foi devidamente analisado, conferido e revisado pelos membros do Conselho Fiscal da Cooperativa Unipão, conforme as assinaturas abaixo, estando em conformidade com os registros contábeis e documentação comprobatória apresentada.`;
+    
+    const declarationLines = doc.splitTextToSize(declarationText, pageWidth - 28);
+    doc.text(declarationLines, 14, yPos);
+    yPos += declarationLines.length * 5 + 15;
+    
+    // Visual separator
+    doc.setDrawColor(100, 100, 100);
+    doc.setLineWidth(0.5);
+    doc.line(14, yPos, pageWidth - 14, yPos);
+    yPos += 20;
 
-    signatures.forEach((sig, index) => {
+    // Signatures list
+    signatures.forEach((sig) => {
       if (yPos > 200) {
         doc.addPage();
         yPos = 20;
       }
 
-      // Signature header
+      // Fiscal name
       doc.setFont('helvetica', 'bold');
-      doc.text(`Assinatura ${index + 1}`, 14, yPos);
+      doc.setFontSize(11);
+      doc.text(sig.display_name || 'Nome não informado', 14, yPos);
       yPos += 6;
       
+      // Title/Role
       doc.setFont('helvetica', 'normal');
-      doc.text(`Nome: ${sig.display_name || 'Não informado'}`, 14, yPos);
+      doc.setFontSize(10);
+      doc.text('Conselheiro(a) Fiscal', 14, yPos);
       yPos += 5;
-      doc.text(`Data/Hora: ${new Date(sig.created_at).toLocaleString('pt-BR')}`, 14, yPos);
-      yPos += 8;
+      
+      // Signature date/time
+      const signatureDate = new Date(sig.created_at);
+      const formattedDate = signatureDate.toLocaleDateString('pt-BR');
+      const formattedTime = signatureDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      doc.text(`Assinado eletronicamente em ${formattedDate} às ${formattedTime}`, 14, yPos);
+      yPos += 10;
 
       // Draw signature image
       try {
@@ -137,11 +157,19 @@ export const generateFiscalPDF = (
         doc.text('[Assinatura não pôde ser renderizada]', 14, yPos);
         yPos += 10;
       }
-
-      // Separator line
-      doc.setDrawColor(200, 200, 200);
-      doc.line(14, yPos, pageWidth - 14, yPos);
+      
+      // Validity indicator
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 100);
+      doc.text('Assinatura eletrônica válida conforme registro no sistema', 14, yPos);
+      doc.setTextColor(0, 0, 0);
       yPos += 10;
+
+      // Separator between signatures
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.3);
+      doc.line(14, yPos, pageWidth - 14, yPos);
+      yPos += 15;
     });
   }
 
