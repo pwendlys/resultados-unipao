@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export interface FiscalReport {
   id: string;
@@ -116,6 +116,55 @@ export const useFiscalReports = () => {
 };
 
 export const useAllFiscalReports = () => {
+  const queryClient = useQueryClient();
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  // Setup Realtime subscription for automatic updates
+  useEffect(() => {
+    // Avoid duplicate subscriptions
+    if (channelRef.current) return;
+
+    const channel = supabase
+      .channel('admin-fiscal-realtime')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'fiscal_user_reviews' },
+        () => {
+          console.log('[Realtime] fiscal_user_reviews changed, invalidating...');
+          queryClient.invalidateQueries({ queryKey: ['all-fiscal-reports'] });
+          queryClient.invalidateQueries({ queryKey: ['transaction-diligence-status'] });
+          queryClient.invalidateQueries({ queryKey: ['fiscal-reviews'] });
+        }
+      )
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'fiscal_report_signatures' },
+        () => {
+          console.log('[Realtime] fiscal_report_signatures changed, invalidating...');
+          queryClient.invalidateQueries({ queryKey: ['all-fiscal-reports'] });
+          queryClient.invalidateQueries({ queryKey: ['fiscal-signatures'] });
+        }
+      )
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'fiscal_reports' },
+        () => {
+          console.log('[Realtime] fiscal_reports changed, invalidating...');
+          queryClient.invalidateQueries({ queryKey: ['all-fiscal-reports'] });
+          queryClient.invalidateQueries({ queryKey: ['fiscal-reports'] });
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Realtime] Admin fiscal subscription status:', status);
+      });
+
+    channelRef.current = channel;
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [queryClient]);
+
   return useQuery({
     queryKey: ['all-fiscal-reports'],
     queryFn: async () => {

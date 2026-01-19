@@ -31,7 +31,8 @@ import {
   Clock,
   AlertCircle,
   PenTool,
-  FileUp
+  FileUp,
+  ExternalLink
 } from 'lucide-react';
 import { useAllFiscalReports, useFiscalReportsActions } from '@/hooks/useFiscalReports';
 import { useFiscalReviews } from '@/hooks/useFiscalReviews';
@@ -42,6 +43,7 @@ import { useToast } from '@/hooks/use-toast';
 import { generateFiscalPDF } from '@/utils/fiscalPdfGenerator';
 import FiscalSignaturesModal from '@/components/fiscal/FiscalSignaturesModal';
 import FiscalUploadStatementModal from '@/components/fiscal/FiscalUploadStatementModal';
+import FiscalDiligencesModal from '@/components/fiscal/FiscalDiligencesModal';
 
 interface AdminFiscalReportsProps {
   onNavigateToPage?: (page: string) => void;
@@ -65,6 +67,12 @@ const AdminFiscalReports = ({ onNavigateToPage }: AdminFiscalReportsProps) => {
   }>({ open: false, reportId: '', reportTitle: '' });
 
   const [uploadModal, setUploadModal] = useState<{
+    open: boolean;
+    reportId: string;
+    reportTitle: string;
+  }>({ open: false, reportId: '', reportTitle: '' });
+
+  const [diligencesModal, setDiligencesModal] = useState<{
     open: boolean;
     reportId: string;
     reportTitle: string;
@@ -155,7 +163,12 @@ const AdminFiscalReports = ({ onNavigateToPage }: AdminFiscalReportsProps) => {
                     <ReportRow 
                       key={report.id} 
                       report={report}
-                      onView={() => setSignaturesModal({
+                      onViewSignatures={() => setSignaturesModal({
+                        open: true,
+                        reportId: report.id,
+                        reportTitle: report.title,
+                      })}
+                      onViewDiligences={() => setDiligencesModal({
                         open: true,
                         reportId: report.id,
                         reportTitle: report.title,
@@ -221,6 +234,14 @@ const AdminFiscalReports = ({ onNavigateToPage }: AdminFiscalReportsProps) => {
         reportId={uploadModal.reportId}
         reportTitle={uploadModal.reportTitle}
       />
+
+      {/* Modal de Diligências */}
+      <FiscalDiligencesModal
+        open={diligencesModal.open}
+        onOpenChange={(open) => setDiligencesModal({ ...diligencesModal, open })}
+        reportId={diligencesModal.reportId}
+        reportTitle={diligencesModal.reportTitle}
+      />
     </div>
   );
 };
@@ -228,14 +249,15 @@ const AdminFiscalReports = ({ onNavigateToPage }: AdminFiscalReportsProps) => {
 // Componente separado para cada linha da tabela
 interface ReportRowProps {
   report: any;
-  onView: () => void;
+  onViewSignatures: () => void;
+  onViewDiligences: () => void;
   onNavigateToReport: () => void;
   onDelete: () => void;
   onUploadStatement: () => void;
   getStatusBadge: (status: string) => JSX.Element;
 }
 
-const ReportRow = ({ report, onView, onNavigateToReport, onDelete, onUploadStatement, getStatusBadge }: ReportRowProps) => {
+const ReportRow = ({ report, onViewSignatures, onViewDiligences, onNavigateToReport, onDelete, onUploadStatement, getStatusBadge }: ReportRowProps) => {
   const { toast } = useToast();
   const { data: reviews = [] } = useFiscalReviews(report.id);
   const { data: signatures = [] } = useFiscalSignatures(report.id);
@@ -275,12 +297,20 @@ const ReportRow = ({ report, onView, onNavigateToReport, onDelete, onUploadState
     });
   };
 
+  // Derive status based on real data
+  const derivedStatus = (() => {
+    if (pendingCount === 0 && signatureCount >= 3 && (diligenceCount === 0 || allDiligencesConfirmed)) {
+      return 'finished';
+    }
+    return report.status;
+  })();
+
   return (
     <TableRow>
       <TableCell className="font-medium">{report.title}</TableCell>
       <TableCell>{report.competencia}</TableCell>
       <TableCell>{report.account_type}</TableCell>
-      <TableCell>{getStatusBadge(report.status)}</TableCell>
+      <TableCell>{getStatusBadge(derivedStatus)}</TableCell>
       <TableCell>
         <div className="flex items-center gap-2 min-w-[150px]">
           <Progress value={progressPercentage} className="h-2 w-16" />
@@ -328,11 +358,14 @@ const ReportRow = ({ report, onView, onNavigateToReport, onDelete, onUploadState
           >
             <FileUp className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={onView} title="Ver Assinaturas">
+          <Button variant="ghost" size="icon" onClick={onViewSignatures} title="Ver Assinaturas">
             <PenTool className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={onNavigateToReport} title="Revisar Relatório">
+          <Button variant="ghost" size="icon" onClick={onViewDiligences} title="Ver Diligências">
             <Eye className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={onNavigateToReport} title="Revisar Relatório">
+            <ExternalLink className="h-4 w-4" />
           </Button>
           <Button 
             variant="ghost" 
