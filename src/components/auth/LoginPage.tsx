@@ -105,7 +105,7 @@ const LoginPage = () => {
           <p className="text-sm text-muted-foreground">
             É um usuário fiscal?{' '}
             <Link 
-              to="/fiscal-login" 
+              to="/fiscal/login" 
               className="text-primary hover:underline font-medium"
             >
               Acessar área fiscal
