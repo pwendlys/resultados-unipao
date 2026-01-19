@@ -25,6 +25,7 @@ interface OrderingResult {
   total: number;
   extracted_lines: number;
   message: string;
+  used_pdf_order?: boolean;
 }
 
 const FiscalUploadStatementModal = ({
@@ -272,7 +273,7 @@ const FiscalUploadStatementModal = ({
           </div>
 
           {/* Ordering Result */}
-          {orderingResult && (
+          {orderingResult && orderingResult.matched > 0 && (
             <div className="flex items-start gap-2 text-sm bg-green-50 dark:bg-green-950/30 p-3 rounded-md border border-green-200 dark:border-green-800">
               <ListOrdered className="h-5 w-5 mt-0.5 shrink-0 text-green-600" />
               <div>
@@ -281,6 +282,29 @@ const FiscalUploadStatementModal = ({
                 </p>
                 <p className="text-green-600 dark:text-green-500">
                   {orderingResult.matched} de {orderingResult.total} transações vinculadas ao PDF.
+                </p>
+                {orderingResult.matched < orderingResult.total && (
+                  <p className="text-yellow-600 dark:text-yellow-500 mt-1">
+                    {orderingResult.total - orderingResult.matched} transações não encontradas no extrato.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {/* Zero matches warning */}
+          {orderingResult && orderingResult.matched === 0 && (
+            <div className="flex items-start gap-2 text-sm bg-yellow-50 dark:bg-yellow-950/30 p-3 rounded-md border border-yellow-200 dark:border-yellow-800">
+              <ListOrdered className="h-5 w-5 mt-0.5 shrink-0 text-yellow-600" />
+              <div>
+                <p className="font-medium text-yellow-700 dark:text-yellow-400">
+                  0 correspondências encontradas
+                </p>
+                <p className="text-yellow-600 dark:text-yellow-500">
+                  {orderingResult.extracted_lines < 3 
+                    ? 'Não foi possível extrair transações do PDF. Verifique se é um extrato de texto (não escaneado).'
+                    : `${orderingResult.extracted_lines} linhas extraídas, mas nenhuma correspondência com as transações. Verifique se o período do extrato está correto.`
+                  }
                 </p>
               </div>
             </div>

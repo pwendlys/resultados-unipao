@@ -29,6 +29,13 @@ interface MatchResult {
   matched: boolean;
 }
 
+// Important keywords for matching
+const KEYWORD_TOKENS = [
+  'PIX', 'COMPRA', 'DEB', 'DEBITO', 'CREDITO', 'TED', 'DOC', 
+  'SALARIO', 'PAGAMENTO', 'TRANSFERENCIA', 'SAQUE', 'DEPOSITO',
+  'BOLETO', 'MASTERCARD', 'VISA', 'NACIONAL', 'INTERNACIONAL'
+];
+
 // Normalize text for comparison
 function normalizeText(text: string): string {
   if (!text) return '';
@@ -45,7 +52,7 @@ function normalizeText(text: string): string {
 function parseDate(dateStr: string): string | null {
   if (!dateStr) return null;
   
-  // Try DD/MM/YYYY or DD/MM/YY
+  // Try DD/MM/YYYY or DD/MM/YY or DD/MM
   const brMatch = dateStr.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
   if (brMatch) {
     const day = brMatch[1].padStart(2, '0');
@@ -60,129 +67,185 @@ function parseDate(dateStr: string): string | null {
   return null;
 }
 
-// Extract lines from PDF text (generic approach for bank statements)
+// Extract text from PDF binary - improved approach
+function extractTextFromPdfBinary(pdfBytes: Uint8Array): string {
+  // Convert to string for pattern matching
+  const rawStr = new TextDecoder('latin1').decode(pdfBytes);
+  
+  const textParts: string[] = [];
+  
+  // Method 1: Extract text from stream objects (works for many PDFs)
+  // Look for BT...ET blocks (text blocks in PDF)
+  const textBlockRegex = /BT\s*([\s\S]*?)\s*ET/g;
+  let match;
+  
+  while ((match = textBlockRegex.exec(rawStr)) !== null) {
+    const block = match[1];
+    
+    // Extract text within parentheses (Tj operator) - most common
+    const tjMatches = block.matchAll(/\(((?:[^()\\]|\\.)*)\)\s*Tj/g);
+    for (const tm of tjMatches) {
+      const text = tm[1]
+        .replace(/\\n/g, '\n')
+        .replace(/\\r/g, '\r')
+        .replace(/\\t/g, '\t')
+        .replace(/\\\(/g, '(')
+        .replace(/\\\)/g, ')')
+        .replace(/\\\\/g, '\\');
+      if (text.length > 0) {
+        textParts.push(text);
+      }
+    }
+    
+    // Extract text from TJ arrays (array of strings with positioning)
+    const tjArrayMatches = block.matchAll(/\[((?:[^\[\]]|\[[^\]]*\])*)\]\s*TJ/gi);
+    for (const tam of tjArrayMatches) {
+      const arrayContent = tam[1];
+      const stringMatches = arrayContent.matchAll(/\(((?:[^()\\]|\\.)*)\)/g);
+      for (const sm of stringMatches) {
+        const text = sm[1]
+          .replace(/\\n/g, '\n')
+          .replace(/\\r/g, '\r')
+          .replace(/\\t/g, '\t')
+          .replace(/\\\(/g, '(')
+          .replace(/\\\)/g, ')')
+          .replace(/\\\\/g, '\\');
+        if (text.length > 0) {
+          textParts.push(text);
+        }
+      }
+    }
+  }
+  
+  // Method 2: Look for readable text patterns directly (fallback)
+  if (textParts.length < 10) {
+    // Extract date-like and number patterns that might be transactions
+    const directPatterns = rawStr.matchAll(/(\d{2}\/\d{2}(?:\/\d{2,4})?)\s*([A-Z][A-Za-z\s]{5,50})\s*([\d.,]+)/g);
+    for (const dp of directPatterns) {
+      textParts.push(`${dp[1]} ${dp[2]} ${dp[3]}`);
+    }
+  }
+  
+  // Join with newlines to maintain line structure
+  let result = textParts.join('\n');
+  
+  // Clean up common PDF artifacts
+  result = result
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\n\s+/g, '\n')
+    .trim();
+  
+  return result;
+}
+
+// Extract transaction lines from PDF text - optimized for SICOOB
 function extractLinesFromText(text: string): ExtractedLine[] {
   const lines: ExtractedLine[] = [];
-  const textLines = text.split('\n');
   
-  // Pattern to find monetary values
-  const valuePatterns = [
-    /(\d{1,3}(?:\.\d{3})*,\d{2})\s*([CD\-\+])?/g,   // 1.234,56 C/D
-    /[R\$]\s*(\d{1,3}(?:\.\d{3})*,\d{2})/g,           // R$ 1.234,56
-    /(\d+,\d{2})\s*([CD\-\+])?/g,                     // 123,45 C/D
+  // Split by common separators
+  const textLines = text.split(/[\n\r]+|(?=\d{2}\/\d{2})/);
+  
+  console.log(`Processing ${textLines.length} raw lines from extracted text`);
+  
+  // Patterns for SICOOB and common bank formats
+  const datePattern = /\b(\d{2}\/\d{2}(?:\/\d{2,4})?)\b/;
+  const valuePattern = /(\d{1,3}(?:\.\d{3})*,\d{2})\s*([CD\-\+])?$/;
+  const valuePatternMid = /(\d{1,3}(?:\.\d{3})*,\d{2})\s*([CD\-\+])?/;
+  
+  // Lines to skip (not transactions)
+  const skipPatterns = [
+    /saldo\s*(anterior|do\s*dia|final|bloqueado|disponivel)/i,
+    /limite\s*(credito|disponivel|utilizado)/i,
+    /total\s*(debitos?|creditos?|geral)/i,
+    /pagina\s*\d/i,
+    /extrato\s*(de\s*)?(conta|bancario)/i,
+    /agencia|conta\s*corrente|titular/i,
+    /^[\d\s\-\/]+$/, // Only numbers/dates
+    /^\s*$/,
   ];
-  
-  // Pattern to find dates
-  const datePattern = /\b(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\b/;
   
   let lineIndex = 0;
   
   for (let i = 0; i < textLines.length; i++) {
-    const line = textLines[i].trim();
-    if (!line || line.length < 5) continue;
+    let line = textLines[i].trim();
+    if (!line || line.length < 8) continue;
     
-    // Skip header/footer lines
-    const lowerLine = line.toLowerCase();
-    if (
-      lowerLine.includes('saldo anterior') ||
-      lowerLine.includes('saldo do dia') ||
-      lowerLine.includes('saldo final') ||
-      lowerLine.includes('bloqueado') ||
-      lowerLine.includes('disponível') ||
-      lowerLine.includes('limite') ||
-      lowerLine.includes('total') ||
-      lowerLine.includes('página') ||
-      lowerLine.includes('extrato') && lowerLine.includes('conta')
-    ) {
-      continue;
+    // Skip non-transaction lines
+    let shouldSkip = false;
+    for (const pattern of skipPatterns) {
+      if (pattern.test(line)) {
+        shouldSkip = true;
+        break;
+      }
     }
+    if (shouldSkip) continue;
     
-    // Try to extract date and value
+    // Find date
     const dateMatch = line.match(datePattern);
     if (!dateMatch) continue;
     
-    // Look for monetary value in this line
-    let foundValue: number | null = null;
-    let isCredit = false;
+    // Find value - try end of line first, then anywhere
+    let valueMatch = line.match(valuePattern);
+    if (!valueMatch) {
+      valueMatch = line.match(valuePatternMid);
+    }
+    if (!valueMatch) continue;
     
-    for (const pattern of valuePatterns) {
-      const matches = [...line.matchAll(new RegExp(pattern.source, 'g'))];
-      for (const match of matches) {
-        const valueStr = match[1] || match[0];
-        const cleanValue = valueStr
-          .replace(/[R\$\s]/g, '')
-          .replace(/\./g, '')
-          .replace(',', '.');
-        const value = parseFloat(cleanValue);
-        
-        if (!isNaN(value) && value > 0) {
-          foundValue = value;
-          // Check for credit indicator
-          const indicator = match[2] || '';
-          if (indicator === 'C' || indicator === '+' || line.includes(' C ') || line.includes(' C')) {
-            isCredit = true;
-          }
-          break;
-        }
-      }
-      if (foundValue) break;
+    // Parse value
+    const valueStr = valueMatch[1];
+    const cleanValue = valueStr.replace(/\./g, '').replace(',', '.');
+    const value = parseFloat(cleanValue);
+    
+    if (isNaN(value) || value <= 0) continue;
+    
+    // Determine credit/debit
+    const indicator = valueMatch[2] || '';
+    const lineUpper = line.toUpperCase();
+    const isCredit = indicator === 'C' || indicator === '+' || 
+                     lineUpper.includes(' C ') || 
+                     lineUpper.includes('CREDITO') ||
+                     lineUpper.includes('DEPOSITO') ||
+                     lineUpper.includes('RECEBIDO');
+    
+    // Extract description (between date and value)
+    const datePos = line.indexOf(dateMatch[0]);
+    const valuePos = line.indexOf(valueMatch[0]);
+    
+    let description = '';
+    if (valuePos > datePos) {
+      description = line.substring(datePos + dateMatch[0].length, valuePos);
+    } else {
+      description = line.substring(datePos + dateMatch[0].length);
     }
     
-    if (!foundValue) continue;
-    
-    // Extract description (text between date and value)
-    const datePos = line.indexOf(dateMatch[0]);
-    const valuePos = line.lastIndexOf(foundValue.toString().replace('.', ',').split('.')[0]);
-    
-    let description = line.substring(datePos + dateMatch[0].length, valuePos > datePos ? valuePos : line.length);
     description = description.replace(/\s+/g, ' ').trim();
     
-    // If description is too short, try to get more context
-    if (description.length < 3 && i + 1 < textLines.length) {
-      description = textLines[i + 1].trim();
-    }
+    // Clean up description - remove trailing numbers and symbols
+    description = description.replace(/[\d,.\-]+\s*[CD]?\s*$/, '').trim();
     
-    if (description.length >= 3) {
-      lines.push({
-        date: dateMatch[1],
-        description,
-        amount: foundValue,
-        type: isCredit ? 'credit' : 'debit',
-        lineIndex: lineIndex++,
-      });
-    }
+    // Skip if description too short
+    if (description.length < 3) continue;
+    
+    lines.push({
+      date: dateMatch[1],
+      description,
+      amount: value,
+      type: isCredit ? 'credit' : 'debit',
+      lineIndex: lineIndex++,
+    });
   }
+  
+  // Log first 5 extracted lines for debugging
+  console.log('First 5 extracted lines:');
+  lines.slice(0, 5).forEach((l, i) => {
+    console.log(`  [${i}] ${l.date} | ${l.description.substring(0, 40)} | ${l.amount} ${l.type}`);
+  });
   
   return lines;
 }
 
-// Calculate similarity between two strings
-function calculateSimilarity(str1: string, str2: string): number {
-  const norm1 = normalizeText(str1);
-  const norm2 = normalizeText(str2);
-  
-  if (!norm1 || !norm2) return 0;
-  
-  // Check for exact match
-  if (norm1 === norm2) return 1;
-  
-  // Check for contains
-  if (norm1.includes(norm2) || norm2.includes(norm1)) return 0.9;
-  
-  // Token-based comparison
-  const tokens1 = norm1.split(' ').filter(t => t.length > 2);
-  const tokens2 = norm2.split(' ').filter(t => t.length > 2);
-  
-  if (tokens1.length === 0 || tokens2.length === 0) return 0;
-  
-  const matchingTokens = tokens1.filter(t1 => 
-    tokens2.some(t2 => t2.includes(t1) || t1.includes(t2))
-  );
-  
-  return matchingTokens.length / Math.max(tokens1.length, tokens2.length);
-}
-
-// Match extracted lines to transactions
+// Match extracted lines to transactions with improved scoring
 function matchLinesToTransactions(
   lines: ExtractedLine[],
   transactions: Transaction[]
@@ -190,77 +253,119 @@ function matchLinesToTransactions(
   const results: MatchResult[] = [];
   const usedTransactionIds = new Set<string>();
   
-  // First pass: match by exact/near-exact criteria
+  console.log(`Matching ${lines.length} PDF lines to ${transactions.length} transactions`);
+  
+  // First pass: match each PDF line to best transaction
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    const lineAmountCents = Math.round(line.amount * 100);
+    const lineNorm = normalizeText(line.description);
+    const lineTokens = lineNorm.split(' ').filter(t => t.length > 2);
     const lineDate = parseDate(line.date);
     
-    let bestMatch: { transaction: Transaction; score: number } | null = null;
+    let bestMatch: { tx: Transaction; score: number } | null = null;
     
     for (const tx of transactions) {
       if (usedTransactionIds.has(tx.id)) continue;
       
-      // Check amount (with small tolerance)
-      const amountMatch = Math.abs(Math.abs(tx.amount) - line.amount) < 0.02;
-      if (!amountMatch) continue;
+      const txAmountCents = Math.round(Math.abs(tx.amount) * 100);
+      let score = 0;
       
-      // Parse transaction date
+      // PRIORITY 1: Amount match (40 points) - REQUIRED
+      if (txAmountCents === lineAmountCents) {
+        score += 40;
+      } else if (Math.abs(txAmountCents - lineAmountCents) <= 2) {
+        score += 35; // Tolerance of 2 cents for rounding
+      } else {
+        continue; // Amount doesn't match, skip this transaction
+      }
+      
+      const txNorm = normalizeText(tx.description);
+      const txNormRaw = normalizeText(tx.description_raw || '');
+      
+      // PRIORITY 2: Keyword matching (20 points)
+      for (const kw of KEYWORD_TOKENS) {
+        const lineHasKw = lineNorm.includes(kw);
+        const txHasKw = txNorm.includes(kw) || txNormRaw.includes(kw);
+        if (lineHasKw && txHasKw) {
+          score += 20;
+          break;
+        }
+      }
+      
+      // PRIORITY 3: Common tokens (15 points max)
+      const matchingTokens = lineTokens.filter(t => 
+        txNorm.includes(t) || txNormRaw.includes(t)
+      );
+      score += Math.min(15, matchingTokens.length * 5);
+      
+      // PRIORITY 4: Date match (15 points) - flexible, not required
       let txDate = tx.date;
       if (txDate.includes('/')) {
         txDate = parseDate(txDate) || txDate;
       }
       
-      // Check date match (exact or +/- 1 day)
-      const dateMatch = lineDate && txDate && (
-        lineDate === txDate ||
-        Math.abs(new Date(lineDate).getTime() - new Date(txDate).getTime()) <= 86400000
-      );
+      if (lineDate && txDate) {
+        if (lineDate === txDate) {
+          score += 15;
+        } else {
+          // Allow date difference up to 5 days (bank processing time)
+          try {
+            const diff = Math.abs(new Date(lineDate).getTime() - new Date(txDate).getTime());
+            if (diff <= 5 * 86400000) {
+              score += 8;
+            }
+          } catch {
+            // Ignore date parsing errors
+          }
+        }
+      }
       
-      // Calculate description similarity
-      const descSimilarity = Math.max(
-        calculateSimilarity(line.description, tx.description),
-        calculateSimilarity(line.description, tx.description_raw || '')
-      );
-      
-      // Score calculation
-      let score = 0;
-      if (amountMatch) score += 40;
-      if (dateMatch) score += 30;
-      score += descSimilarity * 30;
-      
-      // Prefer transactions with similar entry_index (for duplicates)
+      // PRIORITY 5: Entry index proximity (10 points) - for disambiguating
       if (tx.entry_index !== null) {
         const posDiff = Math.abs(tx.entry_index - i);
         if (posDiff === 0) score += 10;
-        else if (posDiff <= 3) score += 5;
+        else if (posDiff <= 2) score += 6;
+        else if (posDiff <= 5) score += 3;
       }
       
-      if (score > 50 && (!bestMatch || score > bestMatch.score)) {
-        bestMatch = { transaction: tx, score };
+      // Minimum score threshold: amount match (35+) plus something else
+      if (score >= 40 && (!bestMatch || score > bestMatch.score)) {
+        bestMatch = { tx, score };
       }
     }
     
     if (bestMatch) {
-      usedTransactionIds.add(bestMatch.transaction.id);
+      usedTransactionIds.add(bestMatch.tx.id);
       results.push({
-        transaction_id: bestMatch.transaction.id,
+        transaction_id: bestMatch.tx.id,
         sort_index: i + 1,
         matched: true,
       });
+      
+      if (i < 3) {
+        console.log(`Matched line ${i}: "${line.description.substring(0, 30)}" -> tx "${bestMatch.tx.description.substring(0, 30)}" (score: ${bestMatch.score})`);
+      }
     }
   }
   
-  // Add unmatched transactions at the end
+  console.log(`First pass: ${results.length} matched out of ${lines.length} PDF lines`);
+  
+  // Add unmatched transactions at the end, sorted by entry_index
+  const unmatchedTx = transactions
+    .filter(tx => !usedTransactionIds.has(tx.id))
+    .sort((a, b) => (a.entry_index || 999) - (b.entry_index || 999));
+  
   let nextIndex = results.length + 1;
-  for (const tx of transactions) {
-    if (!usedTransactionIds.has(tx.id)) {
-      results.push({
-        transaction_id: tx.id,
-        sort_index: nextIndex++,
-        matched: false,
-      });
-    }
+  for (const tx of unmatchedTx) {
+    results.push({
+      transaction_id: tx.id,
+      sort_index: nextIndex++,
+      matched: false,
+    });
   }
+  
+  console.log(`Final: ${results.filter(r => r.matched).length} matched, ${unmatchedTx.length} unmatched`);
   
   return results;
 }
@@ -286,7 +391,8 @@ Deno.serve(async (req) => {
       );
     }
     
-    console.log(`Processing PDF for report ${report_id}, file: ${file_path}`);
+    console.log(`\n=== Processing PDF for report ${report_id} ===`);
+    console.log(`File path: ${file_path}`);
     
     // Download PDF from storage
     const { data: fileData, error: downloadError } = await supabase.storage
@@ -301,22 +407,16 @@ Deno.serve(async (req) => {
       );
     }
     
-    // Extract text from PDF using basic approach
-    // Note: For production, consider using a proper PDF parsing service
-    const pdfBytes = await fileData.arrayBuffer();
-    const pdfText = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(pdfBytes));
+    // Extract text from PDF using improved method
+    const pdfBytes = new Uint8Array(await fileData.arrayBuffer());
+    console.log(`PDF size: ${pdfBytes.byteLength} bytes`);
     
-    // Try to extract readable text (works for text-based PDFs)
-    // This is a simplified approach - for scanned PDFs, OCR would be needed
-    const cleanText = pdfText
-      .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, ' ')
-      .replace(/stream[\s\S]*?endstream/g, ' ')
-      .replace(/<<[\s\S]*?>>/g, ' ');
-    
-    console.log('Extracted text length:', cleanText.length);
+    const extractedText = extractTextFromPdfBinary(pdfBytes);
+    console.log(`Extracted text length: ${extractedText.length} chars`);
+    console.log(`First 300 chars of extracted text: ${extractedText.substring(0, 300)}`);
     
     // Extract transaction lines from PDF text
-    const extractedLines = extractLinesFromText(cleanText);
+    const extractedLines = extractLinesFromText(extractedText);
     console.log(`Found ${extractedLines.length} transaction lines in PDF`);
     
     // Fetch transactions for this report via fiscal_reviews
@@ -360,10 +460,23 @@ Deno.serve(async (req) => {
     
     console.log(`Found ${transactions.length} transactions in report`);
     
-    // If no lines extracted from PDF, use original entry_index order
-    let matchResults: MatchResult[];
+    // Log sample transactions for debugging
+    if (transactions.length > 0) {
+      console.log('Sample transactions:');
+      transactions.slice(0, 3).forEach((tx, i) => {
+        console.log(`  [${i}] ${tx.date} | ${tx.description.substring(0, 40)} | ${tx.amount}`);
+      });
+    }
     
-    if (extractedLines.length < 3) {
+    // Match lines to transactions or fallback to entry_index
+    let matchResults: MatchResult[];
+    let usedPdfOrder = false;
+    
+    if (extractedLines.length >= 3) {
+      // Match lines to transactions
+      matchResults = matchLinesToTransactions(extractedLines, transactions);
+      usedPdfOrder = matchResults.some(r => r.matched);
+    } else {
       console.log('Not enough lines extracted from PDF, using entry_index order');
       
       // Sort by original entry_index and assign sort_index
@@ -374,18 +487,19 @@ Deno.serve(async (req) => {
       matchResults = sortedTx.map((tx, idx) => ({
         transaction_id: tx.id,
         sort_index: idx + 1,
-        matched: false, // false because we couldn't match from PDF
+        matched: false,
       }));
-    } else {
-      // Match lines to transactions
-      matchResults = matchLinesToTransactions(extractedLines, transactions);
     }
     
     // Delete existing order for this report
-    await supabase
+    const { error: deleteError } = await supabase
       .from('fiscal_report_transaction_order')
       .delete()
       .eq('report_id', report_id);
+    
+    if (deleteError) {
+      console.warn('Warning deleting old order:', deleteError);
+    }
     
     // Insert new order
     if (matchResults.length > 0) {
@@ -412,7 +526,19 @@ Deno.serve(async (req) => {
     const matchedCount = matchResults.filter(r => r.matched).length;
     const totalCount = matchResults.length;
     
-    console.log(`Ordering complete: ${matchedCount}/${totalCount} matched`);
+    console.log(`\n=== Ordering complete: ${matchedCount}/${totalCount} matched ===\n`);
+    
+    // Prepare detailed message
+    let message: string;
+    if (extractedLines.length < 3) {
+      message = `Não foi possível extrair linhas do PDF. Ordem mantida pelo índice original.`;
+    } else if (matchedCount === 0) {
+      message = `0 correspondências encontradas entre PDF e transações. Verifique se o extrato corresponde ao período.`;
+    } else if (matchedCount < totalCount) {
+      message = `Ordem do PDF aplicada: ${matchedCount} de ${totalCount} transações vinculadas. ${totalCount - matchedCount} não encontradas no extrato.`;
+    } else {
+      message = `Ordem do PDF aplicada com sucesso: ${matchedCount} de ${totalCount} transações vinculadas.`;
+    }
     
     return new Response(
       JSON.stringify({
@@ -420,9 +546,8 @@ Deno.serve(async (req) => {
         matched: matchedCount,
         total: totalCount,
         extracted_lines: extractedLines.length,
-        message: extractedLines.length >= 3 
-          ? `Ordem aplicada: ${matchedCount} de ${totalCount} transações vinculadas ao extrato.`
-          : `Ordem mantida pelo índice original (PDF não pôde ser lido como texto).`,
+        used_pdf_order: usedPdfOrder,
+        message,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
