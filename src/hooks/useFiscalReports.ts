@@ -133,6 +133,8 @@ export const useAllFiscalReports = () => {
           queryClient.invalidateQueries({ queryKey: ['all-fiscal-reports'] });
           queryClient.invalidateQueries({ queryKey: ['transaction-diligence-status'] });
           queryClient.invalidateQueries({ queryKey: ['fiscal-reviews'] });
+          queryClient.invalidateQueries({ queryKey: ['admin-report-stats'] });
+          queryClient.invalidateQueries({ queryKey: ['all-fiscal-user-reviews'] });
         }
       )
       .on('postgres_changes',
@@ -141,6 +143,7 @@ export const useAllFiscalReports = () => {
           console.log('[Realtime] fiscal_report_signatures changed, invalidating...');
           queryClient.invalidateQueries({ queryKey: ['all-fiscal-reports'] });
           queryClient.invalidateQueries({ queryKey: ['fiscal-signatures'] });
+          queryClient.invalidateQueries({ queryKey: ['admin-report-stats'] });
         }
       )
       .on('postgres_changes',
