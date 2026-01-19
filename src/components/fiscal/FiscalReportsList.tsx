@@ -1,6 +1,5 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { 
   FileCheck, 
@@ -9,9 +8,11 @@ import {
   Building2,
   CheckCircle,
   AlertTriangle,
-  Clock
+  Clock,
+  PenTool
 } from 'lucide-react';
 import { useFiscalReports } from '@/hooks/useFiscalReports';
+import { useReportsListStats } from '@/hooks/useReportsListStats';
 
 interface FiscalReportsListProps {
   onNavigateToPage?: (page: string) => void;
@@ -19,6 +20,10 @@ interface FiscalReportsListProps {
 
 const FiscalReportsList = ({ onNavigateToPage }: FiscalReportsListProps) => {
   const { data: reports = [], isLoading } = useFiscalReports();
+  
+  // Buscar stats complementares para todos os relatórios
+  const reportIds = reports.map(r => r.id);
+  const { data: reportStats = {} } = useReportsListStats(reportIds);
 
   const getProgressPercentage = (report: typeof reports[0]) => {
     const total = report.total_entries || 0;
@@ -27,14 +32,24 @@ const FiscalReportsList = ({ onNavigateToPage }: FiscalReportsListProps) => {
   };
 
   const getStatusInfo = (report: typeof reports[0]) => {
-    switch (report.status) {
-      case 'finished':
-        return { label: 'Concluído', variant: 'default' as const, icon: CheckCircle };
-      case 'locked':
-        return { label: 'Bloqueado', variant: 'secondary' as const, icon: Clock };
-      default:
-        return { label: 'Em Andamento', variant: 'outline' as const, icon: Clock };
+    const stats = reportStats[report.id];
+    const signatureCount = stats?.signatureCount || 0;
+    const pendingCount = report.pending_count || 0;
+    
+    // Derivar status: Concluído se pending=0 E assinaturas >= 3
+    if (pendingCount === 0 && signatureCount >= 3) {
+      return { label: 'Concluído', variant: 'default' as const, icon: CheckCircle };
     }
+    
+    // Fallback para status do banco
+    if (report.status === 'finished') {
+      return { label: 'Concluído', variant: 'default' as const, icon: CheckCircle };
+    }
+    if (report.status === 'locked') {
+      return { label: 'Bloqueado', variant: 'secondary' as const, icon: Clock };
+    }
+    
+    return { label: 'Em Andamento', variant: 'outline' as const, icon: Clock };
   };
 
   if (isLoading) {
@@ -71,6 +86,13 @@ const FiscalReportsList = ({ onNavigateToPage }: FiscalReportsListProps) => {
             const statusInfo = getStatusInfo(report);
             const progress = getProgressPercentage(report);
             const StatusIcon = statusInfo.icon;
+            
+            // Stats complementares
+            const stats = reportStats[report.id];
+            const diligenceCount = stats?.diligenceCount || 0;
+            const signatureCount = stats?.signatureCount || 0;
+            // "Sem Alterações" = aprovados que NÃO são diligências
+            const noChangeCount = Math.max(0, (report.approved_count || 0) - diligenceCount);
 
             return (
               <Card 
@@ -105,17 +127,31 @@ const FiscalReportsList = ({ onNavigateToPage }: FiscalReportsListProps) => {
                     {/* Stats */}
                     <div className="flex items-center gap-4 md:gap-6">
                       <div className="flex gap-3 text-sm">
-                        <div className="flex items-center gap-1 text-green-600">
+                        {/* Sem Alterações (aprovados sem diligência) */}
+                        <div className="flex items-center gap-1 text-green-600" title="Sem Alterações">
                           <CheckCircle className="h-4 w-4" />
-                          <span>{report.approved_count || 0}</span>
+                          <span>{noChangeCount}</span>
                         </div>
-                        <div className="flex items-center gap-1 text-destructive">
+                        
+                        {/* Diligências */}
+                        <div className="flex items-center gap-1 text-orange-500" title="Diligências">
                           <AlertTriangle className="h-4 w-4" />
-                          <span>{report.flagged_count || 0}</span>
+                          <span>{diligenceCount}</span>
                         </div>
-                        <div className="flex items-center gap-1 text-muted-foreground">
+                        
+                        {/* Pendentes */}
+                        <div className="flex items-center gap-1 text-muted-foreground" title="Pendentes">
                           <Clock className="h-4 w-4" />
                           <span>{report.pending_count || 0}</span>
+                        </div>
+                        
+                        {/* Assinaturas */}
+                        <div 
+                          className={`flex items-center gap-1 ${signatureCount >= 3 ? 'text-green-600' : 'text-muted-foreground'}`}
+                          title="Assinaturas"
+                        >
+                          <PenTool className="h-4 w-4" />
+                          <span>{signatureCount}/3</span>
                         </div>
                       </div>
 
