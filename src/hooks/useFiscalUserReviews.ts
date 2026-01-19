@@ -9,6 +9,9 @@ export interface FiscalUserReview {
   status: 'approved' | 'divergent';
   observation: string | null;
   diligence_ack: boolean;
+  diligence_created_by: string | null;
+  diligence_created_at: string | null;
+  diligence_creator_name: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -102,7 +105,11 @@ export const useTransactionApprovalCounts = (reportId: string | undefined) => {
 export interface TransactionDiligenceInfo {
   isDiligence: boolean;
   ackCount: number;
+  reviewCount: number;           // How many fiscals reviewed (any status)
   divergentObservation?: string;
+  diligenceCreatedBy?: string;   // UUID of the creator
+  diligenceCreatedAt?: string;   // Timestamp
+  diligenceCreatorName?: string; // Name/email of the creator
 }
 
 // Hook to get diligence status for all transactions in a report
@@ -114,7 +121,7 @@ export const useTransactionDiligenceStatus = (reportId: string | undefined) => {
       
       const { data, error } = await supabase
         .from('fiscal_user_reviews')
-        .select('transaction_id, user_id, status, diligence_ack, observation')
+        .select('transaction_id, user_id, status, diligence_ack, observation, diligence_created_by, diligence_created_at, diligence_creator_name')
         .eq('report_id', reportId);
 
       if (error) {
@@ -124,14 +131,22 @@ export const useTransactionDiligenceStatus = (reportId: string | undefined) => {
 
       // Build diligence map
       const diligenceMap: Record<string, TransactionDiligenceInfo> = {};
+      const reviewersByTx: Record<string, Set<string>> = {};
 
       for (const review of data || []) {
         if (!diligenceMap[review.transaction_id]) {
           diligenceMap[review.transaction_id] = {
             isDiligence: false,
             ackCount: 0,
+            reviewCount: 0,
           };
         }
+        
+        // Track unique reviewers
+        if (!reviewersByTx[review.transaction_id]) {
+          reviewersByTx[review.transaction_id] = new Set();
+        }
+        reviewersByTx[review.transaction_id].add(review.user_id);
         
         // If any fiscal marked as divergent, this transaction is in diligence
         if (review.status === 'divergent') {
@@ -139,11 +154,28 @@ export const useTransactionDiligenceStatus = (reportId: string | undefined) => {
           if (review.observation) {
             diligenceMap[review.transaction_id].divergentObservation = review.observation;
           }
+          // Capture creator info
+          if (review.diligence_created_by) {
+            diligenceMap[review.transaction_id].diligenceCreatedBy = review.diligence_created_by;
+          }
+          if (review.diligence_created_at) {
+            diligenceMap[review.transaction_id].diligenceCreatedAt = review.diligence_created_at;
+          }
+          if (review.diligence_creator_name) {
+            diligenceMap[review.transaction_id].diligenceCreatorName = review.diligence_creator_name;
+          }
         }
         
         // Count acknowledgments
         if (review.diligence_ack) {
           diligenceMap[review.transaction_id].ackCount++;
+        }
+      }
+
+      // Set review counts
+      for (const [txId, reviewers] of Object.entries(reviewersByTx)) {
+        if (diligenceMap[txId]) {
+          diligenceMap[txId].reviewCount = reviewers.size;
         }
       }
 
@@ -162,26 +194,37 @@ export const useFiscalUserReviewsActions = () => {
       transactionId,
       userId,
       status,
-      observation
+      observation,
+      displayName
     }: {
       reportId: string;
       transactionId: string;
       userId: string;
       status: 'approved' | 'divergent';
       observation?: string;
+      displayName?: string;
     }) => {
+      const now = new Date().toISOString();
+      
+      // Build the upsert data with proper typing
+      const upsertData = {
+        report_id: reportId,
+        transaction_id: transactionId,
+        user_id: userId,
+        status,
+        observation: observation || null,
+        updated_at: now,
+        // If marking as divergent, set creator info and auto-ack for the author
+        diligence_ack: status === 'divergent',
+        diligence_created_by: status === 'divergent' ? userId : null,
+        diligence_created_at: status === 'divergent' ? now : null,
+        diligence_creator_name: status === 'divergent' ? (displayName || null) : null,
+      };
+
       // Use upsert with the unique constraint
       const { error } = await supabase
         .from('fiscal_user_reviews')
-        .upsert({
-          report_id: reportId,
-          transaction_id: transactionId,
-          user_id: userId,
-          status,
-          observation: observation || null,
-          diligence_ack: false, // Reset when status changes
-          updated_at: new Date().toISOString(),
-        }, {
+        .upsert(upsertData, {
           onConflict: 'report_id,transaction_id,user_id'
         });
 
@@ -190,16 +233,17 @@ export const useFiscalUserReviewsActions = () => {
         throw error;
       }
 
-      // If marking as divergent, reset all diligence_ack for this transaction
+      // If marking as divergent, reset diligence_ack for OTHER users only
       if (status === 'divergent') {
         const { error: resetError } = await supabase
           .from('fiscal_user_reviews')
-          .update({ diligence_ack: false, updated_at: new Date().toISOString() })
+          .update({ diligence_ack: false, updated_at: now })
           .eq('report_id', reportId)
-          .eq('transaction_id', transactionId);
+          .eq('transaction_id', transactionId)
+          .neq('user_id', userId); // Don't reset the author's ack
 
         if (resetError) {
-          console.error('Error resetting diligence_ack:', resetError);
+          console.error('Error resetting diligence_ack for others:', resetError);
         }
       }
     },

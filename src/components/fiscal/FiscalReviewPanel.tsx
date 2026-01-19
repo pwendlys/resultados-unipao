@@ -261,6 +261,7 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
         userId: authUserId,
         status: 'divergent',
         observation,
+        displayName: user?.email || 'Fiscal', // Pass the display name
       });
       toast({
         title: "Diligência Criada",
@@ -607,6 +608,10 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
                 approvalCount={approvalCount}
                 isDiligence={txDiligence?.isDiligence || false}
                 diligenceAckCount={txDiligence?.ackCount || 0}
+                reviewCount={txDiligence?.reviewCount || 0}
+                diligenceCreatorName={txDiligence?.diligenceCreatorName}
+                diligenceCreatedAt={txDiligence?.diligenceCreatedAt}
+                diligenceObservation={txDiligence?.divergentObservation}
                 onApprove={() => handleApprove(review)}
                 onFlag={() => handleFlag(review)}
                 onConfirmDiligence={() => handleConfirmDiligence(review.transaction_id)}

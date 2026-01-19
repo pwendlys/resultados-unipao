@@ -589,6 +589,9 @@ export type Database = {
         Row: {
           created_at: string | null
           diligence_ack: boolean
+          diligence_created_at: string | null
+          diligence_created_by: string | null
+          diligence_creator_name: string | null
           id: string
           observation: string | null
           report_id: string
@@ -600,6 +603,9 @@ export type Database = {
         Insert: {
           created_at?: string | null
           diligence_ack?: boolean
+          diligence_created_at?: string | null
+          diligence_created_by?: string | null
+          diligence_creator_name?: string | null
           id?: string
           observation?: string | null
           report_id: string
@@ -611,6 +617,9 @@ export type Database = {
         Update: {
           created_at?: string | null
           diligence_ack?: boolean
+          diligence_created_at?: string | null
+          diligence_created_by?: string | null
+          diligence_creator_name?: string | null
           id?: string
           observation?: string | null
           report_id?: string
