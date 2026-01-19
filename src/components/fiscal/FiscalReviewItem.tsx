@@ -8,18 +8,21 @@ import {
   Clock,
   ChevronDown,
   ChevronUp,
-  Folder
+  Folder,
+  Users
 } from 'lucide-react';
 import { FiscalReview } from '@/hooks/useFiscalReviews';
 import { cn } from '@/lib/utils';
 
 interface FiscalReviewItemProps {
   review: FiscalReview;
+  myStatus?: 'approved' | 'divergent'; // Current fiscal user's status
+  approvalCount?: number; // How many fiscals approved this transaction
   onApprove: () => void;
   onFlag: () => void;
 }
 
-const FiscalReviewItem = ({ review, onApprove, onFlag }: FiscalReviewItemProps) => {
+const FiscalReviewItem = ({ review, myStatus, approvalCount = 0, onApprove, onFlag }: FiscalReviewItemProps) => {
   const [expanded, setExpanded] = useState(false);
   const transaction = review.transaction;
 
@@ -30,16 +33,17 @@ const FiscalReviewItem = ({ review, onApprove, onFlag }: FiscalReviewItemProps) 
     }).format(value);
   };
 
-  const getStatusInfo = () => {
-    switch (review.status) {
+  // Get status info based on the current fiscal user's review status
+  const getMyStatusInfo = () => {
+    switch (myStatus) {
       case 'approved':
         return { 
           icon: CheckCircle, 
           color: 'text-green-600', 
           bg: 'bg-green-50 border-green-200',
-          label: 'Aprovado'
+          label: 'Aprovado por você'
         };
-      case 'flagged':
+      case 'divergent':
         return { 
           icon: AlertTriangle, 
           color: 'text-destructive', 
@@ -56,8 +60,11 @@ const FiscalReviewItem = ({ review, onApprove, onFlag }: FiscalReviewItemProps) 
     }
   };
 
-  const statusInfo = getStatusInfo();
+  const statusInfo = getMyStatusInfo();
   const StatusIcon = statusInfo.icon;
+  
+  // Has the current fiscal reviewed this item?
+  const isReviewed = myStatus !== undefined;
 
   return (
     <Card className={cn("transition-all", statusInfo.bg)}>
@@ -71,7 +78,7 @@ const FiscalReviewItem = ({ review, onApprove, onFlag }: FiscalReviewItemProps) 
 
           {/* Transaction Info */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="text-sm text-muted-foreground">
                 {transaction?.date}
               </span>
@@ -83,6 +90,18 @@ const FiscalReviewItem = ({ review, onApprove, onFlag }: FiscalReviewItemProps) 
                 )}
               >
                 {transaction?.type === 'entrada' ? 'C' : 'D'}
+              </Badge>
+              
+              {/* Approval count badge - shows how many fiscals approved */}
+              <Badge 
+                variant="outline" 
+                className={cn(
+                  "text-xs flex items-center gap-1",
+                  approvalCount >= 3 ? "border-green-500 text-green-600" : "text-muted-foreground"
+                )}
+              >
+                <Users className="h-3 w-3" />
+                {approvalCount}/3
               </Badge>
             </div>
             
@@ -106,10 +125,10 @@ const FiscalReviewItem = ({ review, onApprove, onFlag }: FiscalReviewItemProps) 
               )}
             </div>
 
-            {/* Observation */}
-            {review.observation && (
+            {/* Observation from my review */}
+            {myStatus === 'divergent' && (
               <div className="mt-2 p-2 bg-destructive/10 rounded text-sm text-destructive">
-                <strong>Observação:</strong> {review.observation}
+                <strong>Marcado como Divergente</strong>
               </div>
             )}
           </div>
@@ -139,7 +158,8 @@ const FiscalReviewItem = ({ review, onApprove, onFlag }: FiscalReviewItemProps) 
             )}
           </Button>
 
-          {review.status === 'pending' && (
+          {/* Show action buttons if not reviewed by current fiscal */}
+          {!isReviewed && (
             <div className="flex gap-2">
               <Button
                 size="sm"
@@ -161,7 +181,8 @@ const FiscalReviewItem = ({ review, onApprove, onFlag }: FiscalReviewItemProps) 
             </div>
           )}
 
-          {review.status !== 'pending' && (
+          {/* Show status badge if reviewed */}
+          {isReviewed && (
             <Badge variant="outline" className={statusInfo.color}>
               <StatusIcon className="h-3 w-3 mr-1" />
               {statusInfo.label}
@@ -190,12 +211,10 @@ const FiscalReviewItem = ({ review, onApprove, onFlag }: FiscalReviewItemProps) 
               </div>
             </div>
 
-            {review.reviewed_by && (
-              <div>
-                <span className="text-muted-foreground">Revisado por:</span>
-                <p>{review.reviewed_by} em {new Date(review.reviewed_at || '').toLocaleString('pt-BR')}</p>
-              </div>
-            )}
+            <div>
+              <span className="text-muted-foreground">Aprovações:</span>
+              <p>{approvalCount} de 3 fiscais aprovaram este lançamento</p>
+            </div>
           </div>
         )}
       </CardContent>
