@@ -585,6 +585,54 @@ export type Database = {
         }
         Relationships: []
       }
+      fiscal_user_reviews: {
+        Row: {
+          created_at: string | null
+          id: string
+          observation: string | null
+          report_id: string
+          status: string
+          transaction_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          observation?: string | null
+          report_id: string
+          status?: string
+          transaction_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          observation?: string | null
+          report_id?: string
+          status?: string
+          transaction_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_user_reviews_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_user_reviews_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       itens_balanco: {
         Row: {
           balanco_id: string

@@ -26,7 +26,12 @@ const FiscalSignaturesModal = ({
   reportId,
   reportTitle,
 }: FiscalSignaturesModalProps) => {
-  const { data: signatures = [], isLoading } = useFiscalSignatures(reportId);
+  // Only fetch when modal is open and we have a valid reportId
+  const shouldFetch = open && reportId && reportId.trim() !== '';
+  const { data: signatures = [], isLoading, error } = useFiscalSignatures(shouldFetch ? reportId : undefined);
+
+  // Debug logging
+  console.log('FiscalSignaturesModal - open:', open, 'reportId:', reportId, 'signatures:', signatures.length, 'error:', error);
 
   const signatureCount = signatures.length;
   const isComplete = signatureCount >= 3;

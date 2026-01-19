@@ -25,11 +25,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useFiscalReportById } from '@/hooks/useFiscalReports';
-import { useFiscalReviews, useFiscalReviewsActions, FiscalReview } from '@/hooks/useFiscalReviews';
+import { useFiscalReviews, FiscalReview } from '@/hooks/useFiscalReviews';
 import { useFiscalSignatures, useFiscalSignaturesActions } from '@/hooks/useFiscalSignatures';
 import { useFiscalUserProfile, useSaveDefaultSignature } from '@/hooks/useFiscalUserProfile';
 import { useFiscalReportFile, useGetFileUrl } from '@/hooks/useFiscalReportFiles';
 import { useFiscalTransactionOrder } from '@/hooks/useFiscalTransactionOrder';
+import { useFiscalUserReviews, useTransactionApprovalCounts, useFiscalUserReviewsActions } from '@/hooks/useFiscalUserReviews';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import FiscalReviewItem from './FiscalReviewItem';
@@ -52,7 +53,6 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
   const { data: attachedFile } = useFiscalReportFile(reportId);
   const { data: customOrder = [] } = useFiscalTransactionOrder(reportId);
   const getFileUrl = useGetFileUrl();
-  const { updateReviewStatus, bulkUpdateReviewStatus } = useFiscalReviewsActions();
   const { createSignature } = useFiscalSignaturesActions();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -77,6 +77,20 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
   // Fetch user profile for saved signature
   const { data: userProfile } = useFiscalUserProfile(authUserId);
   const saveDefaultSignature = useSaveDefaultSignature();
+
+  // Fetch per-fiscal reviews (BUG 1 fix)
+  const { data: myReviews = [] } = useFiscalUserReviews(reportId, authUserId || undefined);
+  const { data: approvalCounts = {} } = useTransactionApprovalCounts(reportId);
+  const { createOrUpdateReview, bulkCreateReviews } = useFiscalUserReviewsActions();
+
+  // Build a map of my reviews by transaction_id for quick lookup
+  const myReviewsMap = useMemo(() => {
+    const map: Record<string, { status: 'approved' | 'divergent'; observation?: string }> = {};
+    for (const r of myReviews) {
+      map[r.transaction_id] = { status: r.status, observation: r.observation || undefined };
+    }
+    return map;
+  }, [myReviews]);
 
   // Check if current user has signed
   const hasUserSigned = authUserId ? signatures.some(sig => sig.user_id === authUserId) : false;
@@ -137,7 +151,18 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
       review.transaction?.description_raw?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       String(review.transaction?.amount).includes(searchTerm);
 
-    const matchesStatus = statusFilter === 'all' || review.status === statusFilter;
+    // Filter by my status (from fiscal_user_reviews), not global status
+    const myStatus = myReviewsMap[review.transaction_id]?.status;
+    let matchesStatus = true;
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'pending') {
+        matchesStatus = myStatus === undefined;
+      } else if (statusFilter === 'approved') {
+        matchesStatus = myStatus === 'approved';
+      } else if (statusFilter === 'flagged') {
+        matchesStatus = myStatus === 'divergent';
+      }
+    }
 
     return matchesSearch && matchesStatus;
   });
@@ -145,27 +170,35 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
   // Apply sorting to filtered reviews
   const sortedFilteredReviews = sortReviews(filteredReviews);
 
+  // Stats calculated from the current fiscal user's perspective
+  const myApprovedCount = myReviews.filter(r => r.status === 'approved').length;
+  const myDivergentCount = myReviews.filter(r => r.status === 'divergent').length;
+  const myPendingCount = reviews.length - myReviews.length;
+
   const stats = {
     total: reviews.length,
-    approved: reviews.filter(r => r.status === 'approved').length,
-    flagged: reviews.filter(r => r.status === 'flagged').length,
-    pending: reviews.filter(r => r.status === 'pending').length,
+    approved: myApprovedCount,
+    flagged: myDivergentCount,
+    pending: myPendingCount,
   };
 
   const progressPercentage = stats.total > 0 
     ? Math.round((stats.approved + stats.flagged) / stats.total * 100) 
     : 0;
 
-  // Check if eligible for signing
+  // Check if eligible for signing (user reviewed all and none divergent)
   const canSign = stats.pending === 0 && stats.flagged === 0 && !hasUserSigned;
   const isFinished = report?.status === 'finished' || (stats.pending === 0 && stats.flagged === 0 && signatureCount >= 3);
 
   const handleApprove = async (review: FiscalReview) => {
+    if (!authUserId) return;
+    
     try {
-      await updateReviewStatus.mutateAsync({
-        reviewId: review.id,
+      await createOrUpdateReview.mutateAsync({
+        reportId,
+        transactionId: review.transaction_id,
+        userId: authUserId,
         status: 'approved',
-        reviewedBy: user?.email || '',
       });
       toast({
         title: "Aprovado",
@@ -185,14 +218,15 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
   };
 
   const handleSubmitObservation = async (observation: string) => {
-    if (!observationModal.review) return;
+    if (!observationModal.review || !authUserId) return;
 
     try {
-      await updateReviewStatus.mutateAsync({
-        reviewId: observationModal.review.id,
-        status: 'flagged',
+      await createOrUpdateReview.mutateAsync({
+        reportId,
+        transactionId: observationModal.review.transaction_id,
+        userId: authUserId,
+        status: 'divergent',
         observation,
-        reviewedBy: user?.email || '',
       });
       toast({
         title: "Marcado como Divergente",
@@ -209,23 +243,29 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
   };
 
   const handleApproveAllPending = async () => {
-    const pendingIds = reviews.filter(r => r.status === 'pending').map(r => r.id);
-    if (pendingIds.length === 0) return;
+    if (!authUserId) return;
+    
+    // Get transactions that the current user hasn't reviewed yet
+    const unreviewedTransactionIds = reviews
+      .filter(r => !myReviewsMap[r.transaction_id])
+      .map(r => r.transaction_id);
+    
+    if (unreviewedTransactionIds.length === 0) return;
 
     try {
-      await bulkUpdateReviewStatus.mutateAsync({
-        reviewIds: pendingIds,
+      await bulkCreateReviews.mutateAsync({
+        reportId,
+        transactionIds: unreviewedTransactionIds,
+        userId: authUserId,
         status: 'approved',
-        reviewedBy: user?.email || '',
       });
       toast({
         title: "Aprovados em Lote",
-        description: `${pendingIds.length} lançamentos aprovados.`,
+        description: `${unreviewedTransactionIds.length} lançamentos aprovados.`,
       });
 
       // After approving all, check if we should open signature modal
-      const newFlaggedCount = reviews.filter(r => r.status === 'flagged').length;
-      if (newFlaggedCount === 0 && !hasUserSigned) {
+      if (myDivergentCount === 0 && !hasUserSigned) {
         // Small delay to let the UI update
         setTimeout(() => {
           setSignatureModalOpen(true);
@@ -485,14 +525,21 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
             </CardContent>
           </Card>
         ) : (
-          sortedFilteredReviews.map((review) => (
-            <FiscalReviewItem
-              key={review.id}
-              review={review}
-              onApprove={() => handleApprove(review)}
-              onFlag={() => handleFlag(review)}
-            />
-          ))
+          sortedFilteredReviews.map((review) => {
+            const myStatus = myReviewsMap[review.transaction_id]?.status;
+            const approvalCount = approvalCounts[review.transaction_id] || 0;
+            
+            return (
+              <FiscalReviewItem
+                key={review.id}
+                review={review}
+                myStatus={myStatus}
+                approvalCount={approvalCount}
+                onApprove={() => handleApprove(review)}
+                onFlag={() => handleFlag(review)}
+              />
+            );
+          })
         )}
       </div>
 

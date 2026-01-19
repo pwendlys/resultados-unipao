@@ -14,7 +14,13 @@ export const useFiscalSignatures = (reportId: string | undefined) => {
   return useQuery({
     queryKey: ['fiscal-signatures', reportId],
     queryFn: async () => {
-      if (!reportId) return [];
+      // Return empty if no reportId or empty string
+      if (!reportId || reportId.trim() === '') {
+        console.log('useFiscalSignatures: No reportId provided');
+        return [];
+      }
+      
+      console.log('useFiscalSignatures: Fetching signatures for reportId:', reportId);
       
       const { data, error } = await supabase
         .from('fiscal_report_signatures')
@@ -23,13 +29,14 @@ export const useFiscalSignatures = (reportId: string | undefined) => {
         .order('created_at', { ascending: true });
 
       if (error) {
-        console.error('Error fetching fiscal signatures:', error);
+        console.error('useFiscalSignatures: Error fetching fiscal signatures:', error);
         throw error;
       }
 
+      console.log('useFiscalSignatures: Found signatures:', data?.length);
       return data as FiscalSignature[];
     },
-    enabled: !!reportId,
+    enabled: !!reportId && reportId.trim() !== '',
   });
 };
 
