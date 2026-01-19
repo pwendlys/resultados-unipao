@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,8 @@ import {
   Filter,
   Download,
   PenTool,
-  FileText
+  FileText,
+  ListOrdered
 } from 'lucide-react';
 import { 
   Select,
@@ -28,6 +29,7 @@ import { useFiscalReviews, useFiscalReviewsActions, FiscalReview } from '@/hooks
 import { useFiscalSignatures, useFiscalSignaturesActions } from '@/hooks/useFiscalSignatures';
 import { useFiscalUserProfile, useSaveDefaultSignature } from '@/hooks/useFiscalUserProfile';
 import { useFiscalReportFile, useGetFileUrl } from '@/hooks/useFiscalReportFiles';
+import { useFiscalTransactionOrder } from '@/hooks/useFiscalTransactionOrder';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import FiscalReviewItem from './FiscalReviewItem';
@@ -48,6 +50,7 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
   const { data: reviews = [], isLoading: reviewsLoading } = useFiscalReviews(reportId);
   const { data: signatures = [], refetch: refetchSignatures } = useFiscalSignatures(reportId);
   const { data: attachedFile } = useFiscalReportFile(reportId);
+  const { data: customOrder = [] } = useFiscalTransactionOrder(reportId);
   const getFileUrl = useGetFileUrl();
   const { updateReviewStatus, bulkUpdateReviewStatus } = useFiscalReviewsActions();
   const { createSignature } = useFiscalSignaturesActions();
@@ -78,13 +81,26 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
   // Check if current user has signed
   const hasUserSigned = authUserId ? signatures.some(sig => sig.user_id === authUserId) : false;
   const signatureCount = signatures.length;
+  const hasCustomOrder = customOrder.length > 0;
+
+  // Build order map from custom order (PDF-based)
+  const orderMap = useMemo(() => {
+    if (!customOrder || customOrder.length === 0) return null;
+    return new Map(customOrder.map(o => [o.transaction_id, o.sort_index]));
+  }, [customOrder]);
 
   // Sort reviews based on selected sort order
   const sortReviews = (reviewsToSort: FiscalReview[]) => {
     return [...reviewsToSort].sort((a, b) => {
       switch (sortOrder) {
         case 'entry_index':
-          // Original bank statement order (ascending)
+          // If we have custom order from PDF, use it
+          if (orderMap) {
+            const indexA = orderMap.get(a.transaction_id) ?? 9999;
+            const indexB = orderMap.get(b.transaction_id) ?? 9999;
+            return indexA - indexB;
+          }
+          // Fallback to original entry_index
           return (a.entry_index || 0) - (b.entry_index || 0);
         
         case 'amount':
@@ -439,11 +455,17 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
         </Select>
         <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as typeof sortOrder)}>
           <SelectTrigger className="w-full md:w-56">
-            <ArrowUpDown className="h-4 w-4 mr-2" />
+            {hasCustomOrder && sortOrder === 'entry_index' ? (
+              <ListOrdered className="h-4 w-4 mr-2 text-green-600" />
+            ) : (
+              <ArrowUpDown className="h-4 w-4 mr-2" />
+            )}
             <SelectValue placeholder="Ordenação" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="entry_index">Ordem do Extrato ✓</SelectItem>
+            <SelectItem value="entry_index">
+              {hasCustomOrder ? 'Ordem do PDF ✓' : 'Ordem do Extrato'}
+            </SelectItem>
             <SelectItem value="status_date">Status + Data</SelectItem>
             <SelectItem value="amount">Valor (maior primeiro)</SelectItem>
           </SelectContent>

@@ -9,14 +9,22 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useUploadStatementFile } from '@/hooks/useFiscalReportFiles';
+import { useInvalidateTransactionOrder } from '@/hooks/useFiscalTransactionOrder';
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, FileText, X, Loader2, CheckCircle } from 'lucide-react';
+import { Upload, FileText, X, Loader2, CheckCircle, ListOrdered } from 'lucide-react';
 
 interface FiscalUploadStatementModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   reportId: string;
   reportTitle: string;
+}
+
+interface OrderingResult {
+  matched: number;
+  total: number;
+  extracted_lines: number;
+  message: string;
 }
 
 const FiscalUploadStatementModal = ({
@@ -27,8 +35,11 @@ const FiscalUploadStatementModal = ({
 }: FiscalUploadStatementModalProps) => {
   const { toast } = useToast();
   const uploadFile = useUploadStatementFile();
+  const invalidateOrder = useInvalidateTransactionOrder();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
+  const [orderingResult, setOrderingResult] = useState<OrderingResult | null>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -49,6 +60,7 @@ const FiscalUploadStatementModal = ({
       const file = files[0];
       if (file.type === 'application/pdf') {
         setSelectedFile(file);
+        setOrderingResult(null);
       } else {
         toast({
           title: 'Formato inválido',
@@ -65,6 +77,7 @@ const FiscalUploadStatementModal = ({
       const file = files[0];
       if (file.type === 'application/pdf') {
         setSelectedFile(file);
+        setOrderingResult(null);
       } else {
         toast({
           title: 'Formato inválido',
@@ -89,7 +102,8 @@ const FiscalUploadStatementModal = ({
     }
 
     try {
-      await uploadFile.mutateAsync({
+      // Step 1: Upload file
+      const fileRecord = await uploadFile.mutateAsync({
         reportId,
         file: selectedFile,
         userId: user.id,
@@ -97,11 +111,60 @@ const FiscalUploadStatementModal = ({
 
       toast({
         title: 'PDF anexado',
-        description: 'O extrato foi vinculado ao relatório com sucesso.',
+        description: 'Processando ordenação das transações...',
       });
 
-      setSelectedFile(null);
-      onOpenChange(false);
+      // Step 2: Call edge function to parse PDF and generate order
+      setIsProcessingOrder(true);
+      
+      try {
+        const { data: orderData, error: orderError } = await supabase.functions.invoke(
+          'parse-statement-pdf',
+          {
+            body: {
+              report_id: reportId,
+              file_path: fileRecord.file_path,
+            },
+          }
+        );
+
+        if (orderError) {
+          console.error('Error calling parse-statement-pdf:', orderError);
+          toast({
+            title: 'PDF anexado',
+            description: 'Arquivo salvo, mas não foi possível processar a ordenação automaticamente.',
+            variant: 'default',
+          });
+        } else if (orderData) {
+          setOrderingResult(orderData as OrderingResult);
+          
+          // Invalidate order query to refetch in panel
+          invalidateOrder(reportId);
+          
+          toast({
+            title: 'Ordenação aplicada',
+            description: orderData.message || `${orderData.matched} de ${orderData.total} transações ordenadas.`,
+          });
+        }
+      } catch (parseError) {
+        console.error('Error parsing PDF:', parseError);
+        // PDF is still attached, just ordering failed
+        toast({
+          title: 'PDF anexado',
+          description: 'Arquivo salvo. A ordenação automática não pôde ser processada.',
+          variant: 'default',
+        });
+      } finally {
+        setIsProcessingOrder(false);
+      }
+
+      // Small delay to show result before closing
+      setTimeout(() => {
+        setSelectedFile(null);
+        setOrderingResult(null);
+        onOpenChange(false);
+      }, 2000);
+
     } catch (error: any) {
       toast({
         title: 'Erro ao enviar',
@@ -113,6 +176,7 @@ const FiscalUploadStatementModal = ({
 
   const handleClose = () => {
     setSelectedFile(null);
+    setOrderingResult(null);
     onOpenChange(false);
   };
 
@@ -121,6 +185,8 @@ const FiscalUploadStatementModal = ({
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
+
+  const isUploading = uploadFile.isPending || isProcessingOrder;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -154,14 +220,16 @@ const FiscalUploadStatementModal = ({
                     {formatFileSize(selectedFile.size)}
                   </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setSelectedFile(null)}
-                  className="ml-2"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+                {!isUploading && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSelectedFile(null)}
+                    className="ml-2"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             ) : (
               <>
@@ -184,27 +252,46 @@ const FiscalUploadStatementModal = ({
             )}
           </div>
 
+          {/* Ordering Result */}
+          {orderingResult && (
+            <div className="flex items-start gap-2 text-sm bg-green-50 dark:bg-green-950/30 p-3 rounded-md border border-green-200 dark:border-green-800">
+              <ListOrdered className="h-5 w-5 mt-0.5 shrink-0 text-green-600" />
+              <div>
+                <p className="font-medium text-green-700 dark:text-green-400">
+                  Ordenação aplicada
+                </p>
+                <p className="text-green-600 dark:text-green-500">
+                  {orderingResult.matched} de {orderingResult.total} transações vinculadas ao PDF.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 p-3 rounded-md">
             <FileText className="h-4 w-4 mt-0.5 shrink-0" />
             <p>
-              O PDF será disponibilizado para os fiscais consultarem durante a revisão.
-              A ordenação das transações já segue a ordem do extrato importado.
+              O PDF será disponibilizado para os fiscais e usado para ordenar as transações na mesma sequência do extrato bancário.
             </p>
           </div>
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={handleClose}>
+          <Button variant="outline" onClick={handleClose} disabled={isUploading}>
             Cancelar
           </Button>
           <Button
             onClick={handleUpload}
-            disabled={!selectedFile || uploadFile.isPending}
+            disabled={!selectedFile || isUploading}
           >
             {uploadFile.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Enviando...
+              </>
+            ) : isProcessingOrder ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Processando ordem...
               </>
             ) : (
               <>
