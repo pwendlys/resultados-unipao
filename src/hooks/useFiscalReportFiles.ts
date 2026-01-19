@@ -32,7 +32,7 @@ export const useFiscalReportFile = (reportId: string) => {
   });
 };
 
-// Upload statement PDF and create record
+// Upload statement PDF via Edge Function (works for admin and fiscal users)
 export const useUploadStatementFile = () => {
   const queryClient = useQueryClient();
 
@@ -40,48 +40,46 @@ export const useUploadStatementFile = () => {
     mutationFn: async ({
       reportId,
       file,
-      userId,
+      isAdmin = false,
     }: {
       reportId: string;
       file: File;
-      userId: string;
+      isAdmin?: boolean;
     }) => {
-      // Generate unique file path
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${reportId}/${Date.now()}.${fileExt}`;
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('reportId', reportId);
 
-      // Upload to storage
-      const { error: uploadError } = await supabase.storage
-        .from('fiscal-files')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false,
-        });
+      // Build headers
+      const headers: Record<string, string> = {};
+      
+      if (isAdmin) {
+        // Admin request - no auth token needed, use special header
+        headers['x-admin-request'] = 'true';
+      } else {
+        // Get current session for fiscal users
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+      }
 
-      if (uploadError) throw uploadError;
+      const response = await fetch(
+        `https://snacxcwytxwldgaqlany.supabase.co/functions/v1/upload-fiscal-statement`,
+        {
+          method: 'POST',
+          headers,
+          body: formData,
+        }
+      );
 
-      // Delete any existing file record for this report
-      await supabase
-        .from('fiscal_report_files')
-        .delete()
-        .eq('report_id', reportId)
-        .eq('file_type', 'statement_pdf');
+      const result = await response.json();
 
-      // Create database record
-      const { data, error } = await supabase
-        .from('fiscal_report_files')
-        .insert({
-          report_id: reportId,
-          file_path: fileName,
-          file_name: file.name,
-          file_type: 'statement_pdf',
-          uploaded_by: userId,
-        })
-        .select()
-        .single();
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro ao fazer upload');
+      }
 
-      if (error) throw error;
-      return data;
+      return result;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['fiscal-report-file', variables.reportId] });
