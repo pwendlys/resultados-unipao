@@ -24,6 +24,7 @@ import {
 import { useFiscalReportById } from '@/hooks/useFiscalReports';
 import { useFiscalReviews, useFiscalReviewsActions, FiscalReview } from '@/hooks/useFiscalReviews';
 import { useFiscalSignatures, useFiscalSignaturesActions } from '@/hooks/useFiscalSignatures';
+import { useFiscalUserProfile, useSaveDefaultSignature } from '@/hooks/useFiscalUserProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import FiscalReviewItem from './FiscalReviewItem';
@@ -63,6 +64,10 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
     };
     getAuthUser();
   }, []);
+
+  // Fetch user profile for saved signature
+  const { data: userProfile } = useFiscalUserProfile(authUserId);
+  const saveDefaultSignature = useSaveDefaultSignature();
 
   // Check if current user has signed
   const hasUserSigned = authUserId ? signatures.some(sig => sig.user_id === authUserId) : false;
@@ -430,6 +435,29 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
         onSubmit={handleSubmitSignature}
         isSubmitting={createSignature.isPending}
         hasAlreadySigned={hasUserSigned}
+        savedSignature={userProfile?.default_signature_data}
+        onSaveAsDefault={(signatureData) => {
+          if (authUserId) {
+            saveDefaultSignature.mutate(
+              { userId: authUserId, signatureData },
+              {
+                onSuccess: () => {
+                  toast({
+                    title: "Assinatura salva",
+                    description: "Sua assinatura foi salva como padrão.",
+                  });
+                },
+                onError: () => {
+                  toast({
+                    title: "Erro",
+                    description: "Não foi possível salvar a assinatura padrão.",
+                    variant: "destructive",
+                  });
+                },
+              }
+            );
+          }
+        }}
       />
     </div>
   );

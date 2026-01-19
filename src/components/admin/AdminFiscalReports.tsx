@@ -37,6 +37,7 @@ import { useFiscalReviews } from '@/hooks/useFiscalReviews';
 import { useFiscalSignatures } from '@/hooks/useFiscalSignatures';
 import { useToast } from '@/hooks/use-toast';
 import { generateFiscalPDF } from '@/utils/fiscalPdfGenerator';
+import FiscalSignaturesModal from '@/components/fiscal/FiscalSignaturesModal';
 
 interface AdminFiscalReportsProps {
   onNavigateToPage?: (page: string) => void;
@@ -52,6 +53,12 @@ const AdminFiscalReports = ({ onNavigateToPage }: AdminFiscalReportsProps) => {
     reportId: string | null;
     reportTitle: string;
   }>({ open: false, reportId: null, reportTitle: '' });
+
+  const [signaturesModal, setSignaturesModal] = useState<{
+    open: boolean;
+    reportId: string;
+    reportTitle: string;
+  }>({ open: false, reportId: '', reportTitle: '' });
 
   const handleDelete = async () => {
     if (!deleteDialog.reportId) return;
@@ -133,11 +140,16 @@ const AdminFiscalReports = ({ onNavigateToPage }: AdminFiscalReportsProps) => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {reports.map((report) => (
+                {reports.map((report) => (
                     <ReportRow 
                       key={report.id} 
                       report={report}
-                      onView={() => window.location.href = `/fiscal?report=${report.id}`}
+                      onView={() => setSignaturesModal({
+                        open: true,
+                        reportId: report.id,
+                        reportTitle: report.title,
+                      })}
+                      onNavigateToReport={() => window.location.href = `/fiscal?report=${report.id}`}
                       onDelete={() => setDeleteDialog({
                         open: true,
                         reportId: report.id,
@@ -177,6 +189,14 @@ const AdminFiscalReports = ({ onNavigateToPage }: AdminFiscalReportsProps) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal de Assinaturas */}
+      <FiscalSignaturesModal
+        open={signaturesModal.open}
+        onOpenChange={(open) => setSignaturesModal({ ...signaturesModal, open })}
+        reportId={signaturesModal.reportId}
+        reportTitle={signaturesModal.reportTitle}
+      />
     </div>
   );
 };
@@ -185,11 +205,12 @@ const AdminFiscalReports = ({ onNavigateToPage }: AdminFiscalReportsProps) => {
 interface ReportRowProps {
   report: any;
   onView: () => void;
+  onNavigateToReport: () => void;
   onDelete: () => void;
   getStatusBadge: (status: string) => JSX.Element;
 }
 
-const ReportRow = ({ report, onView, onDelete, getStatusBadge }: ReportRowProps) => {
+const ReportRow = ({ report, onView, onNavigateToReport, onDelete, getStatusBadge }: ReportRowProps) => {
   const { toast } = useToast();
   const { data: reviews = [] } = useFiscalReviews(report.id);
   const { data: signatures = [] } = useFiscalSignatures(report.id);
@@ -253,7 +274,10 @@ const ReportRow = ({ report, onView, onDelete, getStatusBadge }: ReportRowProps)
       </TableCell>
       <TableCell>
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" size="icon" onClick={onView} title="Visualizar">
+          <Button variant="ghost" size="icon" onClick={onView} title="Ver Assinaturas">
+            <PenTool className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={onNavigateToReport} title="Revisar Relatório">
             <Eye className="h-4 w-4" />
           </Button>
           <Button 
