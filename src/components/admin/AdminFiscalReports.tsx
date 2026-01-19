@@ -30,14 +30,17 @@ import {
   CheckCircle,
   Clock,
   AlertTriangle,
-  PenTool
+  PenTool,
+  FileUp
 } from 'lucide-react';
 import { useAllFiscalReports, useFiscalReportsActions } from '@/hooks/useFiscalReports';
 import { useFiscalReviews } from '@/hooks/useFiscalReviews';
 import { useFiscalSignatures } from '@/hooks/useFiscalSignatures';
+import { useFiscalReportFile } from '@/hooks/useFiscalReportFiles';
 import { useToast } from '@/hooks/use-toast';
 import { generateFiscalPDF } from '@/utils/fiscalPdfGenerator';
 import FiscalSignaturesModal from '@/components/fiscal/FiscalSignaturesModal';
+import FiscalUploadStatementModal from '@/components/fiscal/FiscalUploadStatementModal';
 
 interface AdminFiscalReportsProps {
   onNavigateToPage?: (page: string) => void;
@@ -55,6 +58,12 @@ const AdminFiscalReports = ({ onNavigateToPage }: AdminFiscalReportsProps) => {
   }>({ open: false, reportId: null, reportTitle: '' });
 
   const [signaturesModal, setSignaturesModal] = useState<{
+    open: boolean;
+    reportId: string;
+    reportTitle: string;
+  }>({ open: false, reportId: '', reportTitle: '' });
+
+  const [uploadModal, setUploadModal] = useState<{
     open: boolean;
     reportId: string;
     reportTitle: string;
@@ -155,6 +164,11 @@ const AdminFiscalReports = ({ onNavigateToPage }: AdminFiscalReportsProps) => {
                         reportId: report.id,
                         reportTitle: report.title,
                       })}
+                      onUploadStatement={() => setUploadModal({
+                        open: true,
+                        reportId: report.id,
+                        reportTitle: report.title,
+                      })}
                       getStatusBadge={getStatusBadge}
                     />
                   ))}
@@ -197,6 +211,14 @@ const AdminFiscalReports = ({ onNavigateToPage }: AdminFiscalReportsProps) => {
         reportId={signaturesModal.reportId}
         reportTitle={signaturesModal.reportTitle}
       />
+
+      {/* Modal de Upload de Extrato */}
+      <FiscalUploadStatementModal
+        open={uploadModal.open}
+        onOpenChange={(open) => setUploadModal({ ...uploadModal, open })}
+        reportId={uploadModal.reportId}
+        reportTitle={uploadModal.reportTitle}
+      />
     </div>
   );
 };
@@ -207,13 +229,15 @@ interface ReportRowProps {
   onView: () => void;
   onNavigateToReport: () => void;
   onDelete: () => void;
+  onUploadStatement: () => void;
   getStatusBadge: (status: string) => JSX.Element;
 }
 
-const ReportRow = ({ report, onView, onNavigateToReport, onDelete, getStatusBadge }: ReportRowProps) => {
+const ReportRow = ({ report, onView, onNavigateToReport, onDelete, onUploadStatement, getStatusBadge }: ReportRowProps) => {
   const { toast } = useToast();
   const { data: reviews = [] } = useFiscalReviews(report.id);
   const { data: signatures = [] } = useFiscalSignatures(report.id);
+  const { data: attachedFile } = useFiscalReportFile(report.id);
 
   const totalReviews = reviews.length || report.total_entries || 0;
   const approvedCount = reviews.filter(r => r.status === 'approved').length || report.approved_count || 0;
@@ -274,6 +298,15 @@ const ReportRow = ({ report, onView, onNavigateToReport, onDelete, getStatusBadg
       </TableCell>
       <TableCell>
         <div className="flex justify-end gap-2">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onUploadStatement} 
+            title={attachedFile ? "Extrato anexado - Clique para substituir" : "Anexar Extrato PDF"}
+            className={attachedFile ? "text-green-600" : ""}
+          >
+            <FileUp className="h-4 w-4" />
+          </Button>
           <Button variant="ghost" size="icon" onClick={onView} title="Ver Assinaturas">
             <PenTool className="h-4 w-4" />
           </Button>
