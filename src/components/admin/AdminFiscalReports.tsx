@@ -29,7 +29,7 @@ import {
   FileText,
   CheckCircle,
   Clock,
-  AlertTriangle,
+  AlertCircle,
   PenTool,
   FileUp
 } from 'lucide-react';
@@ -37,6 +37,7 @@ import { useAllFiscalReports, useFiscalReportsActions } from '@/hooks/useFiscalR
 import { useFiscalReviews } from '@/hooks/useFiscalReviews';
 import { useFiscalSignatures } from '@/hooks/useFiscalSignatures';
 import { useFiscalReportFile } from '@/hooks/useFiscalReportFiles';
+import { useTransactionDiligenceStatus } from '@/hooks/useFiscalUserReviews';
 import { useToast } from '@/hooks/use-toast';
 import { generateFiscalPDF } from '@/utils/fiscalPdfGenerator';
 import FiscalSignaturesModal from '@/components/fiscal/FiscalSignaturesModal';
@@ -143,6 +144,7 @@ const AdminFiscalReports = ({ onNavigateToPage }: AdminFiscalReportsProps) => {
                     <TableHead>Tipo</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Progresso</TableHead>
+                    <TableHead>Diligências</TableHead>
                     <TableHead>Assinaturas</TableHead>
                     <TableHead>Data</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
@@ -238,18 +240,24 @@ const ReportRow = ({ report, onView, onNavigateToReport, onDelete, onUploadState
   const { data: reviews = [] } = useFiscalReviews(report.id);
   const { data: signatures = [] } = useFiscalSignatures(report.id);
   const { data: attachedFile } = useFiscalReportFile(report.id);
+  const { data: diligenceStatus = {} } = useTransactionDiligenceStatus(report.id);
 
   const totalReviews = reviews.length || report.total_entries || 0;
   const approvedCount = reviews.filter(r => r.status === 'approved').length || report.approved_count || 0;
   const flaggedCount = reviews.filter(r => r.status === 'flagged').length || report.flagged_count || 0;
   const pendingCount = reviews.filter(r => r.status === 'pending').length || report.pending_count || 0;
   
+  // Count diligences
+  const diligenceEntries = Object.entries(diligenceStatus).filter(([_, d]) => d.isDiligence);
+  const diligenceCount = diligenceEntries.length;
+  const allDiligencesConfirmed = diligenceEntries.every(([_, d]) => d.ackCount >= 3);
+  
   const progressPercentage = totalReviews > 0 
     ? Math.round((approvedCount + flaggedCount) / totalReviews * 100) 
     : 0;
 
   const signatureCount = signatures.length;
-  const isFinished = report.status === 'finished' || (pendingCount === 0 && flaggedCount === 0 && signatureCount >= 3);
+  const isFinished = report.status === 'finished' || (pendingCount === 0 && allDiligencesConfirmed && signatureCount >= 3);
 
   const handleExportPDF = () => {
     if (!isFinished) {
@@ -260,7 +268,7 @@ const ReportRow = ({ report, onView, onNavigateToReport, onDelete, onUploadState
       });
       return;
     }
-    generateFiscalPDF(report, reviews, signatures);
+    generateFiscalPDF(report, reviews, signatures, diligenceStatus);
     toast({
       title: "PDF Gerado",
       description: "O relatório foi exportado com sucesso.",
@@ -284,6 +292,19 @@ const ReportRow = ({ report, onView, onNavigateToReport, onDelete, onUploadState
             <span className="text-destructive">{flaggedCount}</span>
           </div>
         </div>
+      </TableCell>
+      <TableCell>
+        {diligenceCount > 0 ? (
+          <Badge 
+            variant="outline" 
+            className={allDiligencesConfirmed ? "text-green-600 border-green-500" : "text-orange-600 border-orange-500"}
+          >
+            <AlertCircle className="h-3 w-3 mr-1" />
+            {diligenceCount} {allDiligencesConfirmed ? '✓' : ''}
+          </Badge>
+        ) : (
+          <span className="text-muted-foreground text-xs">Nenhuma</span>
+        )}
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1">

@@ -9,20 +9,35 @@ import {
   ChevronDown,
   ChevronUp,
   Folder,
-  Users
+  Users,
+  AlertCircle
 } from 'lucide-react';
 import { FiscalReview } from '@/hooks/useFiscalReviews';
 import { cn } from '@/lib/utils';
 
 interface FiscalReviewItemProps {
   review: FiscalReview;
-  myStatus?: 'approved' | 'divergent'; // Current fiscal user's status
-  approvalCount?: number; // How many fiscals approved this transaction
+  myStatus?: 'approved' | 'divergent';
+  myDiligenceAck?: boolean;
+  approvalCount?: number;
+  isDiligence?: boolean;
+  diligenceAckCount?: number;
   onApprove: () => void;
   onFlag: () => void;
+  onConfirmDiligence?: () => void;
 }
 
-const FiscalReviewItem = ({ review, myStatus, approvalCount = 0, onApprove, onFlag }: FiscalReviewItemProps) => {
+const FiscalReviewItem = ({ 
+  review, 
+  myStatus, 
+  myDiligenceAck = false,
+  approvalCount = 0, 
+  isDiligence = false,
+  diligenceAckCount = 0,
+  onApprove, 
+  onFlag,
+  onConfirmDiligence
+}: FiscalReviewItemProps) => {
   const [expanded, setExpanded] = useState(false);
   const transaction = review.transaction;
 
@@ -65,9 +80,17 @@ const FiscalReviewItem = ({ review, myStatus, approvalCount = 0, onApprove, onFl
   
   // Has the current fiscal reviewed this item?
   const isReviewed = myStatus !== undefined;
+  
+  // Does the user need to confirm diligence?
+  const needsDiligenceConfirmation = isDiligence && !myDiligenceAck;
+  
+  // Override background for diligence items that need action
+  const cardBg = needsDiligenceConfirmation 
+    ? 'bg-orange-50 border-orange-300' 
+    : statusInfo.bg;
 
   return (
-    <Card className={cn("transition-all", statusInfo.bg)}>
+    <Card className={cn("transition-all", cardBg)}>
       <CardContent className="p-3 md:p-4">
         {/* Main Row */}
         <div className="flex items-start gap-3">
@@ -92,17 +115,35 @@ const FiscalReviewItem = ({ review, myStatus, approvalCount = 0, onApprove, onFl
                 {transaction?.type === 'entrada' ? 'C' : 'D'}
               </Badge>
               
-              {/* Approval count badge - shows how many fiscals approved */}
-              <Badge 
-                variant="outline" 
-                className={cn(
-                  "text-xs flex items-center gap-1",
-                  approvalCount >= 3 ? "border-green-500 text-green-600" : "text-muted-foreground"
-                )}
-              >
-                <Users className="h-3 w-3" />
-                {approvalCount}/3
-              </Badge>
+              {/* Diligence badge - shows when any fiscal marked as divergent */}
+              {isDiligence && (
+                <Badge 
+                  variant="outline" 
+                  className={cn(
+                    "text-xs flex items-center gap-1",
+                    diligenceAckCount >= 3 
+                      ? "border-green-500 text-green-600 bg-green-50" 
+                      : "border-orange-500 text-orange-600 bg-orange-50"
+                  )}
+                >
+                  <AlertCircle className="h-3 w-3" />
+                  Diligência {diligenceAckCount}/3
+                </Badge>
+              )}
+              
+              {/* Approval count badge - only show if not in diligence */}
+              {!isDiligence && (
+                <Badge 
+                  variant="outline" 
+                  className={cn(
+                    "text-xs flex items-center gap-1",
+                    approvalCount >= 3 ? "border-green-500 text-green-600" : "text-muted-foreground"
+                  )}
+                >
+                  <Users className="h-3 w-3" />
+                  {approvalCount}/3
+                </Badge>
+              )}
             </div>
             
             <p className="font-medium text-sm md:text-base truncate">
@@ -125,10 +166,10 @@ const FiscalReviewItem = ({ review, myStatus, approvalCount = 0, onApprove, onFl
               )}
             </div>
 
-            {/* Observation from my review */}
-            {myStatus === 'divergent' && (
-              <div className="mt-2 p-2 bg-destructive/10 rounded text-sm text-destructive">
-                <strong>Marcado como Divergente</strong>
+            {/* Divergence/Diligence notice */}
+            {isDiligence && (
+              <div className="mt-2 p-2 bg-orange-100 rounded text-sm text-orange-800">
+                <strong>⚠️ Diligência:</strong> Este lançamento foi marcado como divergente por um fiscal.
               </div>
             )}
           </div>
@@ -158,36 +199,60 @@ const FiscalReviewItem = ({ review, myStatus, approvalCount = 0, onApprove, onFl
             )}
           </Button>
 
-          {/* Show action buttons if not reviewed by current fiscal */}
-          {!isReviewed && (
-            <div className="flex gap-2">
+          {/* Actions based on state */}
+          <div className="flex gap-2 items-center">
+            {/* Diligence confirmation button - priority over other actions */}
+            {needsDiligenceConfirmation && onConfirmDiligence && (
               <Button
                 size="sm"
                 variant="outline"
-                onClick={onFlag}
-                className="text-destructive border-destructive hover:bg-destructive/10"
+                onClick={onConfirmDiligence}
+                className="text-orange-600 border-orange-500 hover:bg-orange-100"
               >
-                <AlertTriangle className="h-4 w-4 mr-1" />
-                Divergente
+                <AlertCircle className="h-4 w-4 mr-1" />
+                Confirmar Diligência
               </Button>
-              <Button
-                size="sm"
-                onClick={onApprove}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                <CheckCircle className="h-4 w-4 mr-1" />
-                Aprovar
-              </Button>
-            </div>
-          )}
+            )}
+            
+            {/* Diligence confirmed badge */}
+            {isDiligence && myDiligenceAck && (
+              <Badge variant="outline" className="text-orange-600 border-orange-500">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Diligência Confirmada
+              </Badge>
+            )}
 
-          {/* Show status badge if reviewed */}
-          {isReviewed && (
-            <Badge variant="outline" className={statusInfo.color}>
-              <StatusIcon className="h-3 w-3 mr-1" />
-              {statusInfo.label}
-            </Badge>
-          )}
+            {/* Show action buttons if not reviewed and not in diligence mode */}
+            {!isReviewed && !isDiligence && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onFlag}
+                  className="text-destructive border-destructive hover:bg-destructive/10"
+                >
+                  <AlertTriangle className="h-4 w-4 mr-1" />
+                  Divergente
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={onApprove}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  Aprovar
+                </Button>
+              </>
+            )}
+
+            {/* Show status badge if reviewed and not in diligence */}
+            {isReviewed && !isDiligence && (
+              <Badge variant="outline" className={statusInfo.color}>
+                <StatusIcon className="h-3 w-3 mr-1" />
+                {statusInfo.label}
+              </Badge>
+            )}
+          </div>
         </div>
 
         {/* Expanded Details */}
@@ -212,8 +277,14 @@ const FiscalReviewItem = ({ review, myStatus, approvalCount = 0, onApprove, onFl
             </div>
 
             <div>
-              <span className="text-muted-foreground">Aprovações:</span>
-              <p>{approvalCount} de 3 fiscais aprovaram este lançamento</p>
+              <span className="text-muted-foreground">Status:</span>
+              {isDiligence ? (
+                <p className="text-orange-600">
+                  Diligência ativa - {diligenceAckCount} de 3 fiscais confirmaram ciência
+                </p>
+              ) : (
+                <p>{approvalCount} de 3 fiscais aprovaram este lançamento</p>
+              )}
             </div>
           </div>
         )}

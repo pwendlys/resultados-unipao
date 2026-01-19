@@ -15,7 +15,8 @@ import {
   Download,
   PenTool,
   FileText,
-  ListOrdered
+  ListOrdered,
+  AlertCircle
 } from 'lucide-react';
 import { 
   Select,
@@ -30,7 +31,12 @@ import { useFiscalSignatures, useFiscalSignaturesActions } from '@/hooks/useFisc
 import { useFiscalUserProfile, useSaveDefaultSignature } from '@/hooks/useFiscalUserProfile';
 import { useFiscalReportFile, useGetFileUrl } from '@/hooks/useFiscalReportFiles';
 import { useFiscalTransactionOrder } from '@/hooks/useFiscalTransactionOrder';
-import { useFiscalUserReviews, useTransactionApprovalCounts, useFiscalUserReviewsActions } from '@/hooks/useFiscalUserReviews';
+import { 
+  useFiscalUserReviews, 
+  useTransactionApprovalCounts, 
+  useFiscalUserReviewsActions,
+  useTransactionDiligenceStatus 
+} from '@/hooks/useFiscalUserReviews';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import FiscalReviewItem from './FiscalReviewItem';
@@ -78,16 +84,21 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
   const { data: userProfile } = useFiscalUserProfile(authUserId);
   const saveDefaultSignature = useSaveDefaultSignature();
 
-  // Fetch per-fiscal reviews (BUG 1 fix)
+  // Fetch per-fiscal reviews
   const { data: myReviews = [] } = useFiscalUserReviews(reportId, authUserId || undefined);
   const { data: approvalCounts = {} } = useTransactionApprovalCounts(reportId);
-  const { createOrUpdateReview, bulkCreateReviews } = useFiscalUserReviewsActions();
+  const { data: diligenceStatus = {} } = useTransactionDiligenceStatus(reportId);
+  const { createOrUpdateReview, bulkCreateReviews, confirmDiligence } = useFiscalUserReviewsActions();
 
   // Build a map of my reviews by transaction_id for quick lookup
   const myReviewsMap = useMemo(() => {
-    const map: Record<string, { status: 'approved' | 'divergent'; observation?: string }> = {};
+    const map: Record<string, { status: 'approved' | 'divergent'; observation?: string; diligence_ack: boolean }> = {};
     for (const r of myReviews) {
-      map[r.transaction_id] = { status: r.status, observation: r.observation || undefined };
+      map[r.transaction_id] = { 
+        status: r.status, 
+        observation: r.observation || undefined,
+        diligence_ack: r.diligence_ack 
+      };
     }
     return map;
   }, [myReviews]);
@@ -152,15 +163,19 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
       String(review.transaction?.amount).includes(searchTerm);
 
     // Filter by my status (from fiscal_user_reviews), not global status
-    const myStatus = myReviewsMap[review.transaction_id]?.status;
+    const myReview = myReviewsMap[review.transaction_id];
+    const txDiligence = diligenceStatus[review.transaction_id];
+    
     let matchesStatus = true;
     if (statusFilter !== 'all') {
       if (statusFilter === 'pending') {
-        matchesStatus = myStatus === undefined;
+        // Pending = not reviewed OR diligence needing confirmation
+        const needsDiligenceAck = txDiligence?.isDiligence && !myReview?.diligence_ack;
+        matchesStatus = myReview === undefined || needsDiligenceAck;
       } else if (statusFilter === 'approved') {
-        matchesStatus = myStatus === 'approved';
+        matchesStatus = myReview?.status === 'approved' && !txDiligence?.isDiligence;
       } else if (statusFilter === 'flagged') {
-        matchesStatus = myStatus === 'divergent';
+        matchesStatus = txDiligence?.isDiligence === true;
       }
     }
 
@@ -173,22 +188,41 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
   // Stats calculated from the current fiscal user's perspective
   const myApprovedCount = myReviews.filter(r => r.status === 'approved').length;
   const myDivergentCount = myReviews.filter(r => r.status === 'divergent').length;
-  const myPendingCount = reviews.length - myReviews.length;
+  
+  // Count transactions in diligence
+  const diligenceTransactions = Object.entries(diligenceStatus).filter(([_, d]) => d.isDiligence);
+  const diligenceCount = diligenceTransactions.length;
+  
+  // Count pending actions: not reviewed OR diligence not acknowledged
+  const myPendingCount = reviews.filter(r => {
+    const myReview = myReviewsMap[r.transaction_id];
+    const txDiligence = diligenceStatus[r.transaction_id];
+    
+    // Pending if: no review OR (is diligence and not acknowledged)
+    if (!myReview) return true;
+    if (txDiligence?.isDiligence && !myReview.diligence_ack) return true;
+    return false;
+  }).length;
 
   const stats = {
     total: reviews.length,
     approved: myApprovedCount,
     flagged: myDivergentCount,
     pending: myPendingCount,
+    diligences: diligenceCount,
   };
 
   const progressPercentage = stats.total > 0 
-    ? Math.round((stats.approved + stats.flagged) / stats.total * 100) 
+    ? Math.round((stats.total - stats.pending) / stats.total * 100) 
     : 0;
 
-  // Check if eligible for signing (user reviewed all and none divergent)
-  const canSign = stats.pending === 0 && stats.flagged === 0 && !hasUserSigned;
-  const isFinished = report?.status === 'finished' || (stats.pending === 0 && stats.flagged === 0 && signatureCount >= 3);
+  // Check if all diligences are confirmed (3/3)
+  const allDiligencesConfirmed = diligenceTransactions.every(([_, d]) => d.ackCount >= 3);
+
+  // Check if eligible for signing
+  // User must have reviewed all AND all diligences must be 3/3 confirmed
+  const canSign = stats.pending === 0 && allDiligencesConfirmed && !hasUserSigned;
+  const isFinished = report?.status === 'finished' || (stats.pending === 0 && allDiligencesConfirmed && signatureCount >= 3);
 
   const handleApprove = async (review: FiscalReview) => {
     if (!authUserId) return;
@@ -229,8 +263,8 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
         observation,
       });
       toast({
-        title: "Marcado como Divergente",
-        description: "Observação registrada com sucesso.",
+        title: "Diligência Criada",
+        description: "Transação marcada como divergente. Todos os fiscais precisam confirmar ciência.",
       });
       setObservationModal({ open: false, review: null });
     } catch (error) {
@@ -242,15 +276,48 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
     }
   };
 
+  const handleConfirmDiligence = async (transactionId: string) => {
+    if (!authUserId) return;
+
+    try {
+      await confirmDiligence.mutateAsync({
+        reportId,
+        transactionId,
+        userId: authUserId,
+      });
+      toast({
+        title: "Diligência Confirmada",
+        description: "Você confirmou ciência da diligência.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao confirmar diligência.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleApproveAllPending = async () => {
     if (!authUserId) return;
     
-    // Get transactions that the current user hasn't reviewed yet
+    // Get transactions that the current user hasn't reviewed yet (excluding diligences)
     const unreviewedTransactionIds = reviews
-      .filter(r => !myReviewsMap[r.transaction_id])
+      .filter(r => {
+        const myReview = myReviewsMap[r.transaction_id];
+        const txDiligence = diligenceStatus[r.transaction_id];
+        // Only include if not reviewed AND not in diligence
+        return !myReview && !txDiligence?.isDiligence;
+      })
       .map(r => r.transaction_id);
     
-    if (unreviewedTransactionIds.length === 0) return;
+    if (unreviewedTransactionIds.length === 0) {
+      toast({
+        title: "Nenhum pendente",
+        description: "Não há lançamentos pendentes para aprovar em lote (excluindo diligências).",
+      });
+      return;
+    }
 
     try {
       await bulkCreateReviews.mutateAsync({
@@ -265,8 +332,7 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
       });
 
       // After approving all, check if we should open signature modal
-      if (myDivergentCount === 0 && !hasUserSigned) {
-        // Small delay to let the UI update
+      if (allDiligencesConfirmed && !hasUserSigned) {
         setTimeout(() => {
           setSignatureModalOpen(true);
         }, 500);
@@ -314,13 +380,13 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
     if (!isFinished) {
       toast({
         title: "PDF não disponível",
-        description: "O PDF só pode ser exportado quando o relatório estiver concluído (3 assinaturas).",
+        description: "O PDF só pode ser exportado quando o relatório estiver concluído (3 assinaturas e todas as diligências confirmadas).",
         variant: "destructive",
       });
       return;
     }
     
-    generateFiscalPDF(report, reviews, signatures);
+    generateFiscalPDF(report, reviews, signatures, diligenceStatus);
     toast({
       title: "PDF Gerado",
       description: "O relatório foi exportado com sucesso.",
@@ -407,11 +473,13 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
               <span className="font-medium">{stats.pending}</span>
               <span className="text-xs">Pendentes</span>
             </div>
-            <div className="flex items-center gap-1 text-destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <span className="font-medium">{stats.flagged}</span>
-              <span className="text-muted-foreground text-xs">Divergentes</span>
-            </div>
+            {stats.diligences > 0 && (
+              <div className="flex items-center gap-1 text-orange-600">
+                <AlertCircle className="h-4 w-4" />
+                <span className="font-medium">{stats.diligences}</span>
+                <span className="text-muted-foreground text-xs">Diligências</span>
+              </div>
+            )}
             <div className="flex items-center gap-1">
               <PenTool className="h-4 w-4 text-muted-foreground" />
               <span className={signatureCount >= 3 ? 'text-green-600 font-medium' : 'font-medium'}>
@@ -441,10 +509,10 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
           variant="outline" 
           size="sm"
           onClick={handleApproveAllPending}
-          disabled={stats.pending === 0}
+          disabled={stats.pending === 0 || stats.pending === stats.diligences}
         >
           <CheckCircle className="h-4 w-4 mr-2" />
-          Aprovar Todos Pendentes ({stats.pending})
+          Aprovar Todos Pendentes
         </Button>
         
         {canSign && (
@@ -490,7 +558,7 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
             <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="pending">Pendentes</SelectItem>
             <SelectItem value="approved">Aprovados</SelectItem>
-            <SelectItem value="flagged">Divergentes</SelectItem>
+            <SelectItem value="flagged">Diligências</SelectItem>
           </SelectContent>
         </Select>
         <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as typeof sortOrder)}>
@@ -526,17 +594,22 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
           </Card>
         ) : (
           sortedFilteredReviews.map((review) => {
-            const myStatus = myReviewsMap[review.transaction_id]?.status;
+            const myReview = myReviewsMap[review.transaction_id];
+            const txDiligence = diligenceStatus[review.transaction_id];
             const approvalCount = approvalCounts[review.transaction_id] || 0;
             
             return (
               <FiscalReviewItem
                 key={review.id}
                 review={review}
-                myStatus={myStatus}
+                myStatus={myReview?.status}
+                myDiligenceAck={myReview?.diligence_ack || false}
                 approvalCount={approvalCount}
+                isDiligence={txDiligence?.isDiligence || false}
+                diligenceAckCount={txDiligence?.ackCount || 0}
                 onApprove={() => handleApprove(review)}
                 onFlag={() => handleFlag(review)}
+                onConfirmDiligence={() => handleConfirmDiligence(review.transaction_id)}
               />
             );
           })
