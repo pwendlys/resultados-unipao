@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { 
   ArrowLeft,
+  ArrowUpDown,
   CheckCircle, 
   AlertTriangle, 
   Clock,
@@ -49,6 +50,7 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sortOrder, setSortOrder] = useState<'entry_index' | 'status_date' | 'amount'>('entry_index');
   const [observationModal, setObservationModal] = useState<{
     open: boolean;
     review: FiscalReview | null;
@@ -73,29 +75,39 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
   const hasUserSigned = authUserId ? signatures.some(sig => sig.user_id === authUserId) : false;
   const signatureCount = signatures.length;
 
-  // Sort reviews: pending > flagged > approved, then by date DESC within each group
+  // Sort reviews based on selected sort order
   const sortReviews = (reviewsToSort: FiscalReview[]) => {
     return [...reviewsToSort].sort((a, b) => {
-      const statusOrder: Record<string, number> = { pending: 0, flagged: 1, approved: 2 };
-      const statusDiff = (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0);
-      if (statusDiff !== 0) return statusDiff;
-      
-      // Within same status, sort by date DESC (most recent first)
-      const dateA = a.transaction?.date || '';
-      const dateB = b.transaction?.date || '';
-      
-      // Parse DD/MM/YYYY format
-      const parseDate = (d: string) => {
-        if (!d) return 0;
-        const parts = d.split('/');
-        if (parts.length === 3) {
-          const [day, month, year] = parts;
-          return new Date(`${year}-${month}-${day}`).getTime();
-        }
-        return new Date(d).getTime();
-      };
-      
-      return parseDate(dateB) - parseDate(dateA);
+      switch (sortOrder) {
+        case 'entry_index':
+          // Original bank statement order (ascending)
+          return (a.entry_index || 0) - (b.entry_index || 0);
+        
+        case 'amount':
+          // By amount (highest first)
+          const amountA = Math.abs(a.transaction?.amount || 0);
+          const amountB = Math.abs(b.transaction?.amount || 0);
+          return amountB - amountA;
+        
+        case 'status_date':
+        default:
+          // Status priority: pending > flagged > approved, then by date DESC
+          const statusPriority: Record<string, number> = { pending: 0, flagged: 1, approved: 2 };
+          const statusDiff = (statusPriority[a.status] || 0) - (statusPriority[b.status] || 0);
+          if (statusDiff !== 0) return statusDiff;
+          
+          const parseDate = (d: string) => {
+            if (!d) return 0;
+            const parts = d.split('/');
+            if (parts.length === 3) {
+              const [day, month, year] = parts;
+              return new Date(`${year}-${month}-${day}`).getTime();
+            }
+            return new Date(d).getTime();
+          };
+          
+          return parseDate(b.transaction?.date || '') - parseDate(a.transaction?.date || '');
+      }
     });
   };
 
@@ -383,7 +395,7 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full md:w-48">
+          <SelectTrigger className="w-full md:w-40">
             <Filter className="h-4 w-4 mr-2" />
             <SelectValue placeholder="Filtrar status" />
           </SelectTrigger>
@@ -392,6 +404,17 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
             <SelectItem value="pending">Pendentes</SelectItem>
             <SelectItem value="approved">Aprovados</SelectItem>
             <SelectItem value="flagged">Divergentes</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as typeof sortOrder)}>
+          <SelectTrigger className="w-full md:w-56">
+            <ArrowUpDown className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Ordenação" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="entry_index">Ordem do Extrato ✓</SelectItem>
+            <SelectItem value="status_date">Status + Data</SelectItem>
+            <SelectItem value="amount">Valor (maior primeiro)</SelectItem>
           </SelectContent>
         </Select>
       </div>
