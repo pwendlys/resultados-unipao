@@ -4,7 +4,8 @@ import { FiscalReview } from '@/hooks/useFiscalReviews';
 import { FiscalSignature } from '@/hooks/useFiscalSignatures';
 import { TransactionDiligenceInfo } from '@/hooks/useFiscalUserReviews';
 
-export const generateFiscalPDF = (
+// Internal function that generates the PDF document
+const createFiscalPDFDocument = (
   report: FiscalReport, 
   reviews: FiscalReview[],
   signatures?: FiscalSignature[],
@@ -251,5 +252,27 @@ export const generateFiscalPDF = (
     });
   }
 
+  return doc;
+};
+
+// Main function that saves the PDF file
+export const generateFiscalPDF = (
+  report: FiscalReport, 
+  reviews: FiscalReview[],
+  signatures?: FiscalSignature[],
+  diligenceStatus?: Record<string, TransactionDiligenceInfo>
+) => {
+  const doc = createFiscalPDFDocument(report, reviews, signatures, diligenceStatus);
   doc.save(`fiscal_${report.competencia}_${Date.now()}.pdf`);
+};
+
+// Function that returns PDF as Blob for upload
+export const generateFiscalPDFBlob = async (
+  report: FiscalReport, 
+  reviews: FiscalReview[],
+  signatures?: FiscalSignature[],
+  diligenceStatus?: Record<string, TransactionDiligenceInfo>
+): Promise<Blob> => {
+  const doc = createFiscalPDFDocument(report, reviews, signatures, diligenceStatus);
+  return doc.output('blob');
 };

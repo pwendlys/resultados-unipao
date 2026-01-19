@@ -49,17 +49,24 @@ const Navigation = ({ currentPage, onPageChange, isSidebarCollapsed, onToggleSid
     { id: 'settings', label: 'Configurações e Compartilhar', icon: Settings },
   ];
 
-  // Menu items para admin (área fiscal e criar usuário fiscal)
-  const fiscalAccessItem = { id: 'fiscal-access', label: 'Área Fiscal', icon: Shield };
+  // Menu items para admin (criar usuário fiscal - sem área fiscal, que é exclusiva do tesoureiro)
   const createFiscalUserItem = { id: 'criar-fiscal', label: 'Criar Usuário Fiscal', icon: UserPlus };
+
+  // Menu items para tesoureiro
+  const treasurerItems = [
+    { id: 'tesoureiro-dashboard', label: 'Painel Tesoureiro', icon: Home },
+    { id: 'tesoureiro-fiscal', label: 'Área Fiscal', icon: Shield },
+  ];
 
   const itemsToShow = user?.role === 'cooperado'
     ? [
         { id: 'resultados-unipao', label: 'Resultados Unipão', icon: FileText }
       ]
-    : user?.role === 'admin' 
-      ? [...menuItems, fiscalAccessItem, createFiscalUserItem]
-      : menuItems;
+    : user?.role === 'tesoureiro'
+      ? treasurerItems
+      : user?.role === 'admin' 
+        ? [...menuItems, createFiscalUserItem]
+        : menuItems;
 
   const handleLogout = () => {
     logout();
@@ -133,15 +140,10 @@ const Navigation = ({ currentPage, onPageChange, isSidebarCollapsed, onToggleSid
                     className={cn(
                       "w-full justify-start gap-3",
                       currentPage === item.id && "bg-primary text-primary-foreground",
-                      (item.id === 'fiscal-access' || item.id === 'criar-fiscal') && "border-primary/30 bg-primary/5 hover:bg-primary/10"
+                      item.id === 'criar-fiscal' && "border-primary/30 bg-primary/5 hover:bg-primary/10",
+                      (item.id === 'tesoureiro-dashboard' || item.id === 'tesoureiro-fiscal') && "border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10"
                     )}
                     onClick={() => {
-                      if (item.id === 'fiscal-access') {
-                        // Admins see fiscal reports management page
-                        onPageChange('admin-fiscal-reports');
-                        setIsMobileMenuOpen(false);
-                        return;
-                      }
                       if (item.id === 'criar-fiscal') {
                         window.location.href = '/admin/criar-fiscal';
                         return;
