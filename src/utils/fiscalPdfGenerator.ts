@@ -1,8 +1,13 @@
 import jsPDF from 'jspdf';
 import { FiscalReport } from '@/hooks/useFiscalReports';
 import { FiscalReview } from '@/hooks/useFiscalReviews';
+import { FiscalSignature } from '@/hooks/useFiscalSignatures';
 
-export const generateFiscalPDF = (report: FiscalReport, reviews: FiscalReview[]) => {
+export const generateFiscalPDF = (
+  report: FiscalReport, 
+  reviews: FiscalReview[],
+  signatures?: FiscalSignature[]
+) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   let yPos = 20;
@@ -41,8 +46,13 @@ export const generateFiscalPDF = (report: FiscalReport, reviews: FiscalReview[])
   yPos += 8;
   doc.setFont('helvetica', 'normal');
 
-  // Reviews ordered by entry_index
-  const sortedReviews = [...reviews].sort((a, b) => a.entry_index - b.entry_index);
+  // Reviews ordered by status (pending > flagged > approved) then by entry_index
+  const sortedReviews = [...reviews].sort((a, b) => {
+    const statusOrder: Record<string, number> = { pending: 0, flagged: 1, approved: 2 };
+    const statusDiff = (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0);
+    if (statusDiff !== 0) return statusDiff;
+    return a.entry_index - b.entry_index;
+  });
 
   sortedReviews.forEach((review) => {
     if (yPos > 270) {
@@ -82,6 +92,58 @@ export const generateFiscalPDF = (report: FiscalReport, reviews: FiscalReview[])
       yPos += 5;
     }
   });
+
+  // Signatures section (only if signatures exist)
+  if (signatures && signatures.length > 0) {
+    doc.addPage();
+    yPos = 20;
+    
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ASSINATURAS DO CONSELHO FISCAL', pageWidth / 2, yPos, { align: 'center' });
+    
+    yPos += 15;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Total de assinaturas: ${signatures.length}`, 14, yPos);
+    
+    yPos += 15;
+
+    signatures.forEach((sig, index) => {
+      if (yPos > 200) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      // Signature header
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Assinatura ${index + 1}`, 14, yPos);
+      yPos += 6;
+      
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Nome: ${sig.display_name || 'Não informado'}`, 14, yPos);
+      yPos += 5;
+      doc.text(`Data/Hora: ${new Date(sig.created_at).toLocaleString('pt-BR')}`, 14, yPos);
+      yPos += 8;
+
+      // Draw signature image
+      try {
+        if (sig.signature_data && sig.signature_data.startsWith('data:image')) {
+          doc.addImage(sig.signature_data, 'PNG', 14, yPos, 80, 40);
+          yPos += 45;
+        }
+      } catch (error) {
+        console.error('Error adding signature image:', error);
+        doc.text('[Assinatura não pôde ser renderizada]', 14, yPos);
+        yPos += 10;
+      }
+
+      // Separator line
+      doc.setDrawColor(200, 200, 200);
+      doc.line(14, yPos, pageWidth - 14, yPos);
+      yPos += 10;
+    });
+  }
 
   doc.save(`fiscal_${report.competencia}_${Date.now()}.pdf`);
 };

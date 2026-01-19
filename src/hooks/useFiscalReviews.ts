@@ -47,8 +47,7 @@ export const useFiscalReviews = (fiscalReportId: string | undefined) => {
             entry_index
           )
         `)
-        .eq('fiscal_report_id', fiscalReportId)
-        .order('entry_index', { ascending: true });
+        .eq('fiscal_report_id', fiscalReportId);
 
       if (error) {
         console.error('Error fetching fiscal reviews:', error);
