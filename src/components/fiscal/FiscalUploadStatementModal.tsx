@@ -91,22 +91,41 @@ const FiscalUploadStatementModal = ({
   const handleUpload = async () => {
     if (!selectedFile) return;
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast({
-        title: 'Erro',
-        description: 'Usuário não autenticado.',
-        variant: 'destructive',
-      });
-      return;
+    // Verificar autenticação - Supabase Auth OU AuthContext (admin)
+    const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+    
+    let isAdmin = false;
+    
+    if (!supabaseUser) {
+      // Verificar se é admin via localStorage (AuthContext)
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser);
+          if (parsed.role === 'admin') {
+            isAdmin = true;
+          }
+        } catch {
+          // Invalid JSON
+        }
+      }
+      
+      if (!isAdmin) {
+        toast({
+          title: 'Erro',
+          description: 'Usuário não autenticado.',
+          variant: 'destructive',
+        });
+        return;
+      }
     }
 
     try {
-      // Step 1: Upload file
-      const fileRecord = await uploadFile.mutateAsync({
+      // Step 1: Upload file via Edge Function
+      const result = await uploadFile.mutateAsync({
         reportId,
         file: selectedFile,
-        userId: user.id,
+        isAdmin,
       });
 
       toast({
@@ -123,7 +142,7 @@ const FiscalUploadStatementModal = ({
           {
             body: {
               report_id: reportId,
-              file_path: fileRecord.file_path,
+              file_path: result.filePath,
             },
           }
         );
