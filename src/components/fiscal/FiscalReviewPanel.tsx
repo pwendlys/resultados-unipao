@@ -13,7 +13,8 @@ import {
   Search,
   Filter,
   Download,
-  PenTool
+  PenTool,
+  FileText
 } from 'lucide-react';
 import { 
   Select,
@@ -26,6 +27,7 @@ import { useFiscalReportById } from '@/hooks/useFiscalReports';
 import { useFiscalReviews, useFiscalReviewsActions, FiscalReview } from '@/hooks/useFiscalReviews';
 import { useFiscalSignatures, useFiscalSignaturesActions } from '@/hooks/useFiscalSignatures';
 import { useFiscalUserProfile, useSaveDefaultSignature } from '@/hooks/useFiscalUserProfile';
+import { useFiscalReportFile, useGetFileUrl } from '@/hooks/useFiscalReportFiles';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import FiscalReviewItem from './FiscalReviewItem';
@@ -45,6 +47,8 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
   const { data: report, isLoading: reportLoading, refetch: refetchReport } = useFiscalReportById(reportId);
   const { data: reviews = [], isLoading: reviewsLoading } = useFiscalReviews(reportId);
   const { data: signatures = [], refetch: refetchSignatures } = useFiscalSignatures(reportId);
+  const { data: attachedFile } = useFiscalReportFile(reportId);
+  const getFileUrl = useGetFileUrl();
   const { updateReviewStatus, bulkUpdateReviewStatus } = useFiscalReviewsActions();
   const { createSignature } = useFiscalSignaturesActions();
 
@@ -267,6 +271,21 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
     });
   };
 
+  const handleViewStatementPDF = async () => {
+    if (!attachedFile?.file_path) return;
+
+    try {
+      const signedUrl = await getFileUrl.mutateAsync(attachedFile.file_path);
+      window.open(signedUrl, '_blank');
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível abrir o PDF do extrato.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (reportLoading || reviewsLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -350,6 +369,18 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
 
       {/* Actions */}
       <div className="flex flex-wrap gap-2">
+        {attachedFile && (
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleViewStatementPDF}
+            disabled={getFileUrl.isPending}
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Ver Extrato (PDF)
+          </Button>
+        )}
+        
         <Button 
           variant="outline" 
           size="sm"
