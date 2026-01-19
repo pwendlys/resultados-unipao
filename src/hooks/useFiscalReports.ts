@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useState, useEffect } from 'react';
 
 export interface FiscalReport {
   id: string;
@@ -34,14 +35,57 @@ export interface FiscalReportAssignee {
 
 export const useFiscalReports = () => {
   const { user } = useAuth();
+  const [supabaseRole, setSupabaseRole] = useState<string | null>(null);
+  const [isCheckingRole, setIsCheckingRole] = useState(true);
+
+  // Verificar role do Supabase Auth se AuthContext não tiver role
+  useEffect(() => {
+    const checkSupabaseRole = async () => {
+      // Se AuthContext já tem role, usar ela
+      if (user?.role) {
+        console.log('Using AuthContext role:', user.role);
+        setSupabaseRole(user.role);
+        setIsCheckingRole(false);
+        return;
+      }
+
+      // Verificar sessão Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        console.log('Checking Supabase session for user:', session.user.id);
+        // Buscar role da tabela user_roles
+        const { data, error } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+        
+        if (error) {
+          console.error('Error fetching user role:', error);
+        } else {
+          console.log('Found role in user_roles:', data?.role);
+          setSupabaseRole(data?.role || null);
+        }
+      } else {
+        console.log('No Supabase session found');
+      }
+      
+      setIsCheckingRole(false);
+    };
+
+    checkSupabaseRole();
+  }, [user?.role]);
+
+  const effectiveRole = user?.role || supabaseRole;
 
   return useQuery({
-    queryKey: ['fiscal-reports', user?.email],
+    queryKey: ['fiscal-reports', user?.email, effectiveRole],
     queryFn: async () => {
-      console.log('Fetching fiscal reports for user:', user?.email, 'role:', user?.role);
+      console.log('Fetching fiscal reports - effectiveRole:', effectiveRole);
       
       // Se for admin ou fiscal, buscar todos os relatórios (conceito de Conselho Fiscal)
-      if (user?.role === 'admin' || user?.role === 'fiscal') {
+      if (effectiveRole === 'admin' || effectiveRole === 'fiscal') {
         const { data, error } = await supabase
           .from('fiscal_reports')
           .select(`
@@ -64,9 +108,10 @@ export const useFiscalReports = () => {
       }
       
       // Usuários sem role fiscal/admin não veem nada
+      console.log('No fiscal/admin role, returning empty array');
       return [];
     },
-    enabled: !!user?.email,
+    enabled: !isCheckingRole,
   });
 };
 
