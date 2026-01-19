@@ -2,11 +2,13 @@ import jsPDF from 'jspdf';
 import { FiscalReport } from '@/hooks/useFiscalReports';
 import { FiscalReview } from '@/hooks/useFiscalReviews';
 import { FiscalSignature } from '@/hooks/useFiscalSignatures';
+import { TransactionDiligenceInfo } from '@/hooks/useFiscalUserReviews';
 
 export const generateFiscalPDF = (
   report: FiscalReport, 
   reviews: FiscalReview[],
-  signatures?: FiscalSignature[]
+  signatures?: FiscalSignature[],
+  diligenceStatus?: Record<string, TransactionDiligenceInfo>
 ) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -26,10 +28,15 @@ export const generateFiscalPDF = (
   yPos += 6;
   doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 14, yPos);
   
+  // Count diligences
+  const diligenceCount = diligenceStatus 
+    ? Object.values(diligenceStatus).filter(d => d.isDiligence).length 
+    : 0;
+
   // Stats
   yPos += 10;
   doc.setFont('helvetica', 'bold');
-  doc.text(`Total: ${reviews.length} | Aprovados: ${report.approved_count} | Divergentes: ${report.flagged_count} | Pendentes: ${report.pending_count}`, 14, yPos);
+  doc.text(`Total: ${reviews.length} | Aprovados: ${report.approved_count} | Diligências: ${diligenceCount} | Pendentes: ${report.pending_count}`, 14, yPos);
 
   // Table Header
   yPos += 12;
@@ -61,8 +68,16 @@ export const generateFiscalPDF = (
     }
 
     const transaction = review.transaction;
-    const statusText = review.status === 'approved' ? 'OK' : 
-                       review.status === 'flagged' ? 'DIV' : 'PEND';
+    const txDiligence = diligenceStatus?.[review.transaction_id];
+    
+    // Determine status text
+    let statusText = review.status === 'approved' ? 'OK' : 
+                     review.status === 'flagged' ? 'DIV' : 'PEND';
+    
+    // Override with diligence status if applicable
+    if (txDiligence?.isDiligence) {
+      statusText = `DIL ${txDiligence.ackCount}/3`;
+    }
 
     doc.text(String(review.entry_index), 16, yPos);
     doc.text(transaction?.date || '-', 26, yPos);
@@ -92,6 +107,69 @@ export const generateFiscalPDF = (
       yPos += 5;
     }
   });
+
+  // Diligences section - if there are any diligences
+  const diligentTransactions = diligenceStatus 
+    ? Object.entries(diligenceStatus).filter(([_, d]) => d.isDiligence)
+    : [];
+
+  if (diligentTransactions.length > 0 && signatures && signatures.length >= 3) {
+    doc.addPage();
+    yPos = 20;
+    
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('DILIGÊNCIAS REGISTRADAS', pageWidth / 2, yPos, { align: 'center' });
+    
+    yPos += 10;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('As seguintes transações foram objeto de análise com apontamentos pelo Conselho Fiscal:', 14, yPos);
+    
+    yPos += 10;
+    
+    diligentTransactions.forEach(([txId, diligenceInfo], index) => {
+      if (yPos > 260) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      // Find the review for this transaction
+      const review = reviews.find(r => r.transaction_id === txId);
+      if (!review) return;
+
+      const transaction = review.transaction;
+      
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text(`${index + 1}. ${transaction?.date || '-'} - ${(transaction?.description || '-').substring(0, 60)}`, 14, yPos);
+      yPos += 5;
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      
+      const amount = transaction?.amount || 0;
+      const amountStr = `${transaction?.type === 'saida' ? '-' : ''}R$ ${amount.toFixed(2)}`;
+      doc.text(`   Valor: ${amountStr} | Confirmação: ${diligenceInfo.ackCount}/3`, 14, yPos);
+      yPos += 5;
+      
+      if (diligenceInfo.divergentObservation) {
+        doc.setTextColor(150, 80, 0);
+        const obsLines = doc.splitTextToSize(`   Observação: ${diligenceInfo.divergentObservation}`, pageWidth - 28);
+        doc.text(obsLines, 14, yPos);
+        yPos += obsLines.length * 4;
+        doc.setTextColor(0, 0, 0);
+      }
+      
+      yPos += 8;
+    });
+    
+    // Visual separator
+    doc.setDrawColor(100, 100, 100);
+    doc.setLineWidth(0.5);
+    doc.line(14, yPos, pageWidth - 14, yPos);
+    yPos += 10;
+  }
 
   // Signatures section - ONLY if report is concluded (3+ signatures)
   if (signatures && signatures.length >= 3) {

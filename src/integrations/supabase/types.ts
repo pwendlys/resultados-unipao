@@ -588,6 +588,7 @@ export type Database = {
       fiscal_user_reviews: {
         Row: {
           created_at: string | null
+          diligence_ack: boolean
           id: string
           observation: string | null
           report_id: string
@@ -598,6 +599,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          diligence_ack?: boolean
           id?: string
           observation?: string | null
           report_id: string
@@ -608,6 +610,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          diligence_ack?: boolean
           id?: string
           observation?: string | null
           report_id?: string
