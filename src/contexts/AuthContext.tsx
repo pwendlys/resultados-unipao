@@ -1,5 +1,5 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 type UserRole = 'admin' | 'cooperado' | 'fiscal';
 
@@ -64,11 +64,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return false;
   };
 
-  const logout = () => {
+  const logout = async () => {
     setIsAuthenticated(false);
     setUser(null);
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('user');
+    
+    // Também fazer logout do Supabase Auth (para admin)
+    await supabase.auth.signOut();
   };
 
   return (
