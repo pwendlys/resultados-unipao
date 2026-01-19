@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-type UserRole = 'admin' | 'cooperado' | 'fiscal';
+type UserRole = 'admin' | 'cooperado' | 'fiscal' | 'tesoureiro';
 
 interface UserInfo {
   email: string;
@@ -54,6 +54,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (email === 'cooperativa@unipao.com' && password === 'unipao123') {
       const info: UserInfo = { email, role: 'cooperado' };
+      setIsAuthenticated(true);
+      setUser(info);
+      localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('user', JSON.stringify(info));
+      return true;
+    }
+
+    if (email === 'arthur@tesoureiro.com' && password === 'tesoureiro@2025') {
+      const info: UserInfo = { email, role: 'tesoureiro' };
       setIsAuthenticated(true);
       setUser(info);
       localStorage.setItem('isAuthenticated', 'true');

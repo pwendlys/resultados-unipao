@@ -14,7 +14,8 @@ import CustomReports from '@/components/custom-reports/CustomReports';
 import SendReports from '@/components/send-reports/SendReports';
 import CustomDashboards from '@/components/custom-dashboards/CustomDashboards';
 import ResultadosUnipao from '@/components/cooperado/ResultadosUnipao';
-import AdminFiscalReports from '@/components/admin/AdminFiscalReports';
+import TreasurerDashboard from '@/components/treasurer/TreasurerDashboard';
+import TreasurerFiscalArea from '@/components/treasurer/TreasurerFiscalArea';
 import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
@@ -23,8 +24,14 @@ const Index = () => {
   const { user } = useAuth();
 
   const handlePageChange = (page: string) => {
+    // Cooperado restrictions
     if (user?.role === 'cooperado' && page !== 'custom-reports' && page !== 'resultados-unipao') {
       setCurrentPage('resultados-unipao');
+      return;
+    }
+    // Tesoureiro restrictions - can only access tesoureiro pages
+    if (user?.role === 'tesoureiro' && !page.startsWith('tesoureiro')) {
+      setCurrentPage('tesoureiro-dashboard');
       return;
     }
     setCurrentPage(page);
@@ -33,6 +40,9 @@ const Index = () => {
   useEffect(() => {
     if (user?.role === 'cooperado') {
       setCurrentPage('resultados-unipao');
+    }
+    if (user?.role === 'tesoureiro') {
+      setCurrentPage('tesoureiro-dashboard');
     }
   }, [user]);
 
@@ -62,11 +72,17 @@ const Index = () => {
         return <CustomDashboards />;
       case 'resultados-unipao':
         return <ResultadosUnipao />;
-      case 'admin-fiscal-reports':
-        return <AdminFiscalReports onNavigateToPage={setCurrentPage} />;
+      case 'tesoureiro-dashboard':
+        return <TreasurerDashboard />;
+      case 'tesoureiro-fiscal':
+        return <TreasurerFiscalArea onNavigateToPage={setCurrentPage} />;
       case 'settings':
         return <Settings />;
       default:
+        // Tesoureiro defaults to their dashboard
+        if (user?.role === 'tesoureiro') {
+          return <TreasurerDashboard />;
+        }
         return <Dashboard />;
     }
   };
