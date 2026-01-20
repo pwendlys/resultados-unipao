@@ -891,6 +891,36 @@ export type Database = {
           },
         ]
       }
+      treasurer_signatures: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          report_id: string
+          signature_data: string
+          signed_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          report_id: string
+          signature_data: string
+          signed_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          report_id?: string
+          signature_data?: string
+          signed_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
