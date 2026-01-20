@@ -4,11 +4,21 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { AlertTriangle, Check, Clock, User } from 'lucide-react';
-import { useTransactionDiligenceStatus, useAllFiscalUserReviews } from '@/hooks/useFiscalUserReviews';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { AlertTriangle, Check, Clock, X } from 'lucide-react';
+import { useTransactionDiligenceStatus } from '@/hooks/useFiscalUserReviews';
 import { supabase } from '@/integrations/supabase/client';
 
 interface FiscalDiligencesModalProps {
@@ -107,9 +117,18 @@ const FiscalDiligencesModal = ({
     }
   };
 
+  const formatTransactionDate = (dateStr: string | undefined) => {
+    if (!dateStr || dateStr === '-') return '-';
+    try {
+      return new Date(dateStr).toLocaleDateString('pt-BR');
+    } catch {
+      return dateStr;
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh]">
+      <DialogContent className="max-w-4xl max-h-[85vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-orange-500" />
@@ -126,7 +145,7 @@ const FiscalDiligencesModal = ({
           </Badge>
         </div>
 
-        <ScrollArea className="h-[400px] pr-4">
+        <ScrollArea className="h-[500px]">
           {diligenceEntries.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Check className="h-12 w-12 mb-4 text-green-500" />
@@ -134,67 +153,69 @@ const FiscalDiligencesModal = ({
               <p className="text-sm">Todas as transações foram aprovadas sem alterações.</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {diligenceEntries.map((entry, index) => (
-                <div
-                  key={entry.transactionId}
-                  className="border rounded-lg p-4 space-y-3"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm text-muted-foreground">
-                          {entry.date}
-                        </span>
-                        <Badge
-                          variant={entry.type === 'credit' ? 'default' : 'secondary'}
-                          className="text-xs"
-                        >
-                          {entry.type === 'credit' ? 'Crédito' : 'Débito'}
-                        </Badge>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[200px]">Transação</TableHead>
+                  <TableHead className="min-w-[180px]">Motivo</TableHead>
+                  <TableHead>Marcado por</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {diligenceEntries.map((entry) => (
+                  <TableRow key={entry.transactionId}>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <p className="font-medium text-sm line-clamp-2">
+                          {entry.description}
+                        </p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{formatTransactionDate(entry.date)}</span>
+                          <span>•</span>
+                          <span className={entry.type === 'credit' ? 'text-green-600' : 'text-red-600'}>
+                            {entry.type === 'credit' ? '+' : '-'} {formatCurrency(entry.amount)}
+                          </span>
+                        </div>
                       </div>
-                      <p className="font-medium text-sm line-clamp-2">
-                        {entry.description}
-                      </p>
-                      <p className={`text-lg font-bold ${entry.type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>
-                        {entry.type === 'credit' ? '+' : '-'} {formatCurrency(entry.amount)}
-                      </p>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={entry.isConfirmed 
-                        ? 'text-green-600 border-green-500' 
-                        : 'text-orange-600 border-orange-500'
-                      }
-                    >
-                      {entry.isConfirmed ? (
-                        <Check className="h-3 w-3 mr-1" />
-                      ) : (
-                        <Clock className="h-3 w-3 mr-1" />
-                      )}
-                      {entry.ackCount}/3
-                    </Badge>
-                  </div>
-
-                  <div className="bg-muted/50 rounded-md p-3">
-                    <p className="text-sm font-medium mb-1">Motivo da Diligência:</p>
-                    <p className="text-sm text-muted-foreground">
-                      {entry.observation}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <User className="h-3 w-3" />
-                    <span>Marcado por: {entry.createdBy}</span>
-                    {entry.createdAt && (
-                      <span>• {formatDate(entry.createdAt)}</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+                    </TableCell>
+                    <TableCell>
+                      <p className="text-sm line-clamp-3">{entry.observation}</p>
+                    </TableCell>
+                    <TableCell className="text-sm">{entry.createdBy}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                      {formatDate(entry.createdAt)}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge 
+                        variant="outline" 
+                        className={entry.isConfirmed 
+                          ? "text-green-600 border-green-500" 
+                          : "text-orange-600 border-orange-500"
+                        }
+                      >
+                        {entry.isConfirmed ? (
+                          <Check className="h-3 w-3 mr-1" />
+                        ) : (
+                          <Clock className="h-3 w-3 mr-1" />
+                        )}
+                        {entry.isConfirmed ? 'Confirmada 3/3' : `Pendente ${entry.ackCount}/3`}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </ScrollArea>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <X className="h-4 w-4 mr-2" />
+            Fechar
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

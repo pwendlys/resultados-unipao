@@ -4,14 +4,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -30,7 +22,8 @@ import {
   PenTool,
   FileCheck,
   Loader2,
-  Trash2
+  Trash2,
+  Calendar
 } from 'lucide-react';
 import { useAllFiscalReports, useFiscalReportsActions } from '@/hooks/useFiscalReports';
 import { useTreasurerReportsSummary, TreasurerReportSummary } from '@/hooks/useTreasurerReportsSummary';
@@ -42,6 +35,7 @@ import { generateFiscalPDF, generateFiscalPDFBlob } from '@/utils/fiscalPdfGener
 import { supabase } from '@/integrations/supabase/client';
 import FiscalSignaturesModal from '@/components/fiscal/FiscalSignaturesModal';
 import FiscalDiligencesModal from '@/components/fiscal/FiscalDiligencesModal';
+import { cn } from '@/lib/utils';
 
 interface TreasurerFiscalAreaProps {
   onNavigateToPage?: (page: string) => void;
@@ -131,58 +125,40 @@ const TreasurerFiscalArea = ({ onNavigateToPage }: TreasurerFiscalAreaProps) => 
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Relatórios Fiscais ({reports.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Título</TableHead>
-                    <TableHead>Competência</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Progresso</TableHead>
-                    <TableHead>Diligências</TableHead>
-                    <TableHead>Assinaturas</TableHead>
-                    <TableHead>Data</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {reports.map((report) => {
-                    const summary = summaries.find(s => s.reportId === report.id);
-                    return (
-                      <TreasurerReportRow 
-                        key={report.id} 
-                        report={report}
-                        summary={summary}
-                        onViewSignatures={() => setSignaturesModal({
-                          open: true,
-                          reportId: report.id,
-                          reportTitle: report.title,
-                        })}
-                        onViewDiligences={() => setDiligencesModal({
-                          open: true,
-                          reportId: report.id,
-                          reportTitle: report.title,
-                        })}
-                        onDelete={() => setDeleteDialog({
-                          open: true,
-                          reportId: report.id,
-                          reportTitle: report.title,
-                        })}
-                        getStatusBadge={getStatusBadge}
-                      />
-                    );
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-muted-foreground">
+            Relatórios Fiscais ({reports.length})
+          </h2>
+          
+          <div className="grid gap-4">
+            {reports.map((report) => {
+              const summary = summaries.find(s => s.reportId === report.id);
+              return (
+                <TreasurerReportCard 
+                  key={report.id} 
+                  report={report}
+                  summary={summary}
+                  onViewSignatures={() => setSignaturesModal({
+                    open: true,
+                    reportId: report.id,
+                    reportTitle: report.title,
                   })}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+                  onViewDiligences={() => setDiligencesModal({
+                    open: true,
+                    reportId: report.id,
+                    reportTitle: report.title,
+                  })}
+                  onDelete={() => setDeleteDialog({
+                    open: true,
+                    reportId: report.id,
+                    reportTitle: report.title,
+                  })}
+                  getStatusBadge={getStatusBadge}
+                />
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {/* Modal de Assinaturas */}
@@ -226,8 +202,8 @@ const TreasurerFiscalArea = ({ onNavigateToPage }: TreasurerFiscalAreaProps) => 
   );
 };
 
-// Componente separado para cada linha da tabela
-interface TreasurerReportRowProps {
+// Componente de Card para cada relatório
+interface TreasurerReportCardProps {
   report: any;
   summary: TreasurerReportSummary | undefined;
   onViewSignatures: () => void;
@@ -236,14 +212,14 @@ interface TreasurerReportRowProps {
   getStatusBadge: (summary: TreasurerReportSummary | undefined, status: string) => JSX.Element;
 }
 
-const TreasurerReportRow = ({ 
+const TreasurerReportCard = ({ 
   report, 
   summary,
   onViewSignatures, 
   onViewDiligences, 
   onDelete,
   getStatusBadge 
-}: TreasurerReportRowProps) => {
+}: TreasurerReportCardProps) => {
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
   
@@ -339,54 +315,103 @@ const TreasurerReportRow = ({
   };
 
   return (
-    <TableRow>
-      <TableCell className="font-medium">{report.title}</TableCell>
-      <TableCell>{report.competencia}</TableCell>
-      <TableCell>{report.account_type}</TableCell>
-      <TableCell>{getStatusBadge(summary, report.status)}</TableCell>
-      <TableCell>
-        <div className="flex items-center gap-2 min-w-[150px]">
-          <Progress value={progressPercentage} className="h-2 w-16" />
-          <div className="flex items-center gap-1 text-xs">
-            <span className="text-green-600" title="Aprovadas (3/3 revisões)">{approvedCount}</span>
-            <span>/</span>
-            <span className="text-muted-foreground" title="Pendentes">{pendingCount}</span>
-            <span>/</span>
-            <span className="text-orange-600" title="Diligências">{diligenceCount}</span>
+    <Card className="hover:shadow-md transition-shadow">
+      {/* Linha Principal: Título + Status + Data */}
+      <CardHeader className="pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <CardTitle className="text-lg truncate">{report.title}</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              {report.competencia} • {report.account_type}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {getStatusBadge(summary, report.status)}
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Calendar className="h-3 w-3" />
+              {new Date(report.created_at).toLocaleDateString('pt-BR')}
+            </div>
           </div>
         </div>
-      </TableCell>
-      <TableCell>
-        {diligenceCount > 0 ? (
-          <Badge 
-            variant="outline" 
-            className={allDiligencesConfirmed ? "text-green-600 border-green-500" : "text-orange-600 border-orange-500"}
-          >
-            <AlertCircle className="h-3 w-3 mr-1" />
-            {diligenceCount} {allDiligencesConfirmed ? '✓' : ''}
-          </Badge>
-        ) : (
-          <span className="text-muted-foreground text-xs">Nenhuma</span>
-        )}
-      </TableCell>
-      <TableCell>
-        <div className="flex items-center gap-1">
-          <PenTool className="h-4 w-4 text-muted-foreground" />
-          <span className={signatureCount >= 3 ? 'text-green-600 font-medium' : ''}>
-            {signatureCount}/3
-          </span>
+      </CardHeader>
+      
+      <CardContent className="pt-0 space-y-4">
+        {/* Grid de Métricas */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-4 border-y border-border">
+          {/* Progresso */}
+          <div className="text-center space-y-1">
+            <p className="text-xs text-muted-foreground">Progresso</p>
+            <div className="flex flex-col items-center gap-1">
+              <Progress value={progressPercentage} className="h-2 w-full max-w-[80px]" />
+              <span className="text-sm font-medium">{approvedCount}/{totalTransactions}</span>
+            </div>
+          </div>
+          
+          {/* Pendentes */}
+          <div className="text-center space-y-1">
+            <p className="text-xs text-muted-foreground">Pendentes</p>
+            <span className={cn(
+              "text-xl font-bold",
+              pendingCount > 0 ? "text-orange-600" : "text-green-600"
+            )}>
+              {pendingCount}
+            </span>
+          </div>
+          
+          {/* Diligências */}
+          <div className="text-center space-y-1">
+            <p className="text-xs text-muted-foreground">Diligências</p>
+            {diligenceCount > 0 ? (
+              <Badge 
+                variant="outline" 
+                className={cn(
+                  "text-sm",
+                  allDiligencesConfirmed ? "text-green-600 border-green-500" : "text-orange-600 border-orange-500"
+                )}
+              >
+                <AlertCircle className="h-3 w-3 mr-1" />
+                {diligenceCount} {allDiligencesConfirmed ? '✓' : ''}
+              </Badge>
+            ) : (
+              <span className="text-sm text-muted-foreground">—</span>
+            )}
+          </div>
+          
+          {/* Assinaturas */}
+          <div className="text-center space-y-1">
+            <p className="text-xs text-muted-foreground">Assinaturas</p>
+            <div className="flex items-center justify-center gap-1">
+              <PenTool className="h-4 w-4 text-muted-foreground" />
+              <span className={cn(
+                "text-sm font-medium",
+                signatureCount >= 3 && "text-green-600"
+              )}>
+                {signatureCount}/3
+              </span>
+            </div>
+          </div>
         </div>
-      </TableCell>
-      <TableCell>
-        {new Date(report.created_at).toLocaleDateString('pt-BR')}
-      </TableCell>
-      <TableCell>
-        <div className="flex justify-end gap-2">
-          <Button variant="ghost" size="icon" onClick={onViewSignatures} title="Ver Assinaturas">
-            <PenTool className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={onViewDiligences} title="Ver Diligências">
+        
+        {/* Ações */}
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={onViewDiligences}
+            className="gap-1"
+          >
             <Eye className="h-4 w-4" />
+            <span className="hidden sm:inline">Diligências</span>
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={onViewSignatures}
+            className="gap-1"
+          >
+            <PenTool className="h-4 w-4" />
+            <span className="hidden sm:inline">Assinaturas</span>
           </Button>
           
           {/* Generate Final PDF Button */}
@@ -396,13 +421,12 @@ const TreasurerReportRow = ({
               size="sm"
               onClick={handleGenerateFinalPDF}
               disabled={isGenerating}
-              className="bg-amber-600 hover:bg-amber-700"
-              title="Gerar Relatório Final"
+              className="bg-amber-600 hover:bg-amber-700 gap-1"
             >
               {isGenerating ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <FileCheck className="h-4 w-4 mr-1" />
+                <FileCheck className="h-4 w-4" />
               )}
               {isGenerating ? 'Gerando...' : 'Gerar Final'}
             </Button>
@@ -412,28 +436,28 @@ const TreasurerReportRow = ({
           {(hasFinalPdf || isFinished) && (
             <Button 
               variant="ghost" 
-              size="icon" 
+              size="sm" 
               onClick={handleDownloadPDF}
-              title="Baixar PDF Final"
-              className="text-green-600"
+              className="text-green-600 gap-1"
             >
               <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">Download</span>
             </Button>
           )}
 
           {/* Delete Button */}
           <Button 
             variant="ghost" 
-            size="icon" 
+            size="sm" 
             onClick={onDelete}
-            title="Excluir Relatório"
-            className="text-destructive hover:text-destructive"
+            className="text-destructive hover:text-destructive gap-1"
           >
             <Trash2 className="h-4 w-4" />
+            <span className="hidden sm:inline">Excluir</span>
           </Button>
         </div>
-      </TableCell>
-    </TableRow>
+      </CardContent>
+    </Card>
   );
 };
 

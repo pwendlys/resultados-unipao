@@ -8,8 +8,17 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { useFiscalSignatures } from '@/hooks/useFiscalSignatures';
-import { PenTool, X, User, Calendar } from 'lucide-react';
+import { PenTool, X, User, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -35,10 +44,11 @@ const FiscalSignaturesModal = ({
 
   const signatureCount = signatures.length;
   const isComplete = signatureCount >= 3;
+  const pendingSlots = Math.max(0, 3 - signatureCount);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl max-h-[85vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <PenTool className="h-5 w-5" />
@@ -61,56 +71,74 @@ const FiscalSignaturesModal = ({
             </Badge>
           </div>
 
-          {/* Signatures List */}
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-            </div>
-          ) : signatures.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <PenTool className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>Nenhuma assinatura registrada ainda.</p>
-            </div>
-          ) : (
-            <div className="space-y-3 max-h-80 overflow-y-auto">
-              {signatures.map((signature, index) => (
-                <div
-                  key={signature.id}
-                  className="border rounded-lg p-4 space-y-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">
-                        {signature.display_name || `Usuário ${index + 1}`}
-                      </span>
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      #{index + 1}
-                    </Badge>
-                  </div>
+          {/* Signatures Table */}
+          <ScrollArea className="h-[400px]">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fiscal</TableHead>
+                    <TableHead>Data/Hora</TableHead>
+                    <TableHead className="text-center">Status</TableHead>
+                    <TableHead className="text-center">Assinatura</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {/* Signed entries */}
+                  {signatures.map((signature, index) => (
+                    <TableRow key={signature.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">
+                            {signature.display_name || `Fiscal ${index + 1}`}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                        {format(new Date(signature.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge className="bg-green-500">Assinado</Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {signature.signature_data && (
+                          <div className="bg-white border rounded p-1 inline-block">
+                            <img
+                              src={signature.signature_data}
+                              alt={`Assinatura de ${signature.display_name || 'usuário'}`}
+                              className="h-10 max-w-[100px] object-contain mx-auto"
+                            />
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
                   
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    <span>
-                      {format(new Date(signature.created_at), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
-                    </span>
-                  </div>
-
-                  {/* Signature Preview */}
-                  {signature.signature_data && (
-                    <div className="bg-white border rounded p-2">
-                      <img
-                        src={signature.signature_data}
-                        alt={`Assinatura de ${signature.display_name || 'usuário'}`}
-                        className="max-h-20 mx-auto"
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                  {/* Pending slots */}
+                  {Array.from({ length: pendingSlots }).map((_, i) => (
+                    <TableRow key={`pending-${i}`} className="opacity-60">
+                      <TableCell>
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Clock className="h-4 w-4" />
+                          <span>Aguardando fiscal...</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">—</TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="outline">Pendente</Badge>
+                      </TableCell>
+                      <TableCell className="text-center text-muted-foreground">—</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </ScrollArea>
         </div>
 
         <DialogFooter>
