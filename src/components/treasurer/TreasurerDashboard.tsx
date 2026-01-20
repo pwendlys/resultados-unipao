@@ -10,6 +10,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useAllFiscalReports } from '@/hooks/useFiscalReports';
 import { useTreasurerReportsSummary } from '@/hooks/useTreasurerReportsSummary';
+import ProfileCard from '@/components/profile/ProfileCard';
 
 const TreasurerDashboard = () => {
   const { user } = useAuth();
@@ -50,6 +51,9 @@ const TreasurerDashboard = () => {
           <Badge className="ml-auto bg-amber-600">Tesoureiro</Badge>
         </CardContent>
       </Card>
+
+      {/* Profile Card */}
+      <ProfileCard />
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-3">

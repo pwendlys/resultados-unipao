@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,6 +38,7 @@ import { useFiscalReviews } from '@/hooks/useFiscalReviews';
 import { useFiscalSignatures } from '@/hooks/useFiscalSignatures';
 import { useTransactionDiligenceStatus } from '@/hooks/useFiscalUserReviews';
 import { useTreasurerSignature, useTreasurerSignatureActions } from '@/hooks/useTreasurerSignature';
+import { useProfilesByIds, useProfile } from '@/hooks/useProfile';
 import { useToast } from '@/hooks/use-toast';
 import { generateFiscalPDF, generateFiscalPDFBlob } from '@/utils/fiscalPdfGenerator';
 import { supabase } from '@/integrations/supabase/client';
@@ -245,11 +246,13 @@ const TreasurerSignatureModalWrapper = ({
   reportTitle,
 }: TreasurerSignatureModalWrapperProps) => {
   const { createSignature } = useTreasurerSignatureActions();
+  const { data: profile } = useProfile();
 
   const handleSubmit = async (signatureData: string) => {
     await createSignature.mutateAsync({
       reportId,
       signatureData,
+      displayName: profile?.full_name || undefined,
     });
     onOpenChange(false);
   };
@@ -293,6 +296,26 @@ const TreasurerReportCard = ({
   const { data: fiscalSignatures = [] } = useFiscalSignatures(report.id);
   const { data: diligenceStatus = {} } = useTransactionDiligenceStatus(report.id);
   const { data: treasurerSignature } = useTreasurerSignature(report.id);
+
+  // Collect user IDs for profiles (diligence creators + signers)
+  const profileUserIds = React.useMemo(() => {
+    const ids = new Set<string>();
+    
+    // Add diligence creators
+    Object.values(diligenceStatus).forEach(d => {
+      if (d.diligenceCreatedBy) ids.add(d.diligenceCreatedBy);
+    });
+    
+    // Add fiscal signers
+    fiscalSignatures.forEach(s => ids.add(s.user_id));
+    
+    // Add treasurer signer
+    if (treasurerSignature?.user_id) ids.add(treasurerSignature.user_id);
+    
+    return Array.from(ids);
+  }, [diligenceStatus, fiscalSignatures, treasurerSignature]);
+
+  const { data: profiles = {} } = useProfilesByIds(profileUserIds);
 
   // Use aggregated stats from summary
   const approvedCount = summary?.approvedTransactions ?? 0;
@@ -348,8 +371,8 @@ const TreasurerReportCard = ({
         throw new Error('Assinatura do tesoureiro não encontrada');
       }
 
-      // Generate PDF blob with treasurer signature
-      const pdfBlob = await generateFiscalPDFBlob(report, reviews, fiscalSignatures, diligenceStatus, treasurerSignature);
+      // Generate PDF blob with treasurer signature and profiles
+      const pdfBlob = await generateFiscalPDFBlob(report, reviews, fiscalSignatures, diligenceStatus, treasurerSignature, profiles);
       console.log('[PDF] Blob generated, size:', pdfBlob.size);
       
       // Upload to Storage
@@ -414,7 +437,7 @@ const TreasurerReportCard = ({
       window.open(report.pdf_url, '_blank');
     } else if (isFinished) {
       // Generate and download directly if finished but no stored PDF
-      generateFiscalPDF(report, reviews, fiscalSignatures, diligenceStatus, treasurerSignature || undefined);
+      generateFiscalPDF(report, reviews, fiscalSignatures, diligenceStatus, treasurerSignature || undefined, profiles);
       toast({
         title: "PDF Gerado",
         description: "O relatório foi exportado com sucesso.",

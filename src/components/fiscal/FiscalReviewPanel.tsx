@@ -29,6 +29,7 @@ import { useFiscalReportById } from '@/hooks/useFiscalReports';
 import { useFiscalReviews, FiscalReview } from '@/hooks/useFiscalReviews';
 import { useFiscalSignatures, useFiscalSignaturesActions } from '@/hooks/useFiscalSignatures';
 import { useFiscalUserProfile, useSaveDefaultSignature } from '@/hooks/useFiscalUserProfile';
+import { useProfile } from '@/hooks/useProfile';
 import { useFiscalReportFile, useGetFileUrl } from '@/hooks/useFiscalReportFiles';
 import { useFiscalTransactionOrder } from '@/hooks/useFiscalTransactionOrder';
 import { 
@@ -80,8 +81,9 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
     getAuthUser();
   }, []);
 
-  // Fetch user profile for saved signature
+  // Fetch user profile for saved signature and display name
   const { data: userProfile } = useFiscalUserProfile(authUserId);
+  const { data: profile } = useProfile();
   const saveDefaultSignature = useSaveDefaultSignature();
 
   // Fetch per-fiscal reviews
@@ -355,7 +357,7 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
         reportId,
         userId: authUserId,
         signatureData,
-        displayName: user?.email || undefined,
+        displayName: profile?.full_name || user?.email || undefined,
       });
       
       toast({

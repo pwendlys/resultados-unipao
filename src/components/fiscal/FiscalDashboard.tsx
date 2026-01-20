@@ -17,6 +17,7 @@ import { useFiscalReports } from '@/hooks/useFiscalReports';
 import { useFiscalUserStats } from '@/hooks/useFiscalUserStats';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import ProfileCard from '@/components/profile/ProfileCard';
 
 interface FiscalDashboardProps {
   onNavigateToPage?: (page: string) => void;
@@ -101,6 +102,9 @@ const FiscalDashboard = ({ onNavigateToPage }: FiscalDashboardProps) => {
           </Button>
         )}
       </div>
+
+      {/* Profile Card */}
+      <ProfileCard />
 
       {/* Stats Cards - User-specific data */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

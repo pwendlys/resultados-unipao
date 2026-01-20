@@ -4,6 +4,7 @@ import { FiscalReview } from '@/hooks/useFiscalReviews';
 import { FiscalSignature } from '@/hooks/useFiscalSignatures';
 import { TransactionDiligenceInfo } from '@/hooks/useFiscalUserReviews';
 import { TreasurerSignature } from '@/hooks/useTreasurerSignature';
+import { Profile } from '@/hooks/useProfile';
 
 // Internal function that generates the PDF document
 const createFiscalPDFDocument = (
@@ -11,7 +12,8 @@ const createFiscalPDFDocument = (
   reviews: FiscalReview[],
   signatures?: FiscalSignature[],
   diligenceStatus?: Record<string, TransactionDiligenceInfo>,
-  treasurerSignature?: TreasurerSignature
+  treasurerSignature?: TreasurerSignature,
+  profiles?: Record<string, Profile>
 ) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -31,15 +33,29 @@ const createFiscalPDFDocument = (
   yPos += 6;
   doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 14, yPos);
   
-  // Count diligences
-  const diligenceCount = diligenceStatus 
-    ? Object.values(diligenceStatus).filter(d => d.isDiligence).length 
-    : 0;
+  // Calculate real stats from diligenceStatus
+  let okCount = 0;
+  let dilCount = 0;
+  let pendCount = 0;
 
-  // Stats
+  for (const review of reviews) {
+    const txDiligence = diligenceStatus?.[review.transaction_id];
+    const isDiligence = txDiligence?.isDiligence;
+    const reviewCount = txDiligence?.reviewCount ?? 0;
+
+    if (isDiligence) {
+      dilCount++;
+    } else if (reviewCount >= 3) {
+      okCount++;
+    } else {
+      pendCount++;
+    }
+  }
+
+  // Stats with real calculated values
   yPos += 10;
   doc.setFont('helvetica', 'bold');
-  doc.text(`Total: ${reviews.length} | Aprovados: ${report.approved_count} | Diligências: ${diligenceCount} | Pendentes: ${report.pending_count}`, 14, yPos);
+  doc.text(`Total: ${reviews.length} | Aprovados: ${okCount} | Diligências: ${dilCount} | Pendentes: ${pendCount}`, 14, yPos);
 
   // Table Header
   yPos += 12;
@@ -68,14 +84,19 @@ const createFiscalPDFDocument = (
     const transaction = review.transaction;
     const txDiligence = diligenceStatus?.[review.transaction_id];
     const isDiligence = txDiligence?.isDiligence;
+    const reviewCount = txDiligence?.reviewCount ?? 0;
     
-    // Determine status text
-    let statusText = review.status === 'approved' ? 'OK' : 
-                     review.status === 'flagged' ? 'DIV' : 'PEND';
-    
-    // Override with diligence status if applicable
+    // Determine status text based on fiscal_user_reviews data
+    let statusText: string;
     if (isDiligence) {
+      // Diligence - show acknowledgment count
       statusText = `DIL ${txDiligence.ackCount}/3`;
+    } else if (reviewCount >= 3) {
+      // Reviewed by 3 fiscals = OK
+      statusText = 'OK';
+    } else {
+      // Partially reviewed
+      statusText = `${reviewCount}/3`;
     }
 
     // Draw diligence badge background if applicable
@@ -126,9 +147,11 @@ const createFiscalPDFDocument = (
         yPos += 4;
       }
       
-      // Who marked it
-      if (txDiligence.diligenceCreatorName || txDiligence.diligenceCreatedBy) {
-        const creatorName = txDiligence.diligenceCreatorName || txDiligence.diligenceCreatedBy || '-';
+      // Who marked it - use profile name if available
+      if (txDiligence.diligenceCreatedBy) {
+        const creatorId = txDiligence.diligenceCreatedBy;
+        const creatorProfile = profiles?.[creatorId];
+        const creatorName = creatorProfile?.full_name || creatorProfile?.email || txDiligence.diligenceCreatorName || '-';
         const createdDate = txDiligence.diligenceCreatedAt ? new Date(txDiligence.diligenceCreatedAt).toLocaleDateString('pt-BR') : '-';
         doc.text(`   Marcado por: ${creatorName} em ${createdDate}`, 16, yPos);
         yPos += 4;
@@ -197,6 +220,16 @@ const createFiscalPDFDocument = (
       const amountStr = `${transaction?.type === 'saida' ? '-' : ''}R$ ${amount.toFixed(2)}`;
       doc.text(`   Valor: ${amountStr} | Confirmação: ${diligenceInfo.ackCount}/3`, 14, yPos);
       yPos += 5;
+
+      // Who marked it - use profile name if available
+      if (diligenceInfo.diligenceCreatedBy) {
+        const creatorId = diligenceInfo.diligenceCreatedBy;
+        const creatorProfile = profiles?.[creatorId];
+        const creatorName = creatorProfile?.full_name || creatorProfile?.email || diligenceInfo.diligenceCreatorName || '-';
+        const createdDate = diligenceInfo.diligenceCreatedAt ? new Date(diligenceInfo.diligenceCreatedAt).toLocaleDateString('pt-BR') : '-';
+        doc.text(`   Marcado por: ${creatorName} em ${createdDate}`, 14, yPos);
+        yPos += 5;
+      }
       
       if (diligenceInfo.divergentObservation) {
         doc.setTextColor(150, 80, 0);
@@ -257,10 +290,13 @@ const createFiscalPDFDocument = (
         yPos = 20;
       }
 
-      // Fiscal name
+      // Fiscal name - use profile name if available
+      const sigProfile = profiles?.[sig.user_id];
+      const displayName = sigProfile?.full_name || sig.display_name || sigProfile?.email || 'Nome não informado';
+      
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
-      doc.text(sig.display_name || 'Nome não informado', 14, yPos);
+      doc.text(displayName, 14, yPos);
       yPos += 6;
       
       // Title/Role
@@ -314,10 +350,13 @@ const createFiscalPDFDocument = (
     doc.text('Tesouraria', 14, yPos);
     yPos += 10;
 
-    // Treasurer name
+    // Treasurer name - use profile name if available
+    const treasurerProfile = profiles?.[treasurerSignature.user_id];
+    const treasurerDisplayName = treasurerProfile?.full_name || treasurerSignature.display_name || treasurerProfile?.email || 'Nome não informado';
+    
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
-    doc.text(treasurerSignature.display_name || 'Nome não informado', 14, yPos);
+    doc.text(treasurerDisplayName, 14, yPos);
     yPos += 6;
     
     // Title/Role
@@ -361,9 +400,10 @@ export const generateFiscalPDF = (
   reviews: FiscalReview[],
   signatures?: FiscalSignature[],
   diligenceStatus?: Record<string, TransactionDiligenceInfo>,
-  treasurerSignature?: TreasurerSignature
+  treasurerSignature?: TreasurerSignature,
+  profiles?: Record<string, Profile>
 ) => {
-  const doc = createFiscalPDFDocument(report, reviews, signatures, diligenceStatus, treasurerSignature);
+  const doc = createFiscalPDFDocument(report, reviews, signatures, diligenceStatus, treasurerSignature, profiles);
   doc.save(`fiscal_${report.competencia}_${Date.now()}.pdf`);
 };
 
@@ -373,8 +413,9 @@ export const generateFiscalPDFBlob = async (
   reviews: FiscalReview[],
   signatures?: FiscalSignature[],
   diligenceStatus?: Record<string, TransactionDiligenceInfo>,
-  treasurerSignature?: TreasurerSignature
+  treasurerSignature?: TreasurerSignature,
+  profiles?: Record<string, Profile>
 ): Promise<Blob> => {
-  const doc = createFiscalPDFDocument(report, reviews, signatures, diligenceStatus, treasurerSignature);
+  const doc = createFiscalPDFDocument(report, reviews, signatures, diligenceStatus, treasurerSignature, profiles);
   return doc.output('blob');
 };
