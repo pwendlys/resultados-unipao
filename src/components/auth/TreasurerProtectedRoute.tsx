@@ -5,11 +5,11 @@ import FiscalLoginPage from './FiscalLoginPage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShieldX, Loader2 } from 'lucide-react';
 
-interface FiscalProtectedRouteProps {
+interface TreasurerProtectedRouteProps {
   children: React.ReactNode;
 }
 
-const FiscalProtectedRoute: React.FC<FiscalProtectedRouteProps> = ({ children }) => {
+const TreasurerProtectedRoute: React.FC<TreasurerProtectedRouteProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -21,13 +21,13 @@ const FiscalProtectedRoute: React.FC<FiscalProtectedRouteProps> = ({ children })
         setSession(session);
         
         if (session?.user) {
-          // Fetch user role from user_roles table
+          // Fetch user role from user_roles table - check for admin or tesoureiro
           setTimeout(async () => {
             const { data } = await supabase
               .from('user_roles')
               .select('role')
               .eq('user_id', session.user.id)
-              .in('role', ['fiscal', 'admin', 'tesoureiro'])
+              .in('role', ['admin', 'tesoureiro'])
               .maybeSingle();
             
             setUserRole(data?.role || null);
@@ -49,7 +49,7 @@ const FiscalProtectedRoute: React.FC<FiscalProtectedRouteProps> = ({ children })
           .from('user_roles')
           .select('role')
           .eq('user_id', session.user.id)
-          .in('role', ['fiscal', 'admin', 'tesoureiro'])
+          .in('role', ['admin', 'tesoureiro'])
           .maybeSingle();
         
         setUserRole(data?.role || null);
@@ -72,8 +72,8 @@ const FiscalProtectedRoute: React.FC<FiscalProtectedRouteProps> = ({ children })
     return <FiscalLoginPage />;
   }
 
-  // Check if user has fiscal or admin role
-  if (userRole !== 'admin' && userRole !== 'fiscal' && userRole !== 'tesoureiro') {
+  // Check if user has admin or tesoureiro role
+  if (userRole !== 'admin' && userRole !== 'tesoureiro') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full">
@@ -81,11 +81,11 @@ const FiscalProtectedRoute: React.FC<FiscalProtectedRouteProps> = ({ children })
             <ShieldX className="h-12 w-12 text-destructive mx-auto mb-2" />
             <CardTitle>Acesso Restrito</CardTitle>
             <CardDescription>
-              Esta área é exclusiva para usuários fiscais.
+              Esta área é exclusiva para tesoureiros e administradores.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center text-muted-foreground">
-            <p>Se você é um fiscal, entre em contato com o administrador para obter acesso.</p>
+            <p>Se você é um tesoureiro, entre em contato com o administrador para obter acesso.</p>
           </CardContent>
         </Card>
       </div>
@@ -95,4 +95,4 @@ const FiscalProtectedRoute: React.FC<FiscalProtectedRouteProps> = ({ children })
   return <>{children}</>;
 };
 
-export default FiscalProtectedRoute;
+export default TreasurerProtectedRoute;

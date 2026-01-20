@@ -6,9 +6,11 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import FiscalProtectedRoute from "@/components/auth/FiscalProtectedRoute";
+import TreasurerProtectedRoute from "@/components/auth/TreasurerProtectedRoute";
 import FiscalLoginPage from "@/components/auth/FiscalLoginPage";
 import Index from "./pages/Index";
 import FiscalIndex from "./pages/FiscalIndex";
+import TreasurerIndex from "./pages/TreasurerIndex";
 import CreateFiscalUser from "./pages/CreateFiscalUser";
 import SharedReports from "./pages/SharedReports";
 import SharedCustomReport from "./pages/SharedCustomReport";
@@ -41,6 +43,14 @@ const App = () => (
             />
             <Route path="/fiscal/login" element={<FiscalLoginPage />} />
             <Route 
+              path="/tesoureiro" 
+              element={
+                <TreasurerProtectedRoute>
+                  <TreasurerIndex />
+                </TreasurerProtectedRoute>
+              } 
+            />
+            <Route
               path="/admin/criar-fiscal" 
               element={
                 <ProtectedRoute>

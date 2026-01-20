@@ -45,27 +45,37 @@ const FiscalLoginPage = () => {
         throw new Error('Erro ao autenticar');
       }
 
-      // Check if user has fiscal role
+      // Check user role to determine redirect
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', authData.user.id)
-        .in('role', ['fiscal', 'admin'])
-        .single();
+        .maybeSingle();
 
-      if (roleError || !roleData) {
-        // Sign out if user doesn't have fiscal access
-        await supabase.auth.signOut();
-        throw new Error('Você não tem permissão para acessar a área fiscal.');
+      if (roleError) {
+        console.error('Error fetching role:', roleError);
       }
 
-      toast({
-        title: "Login realizado!",
-        description: "Redirecionando para a área fiscal...",
-      });
+      const userRole = roleData?.role as string | undefined;
 
-      // Redirect to fiscal area
-      navigate('/fiscal');
+      // Redirect based on role
+      if (userRole === 'fiscal') {
+        toast({
+          title: "Login realizado!",
+          description: "Redirecionando para a área fiscal...",
+        });
+        navigate('/fiscal');
+      } else if (userRole === 'tesoureiro' || userRole === 'admin') {
+        toast({
+          title: "Login realizado!",
+          description: "Redirecionando para a área de tesouraria...",
+        });
+        navigate('/tesoureiro');
+      } else {
+        // No valid role - sign out
+        await supabase.auth.signOut();
+        throw new Error('Você não tem permissão para acessar o sistema.');
+      }
 
     } catch (error: any) {
       console.error('Erro no login fiscal:', error);
