@@ -11,6 +11,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { 
   Shield, 
   Eye, 
@@ -19,9 +29,10 @@ import {
   AlertCircle,
   PenTool,
   FileCheck,
-  Loader2
+  Loader2,
+  Trash2
 } from 'lucide-react';
-import { useAllFiscalReports } from '@/hooks/useFiscalReports';
+import { useAllFiscalReports, useFiscalReportsActions } from '@/hooks/useFiscalReports';
 import { useTreasurerReportsSummary, TreasurerReportSummary } from '@/hooks/useTreasurerReportsSummary';
 import { useFiscalReviews } from '@/hooks/useFiscalReviews';
 import { useFiscalSignatures } from '@/hooks/useFiscalSignatures';
@@ -40,6 +51,7 @@ const TreasurerFiscalArea = ({ onNavigateToPage }: TreasurerFiscalAreaProps) => 
   const { toast } = useToast();
   const { data: reports = [], isLoading } = useAllFiscalReports();
   const { data: summaries = [] } = useTreasurerReportsSummary();
+  const { deleteFiscalReport } = useFiscalReportsActions();
 
   const [signaturesModal, setSignaturesModal] = useState<{
     open: boolean;
@@ -52,6 +64,32 @@ const TreasurerFiscalArea = ({ onNavigateToPage }: TreasurerFiscalAreaProps) => 
     reportId: string;
     reportTitle: string;
   }>({ open: false, reportId: '', reportTitle: '' });
+
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    reportId: string | null;
+    reportTitle: string;
+  }>({ open: false, reportId: null, reportTitle: '' });
+
+  const handleDeleteReport = async () => {
+    if (!deleteDialog.reportId) return;
+    
+    try {
+      await deleteFiscalReport.mutateAsync(deleteDialog.reportId);
+      toast({
+        title: "Relatório excluído",
+        description: "O relatório fiscal foi removido com sucesso.",
+      });
+      setDeleteDialog({ open: false, reportId: null, reportTitle: '' });
+    } catch (error) {
+      console.error('Error deleting report:', error);
+      toast({
+        title: "Erro ao excluir",
+        description: "Não foi possível excluir o relatório. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const getStatusBadge = (summary: TreasurerReportSummary | undefined, reportStatus: string) => {
     if (summary?.isFinished || reportStatus === 'finished') {
@@ -131,6 +169,11 @@ const TreasurerFiscalArea = ({ onNavigateToPage }: TreasurerFiscalAreaProps) => 
                           reportId: report.id,
                           reportTitle: report.title,
                         })}
+                        onDelete={() => setDeleteDialog({
+                          open: true,
+                          reportId: report.id,
+                          reportTitle: report.title,
+                        })}
                         getStatusBadge={getStatusBadge}
                       />
                     );
@@ -157,6 +200,28 @@ const TreasurerFiscalArea = ({ onNavigateToPage }: TreasurerFiscalAreaProps) => 
         reportId={diligencesModal.reportId}
         reportTitle={diligencesModal.reportTitle}
       />
+
+      {/* AlertDialog de Exclusão */}
+      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o relatório "{deleteDialog.reportTitle}"? 
+              Esta ação não pode ser desfeita e removerá todas as revisões e assinaturas associadas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteReport}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
@@ -167,6 +232,7 @@ interface TreasurerReportRowProps {
   summary: TreasurerReportSummary | undefined;
   onViewSignatures: () => void;
   onViewDiligences: () => void;
+  onDelete: () => void;
   getStatusBadge: (summary: TreasurerReportSummary | undefined, status: string) => JSX.Element;
 }
 
@@ -175,6 +241,7 @@ const TreasurerReportRow = ({
   summary,
   onViewSignatures, 
   onViewDiligences, 
+  onDelete,
   getStatusBadge 
 }: TreasurerReportRowProps) => {
   const { toast } = useToast();
@@ -353,6 +420,17 @@ const TreasurerReportRow = ({
               <Download className="h-4 w-4" />
             </Button>
           )}
+
+          {/* Delete Button */}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onDelete}
+            title="Excluir Relatório"
+            className="text-destructive hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
       </TableCell>
     </TableRow>
