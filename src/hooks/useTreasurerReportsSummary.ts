@@ -11,6 +11,7 @@ export interface TreasurerReportSummary {
   confirmedDiligences: number;
   allDiligencesConfirmed: boolean;
   signatureCount: number;
+  hasTreasurerSigned: boolean;
   isFinished: boolean;
   hasFinalPdf: boolean;
 }
@@ -55,7 +56,7 @@ export const useTreasurerReportsSummary = () => {
       }
       console.log('[Treasurer] Reviews fetched:', allReviews?.length, allReviews);
 
-      // Fetch all signatures
+      // Fetch all fiscal signatures
       const { data: allSignatures, error: signaturesError } = await supabase
         .from('fiscal_report_signatures')
         .select('report_id, user_id');
@@ -64,12 +65,24 @@ export const useTreasurerReportsSummary = () => {
         console.error('[Treasurer] Error fetching signatures:', signaturesError);
         throw signaturesError;
       }
-      console.log('[Treasurer] Signatures fetched:', allSignatures?.length, allSignatures);
+      console.log('[Treasurer] Fiscal signatures fetched:', allSignatures?.length, allSignatures);
+
+      // Fetch all treasurer signatures
+      const { data: treasurerSignatures, error: treasurerSigError } = await supabase
+        .from('treasurer_signatures')
+        .select('report_id, user_id');
+
+      if (treasurerSigError) {
+        console.error('[Treasurer] Error fetching treasurer signatures:', treasurerSigError);
+        // Don't throw - treasurer_signatures table might be new
+      }
+      console.log('[Treasurer] Treasurer signatures fetched:', treasurerSignatures?.length);
 
       // Build summaries for each report
       const summaries: TreasurerReportSummary[] = reports.map((report) => {
         const reportReviews = (allReviews || []).filter(r => r.report_id === report.id);
         const reportSignatures = (allSignatures || []).filter(s => s.report_id === report.id);
+        const reportTreasurerSig = (treasurerSignatures || []).find(s => s.report_id === report.id);
         const totalTransactions = report.total_entries || 0;
 
         // Group reviews by transaction
@@ -121,13 +134,15 @@ export const useTreasurerReportsSummary = () => {
 
         const pendingTransactions = totalTransactions - approvedTransactions;
         const signatureCount = new Set(reportSignatures.map(s => s.user_id)).size;
+        const hasTreasurerSigned = !!reportTreasurerSig;
         const allDiligencesConfirmed = diligenceCount === 0 || diligenceCount === confirmedDiligences;
         
-        // A report is finished when: 0 pending + 3/3 signatures + all diligences confirmed
+        // A report is finished when: 0 pending + 3/3 fiscal signatures + all diligences confirmed + treasurer signed
         const isFinished = report.status === 'finished' || (
           pendingTransactions === 0 &&
           signatureCount >= 3 &&
-          allDiligencesConfirmed
+          allDiligencesConfirmed &&
+          hasTreasurerSigned
         );
 
         const summary = {
@@ -139,6 +154,7 @@ export const useTreasurerReportsSummary = () => {
           confirmedDiligences,
           allDiligencesConfirmed,
           signatureCount,
+          hasTreasurerSigned,
           isFinished,
           hasFinalPdf: !!report.pdf_url,
         };
@@ -172,6 +188,15 @@ export const useTreasurerReportsSummary = () => {
         (payload) => {
           console.log('[Treasurer Realtime] fiscal_report_signatures changed:', payload);
           queryClient.invalidateQueries({ queryKey: ['treasurer-reports-summary'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'treasurer_signatures' },
+        (payload) => {
+          console.log('[Treasurer Realtime] treasurer_signatures changed:', payload);
+          queryClient.invalidateQueries({ queryKey: ['treasurer-reports-summary'] });
+          queryClient.invalidateQueries({ queryKey: ['treasurer-signature'] });
         }
       )
       .on(

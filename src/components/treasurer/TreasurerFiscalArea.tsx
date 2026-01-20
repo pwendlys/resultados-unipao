@@ -4,6 +4,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -23,18 +29,21 @@ import {
   FileCheck,
   Loader2,
   Trash2,
-  Calendar
+  Calendar,
+  CheckCircle2
 } from 'lucide-react';
 import { useAllFiscalReports, useFiscalReportsActions } from '@/hooks/useFiscalReports';
 import { useTreasurerReportsSummary, TreasurerReportSummary } from '@/hooks/useTreasurerReportsSummary';
 import { useFiscalReviews } from '@/hooks/useFiscalReviews';
 import { useFiscalSignatures } from '@/hooks/useFiscalSignatures';
 import { useTransactionDiligenceStatus } from '@/hooks/useFiscalUserReviews';
+import { useTreasurerSignature, useTreasurerSignatureActions } from '@/hooks/useTreasurerSignature';
 import { useToast } from '@/hooks/use-toast';
 import { generateFiscalPDF, generateFiscalPDFBlob } from '@/utils/fiscalPdfGenerator';
 import { supabase } from '@/integrations/supabase/client';
 import FiscalSignaturesModal from '@/components/fiscal/FiscalSignaturesModal';
 import FiscalDiligencesModal from '@/components/fiscal/FiscalDiligencesModal';
+import TreasurerSignatureModal from '@/components/treasurer/TreasurerSignatureModal';
 import { cn } from '@/lib/utils';
 
 interface TreasurerFiscalAreaProps {
@@ -54,6 +63,12 @@ const TreasurerFiscalArea = ({ onNavigateToPage }: TreasurerFiscalAreaProps) => 
   }>({ open: false, reportId: '', reportTitle: '' });
 
   const [diligencesModal, setDiligencesModal] = useState<{
+    open: boolean;
+    reportId: string;
+    reportTitle: string;
+  }>({ open: false, reportId: '', reportTitle: '' });
+
+  const [treasurerSignModal, setTreasurerSignModal] = useState<{
     open: boolean;
     reportId: string;
     reportTitle: string;
@@ -148,6 +163,11 @@ const TreasurerFiscalArea = ({ onNavigateToPage }: TreasurerFiscalAreaProps) => 
                     reportId: report.id,
                     reportTitle: report.title,
                   })}
+                  onSignAsTreasurer={() => setTreasurerSignModal({
+                    open: true,
+                    reportId: report.id,
+                    reportTitle: report.title,
+                  })}
                   onDelete={() => setDeleteDialog({
                     open: true,
                     reportId: report.id,
@@ -161,7 +181,7 @@ const TreasurerFiscalArea = ({ onNavigateToPage }: TreasurerFiscalAreaProps) => 
         </div>
       )}
 
-      {/* Modal de Assinaturas */}
+      {/* Modal de Assinaturas dos Fiscais */}
       <FiscalSignaturesModal
         open={signaturesModal.open}
         onOpenChange={(open) => setSignaturesModal({ ...signaturesModal, open })}
@@ -175,6 +195,14 @@ const TreasurerFiscalArea = ({ onNavigateToPage }: TreasurerFiscalAreaProps) => 
         onOpenChange={(open) => setDiligencesModal({ ...diligencesModal, open })}
         reportId={diligencesModal.reportId}
         reportTitle={diligencesModal.reportTitle}
+      />
+
+      {/* Modal de Assinatura do Tesoureiro */}
+      <TreasurerSignatureModalWrapper
+        open={treasurerSignModal.open}
+        onOpenChange={(open) => setTreasurerSignModal({ ...treasurerSignModal, open })}
+        reportId={treasurerSignModal.reportId}
+        reportTitle={treasurerSignModal.reportTitle}
       />
 
       {/* AlertDialog de Exclusão */}
@@ -202,12 +230,48 @@ const TreasurerFiscalArea = ({ onNavigateToPage }: TreasurerFiscalAreaProps) => 
   );
 };
 
+// Wrapper for TreasurerSignatureModal with actions
+interface TreasurerSignatureModalWrapperProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  reportId: string;
+  reportTitle: string;
+}
+
+const TreasurerSignatureModalWrapper = ({
+  open,
+  onOpenChange,
+  reportId,
+  reportTitle,
+}: TreasurerSignatureModalWrapperProps) => {
+  const { createSignature } = useTreasurerSignatureActions();
+
+  const handleSubmit = async (signatureData: string) => {
+    await createSignature.mutateAsync({
+      reportId,
+      signatureData,
+    });
+    onOpenChange(false);
+  };
+
+  return (
+    <TreasurerSignatureModal
+      open={open}
+      onOpenChange={onOpenChange}
+      onSubmit={handleSubmit}
+      isSubmitting={createSignature.isPending}
+      reportTitle={reportTitle}
+    />
+  );
+};
+
 // Componente de Card para cada relatório
 interface TreasurerReportCardProps {
   report: any;
   summary: TreasurerReportSummary | undefined;
   onViewSignatures: () => void;
   onViewDiligences: () => void;
+  onSignAsTreasurer: () => void;
   onDelete: () => void;
   getStatusBadge: (summary: TreasurerReportSummary | undefined, status: string) => JSX.Element;
 }
@@ -216,7 +280,8 @@ const TreasurerReportCard = ({
   report, 
   summary,
   onViewSignatures, 
-  onViewDiligences, 
+  onViewDiligences,
+  onSignAsTreasurer,
   onDelete,
   getStatusBadge 
 }: TreasurerReportCardProps) => {
@@ -225,8 +290,9 @@ const TreasurerReportCard = ({
   
   // For PDF export, we need reviews and signatures data
   const { data: reviews = [] } = useFiscalReviews(report.id);
-  const { data: signatures = [] } = useFiscalSignatures(report.id);
+  const { data: fiscalSignatures = [] } = useFiscalSignatures(report.id);
   const { data: diligenceStatus = {} } = useTransactionDiligenceStatus(report.id);
+  const { data: treasurerSignature } = useTreasurerSignature(report.id);
 
   // Use aggregated stats from summary
   const approvedCount = summary?.approvedTransactions ?? 0;
@@ -236,28 +302,61 @@ const TreasurerReportCard = ({
   const signatureCount = summary?.signatureCount ?? 0;
   const isFinished = summary?.isFinished ?? false;
   const hasFinalPdf = summary?.hasFinalPdf ?? false;
+  const hasTreasurerSigned = !!treasurerSignature;
   
   const totalTransactions = report.total_entries || 0;
   const progressPercentage = totalTransactions > 0 
     ? Math.round(approvedCount / totalTransactions * 100) 
     : 0;
 
-  // Can generate final PDF only when: 0 pending + 3/3 signatures + all diligences confirmed
-  const canGenerateFinal = pendingCount === 0 && signatureCount >= 3 && allDiligencesConfirmed && !hasFinalPdf;
+  // Can sign as treasurer when: 0 pending + 3/3 fiscal signatures + all diligences confirmed + not yet signed
+  const canSignAsTreasurer = pendingCount === 0 && signatureCount >= 3 && allDiligencesConfirmed && !hasTreasurerSigned;
+
+  // Can generate final PDF only when: 0 pending + 3/3 fiscal + all diligences + treasurer signed + no PDF yet
+  const canGenerateFinal = pendingCount === 0 && signatureCount >= 3 && allDiligencesConfirmed && hasTreasurerSigned && !hasFinalPdf;
+
+  // Tooltip message for disabled generate button
+  const getGenerateTooltip = (): string | null => {
+    if (hasFinalPdf) return null;
+    if (pendingCount > 0) return `Ainda há ${pendingCount} transação(ões) pendente(s)`;
+    if (signatureCount < 3) return `Faltam ${3 - signatureCount} assinatura(s) dos fiscais`;
+    if (!allDiligencesConfirmed) return 'Há diligências não confirmadas';
+    if (!hasTreasurerSigned) return 'Assine como Tesoureiro para liberar a geração';
+    return null;
+  };
 
   const handleGenerateFinalPDF = async () => {
     if (!canGenerateFinal) return;
     
     setIsGenerating(true);
+    console.log('[PDF] Starting generation for report:', report.id);
     
     try {
-      // Generate PDF blob
-      const pdfBlob = await generateFiscalPDFBlob(report, reviews, signatures, diligenceStatus);
+      // Validate data before generating
+      console.log('[PDF] Reviews count:', reviews.length);
+      console.log('[PDF] Fiscal signatures count:', fiscalSignatures.length);
+      console.log('[PDF] Diligence status entries:', Object.keys(diligenceStatus).length);
+      console.log('[PDF] Treasurer signature:', !!treasurerSignature);
+
+      if (reviews.length === 0) {
+        throw new Error('Nenhuma transação encontrada para o relatório');
+      }
+      if (fiscalSignatures.length < 3) {
+        throw new Error(`Assinaturas fiscais insuficientes: ${fiscalSignatures.length}/3`);
+      }
+      if (!treasurerSignature) {
+        throw new Error('Assinatura do tesoureiro não encontrada');
+      }
+
+      // Generate PDF blob with treasurer signature
+      const pdfBlob = await generateFiscalPDFBlob(report, reviews, fiscalSignatures, diligenceStatus, treasurerSignature);
+      console.log('[PDF] Blob generated, size:', pdfBlob.size);
       
       // Upload to Storage
       const fileName = `final_${report.competencia.replace('/', '-')}_${Date.now()}.pdf`;
       const filePath = `final-reports/${report.id}/${fileName}`;
       
+      console.log('[PDF] Uploading to storage:', filePath);
       const { error: uploadError } = await supabase.storage
         .from('fiscal-files')
         .upload(filePath, pdfBlob, {
@@ -265,12 +364,17 @@ const TreasurerReportCard = ({
           upsert: true,
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('[PDF] Upload error:', uploadError);
+        throw new Error(`Erro ao salvar PDF: ${uploadError.message}`);
+      }
 
       // Get public URL
       const { data: urlData } = supabase.storage
         .from('fiscal-files')
         .getPublicUrl(filePath);
+
+      console.log('[PDF] Public URL:', urlData.publicUrl);
 
       // Update report with PDF URL and status
       const { error: updateError } = await supabase
@@ -282,7 +386,10 @@ const TreasurerReportCard = ({
         })
         .eq('id', report.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('[PDF] Update error:', updateError);
+        throw new Error(`Erro ao atualizar relatório: ${updateError.message}`);
+      }
 
       toast({
         title: "PDF Final Gerado!",
@@ -290,10 +397,11 @@ const TreasurerReportCard = ({
       });
 
     } catch (error) {
-      console.error('Error generating final PDF:', error);
+      console.error('[PDF] Error:', error);
+      const message = error instanceof Error ? error.message : 'Erro desconhecido ao gerar PDF';
       toast({
         title: "Erro ao gerar PDF",
-        description: "Não foi possível gerar o PDF final. Tente novamente.",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -306,13 +414,15 @@ const TreasurerReportCard = ({
       window.open(report.pdf_url, '_blank');
     } else if (isFinished) {
       // Generate and download directly if finished but no stored PDF
-      generateFiscalPDF(report, reviews, signatures, diligenceStatus);
+      generateFiscalPDF(report, reviews, fiscalSignatures, diligenceStatus, treasurerSignature || undefined);
       toast({
         title: "PDF Gerado",
         description: "O relatório foi exportado com sucesso.",
       });
     }
   };
+
+  const generateTooltip = getGenerateTooltip();
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -337,7 +447,7 @@ const TreasurerReportCard = ({
       
       <CardContent className="pt-0 space-y-4">
         {/* Grid de Métricas */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-4 border-y border-border">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 py-4 border-y border-border">
           {/* Progresso */}
           <div className="text-center space-y-1">
             <p className="text-xs text-muted-foreground">Progresso</p>
@@ -377,9 +487,9 @@ const TreasurerReportCard = ({
             )}
           </div>
           
-          {/* Assinaturas */}
+          {/* Assinaturas Fiscais */}
           <div className="text-center space-y-1">
-            <p className="text-xs text-muted-foreground">Assinaturas</p>
+            <p className="text-xs text-muted-foreground">Fiscais</p>
             <div className="flex items-center justify-center gap-1">
               <PenTool className="h-4 w-4 text-muted-foreground" />
               <span className={cn(
@@ -388,6 +498,21 @@ const TreasurerReportCard = ({
               )}>
                 {signatureCount}/3
               </span>
+            </div>
+          </div>
+
+          {/* Assinatura Tesoureiro */}
+          <div className="text-center space-y-1">
+            <p className="text-xs text-muted-foreground">Tesoureiro</p>
+            <div className="flex items-center justify-center gap-1">
+              {hasTreasurerSigned ? (
+                <Badge className="bg-green-500 text-white gap-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Assinado
+                </Badge>
+              ) : (
+                <span className="text-sm text-muted-foreground">—</span>
+              )}
             </div>
           </div>
         </div>
@@ -413,23 +538,60 @@ const TreasurerReportCard = ({
             <PenTool className="h-4 w-4" />
             <span className="hidden sm:inline">Assinaturas</span>
           </Button>
+
+          {/* Sign as Treasurer Button */}
+          {canSignAsTreasurer && (
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={onSignAsTreasurer}
+              className="gap-1 border-amber-500 text-amber-600 hover:bg-amber-50"
+            >
+              <PenTool className="h-4 w-4" />
+              <span className="hidden sm:inline">Assinar</span>
+            </Button>
+          )}
           
           {/* Generate Final PDF Button */}
-          {canGenerateFinal && (
-            <Button 
-              variant="default"
-              size="sm"
-              onClick={handleGenerateFinalPDF}
-              disabled={isGenerating}
-              className="bg-amber-600 hover:bg-amber-700 gap-1"
-            >
-              {isGenerating ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <FileCheck className="h-4 w-4" />
-              )}
-              {isGenerating ? 'Gerando...' : 'Gerar Final'}
-            </Button>
+          {!hasFinalPdf && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button 
+                      variant="default"
+                      size="sm"
+                      onClick={handleGenerateFinalPDF}
+                      disabled={!canGenerateFinal || isGenerating}
+                      className={cn(
+                        "gap-1",
+                        canGenerateFinal ? "bg-amber-600 hover:bg-amber-700" : "opacity-50"
+                      )}
+                    >
+                      {isGenerating ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <FileCheck className="h-4 w-4" />
+                      )}
+                      {isGenerating ? 'Gerando...' : 'Gerar PDF'}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {generateTooltip && (
+                  <TooltipContent>
+                    <p>{generateTooltip}</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
+          )}
+
+          {/* PDF Generated Badge */}
+          {hasFinalPdf && (
+            <Badge className="bg-green-500 text-white gap-1 py-1.5 px-3">
+              <CheckCircle2 className="h-3 w-3" />
+              PDF Gerado
+            </Badge>
           )}
           
           {/* Download PDF Button */}
