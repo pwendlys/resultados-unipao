@@ -142,7 +142,8 @@ export const useTreasurerReportsSummary = () => {
       console.log('[Treasurer] Final summaries:', summaries);
       return summaries;
     },
-    staleTime: 30000, // 30 seconds
+    staleTime: 10000, // 10 seconds
+    refetchInterval: 15000, // Refetch every 15 seconds as fallback
   });
 
   // Set up realtime subscriptions
@@ -152,25 +153,30 @@ export const useTreasurerReportsSummary = () => {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'fiscal_user_reviews' },
-        () => {
+        (payload) => {
+          console.log('[Treasurer Realtime] fiscal_user_reviews changed:', payload);
           queryClient.invalidateQueries({ queryKey: ['treasurer-reports-summary'] });
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'fiscal_report_signatures' },
-        () => {
+        (payload) => {
+          console.log('[Treasurer Realtime] fiscal_report_signatures changed:', payload);
           queryClient.invalidateQueries({ queryKey: ['treasurer-reports-summary'] });
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'fiscal_reports' },
-        () => {
+        (payload) => {
+          console.log('[Treasurer Realtime] fiscal_reports changed:', payload);
           queryClient.invalidateQueries({ queryKey: ['treasurer-reports-summary'] });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[Treasurer Realtime] Subscription status:', status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
