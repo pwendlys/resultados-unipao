@@ -18,18 +18,20 @@ const TreasurerProtectedRoute: React.FC<TreasurerProtectedRouteProps> = ({ child
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('[TreasurerRoute] Auth state changed:', event, session?.user?.email);
         setSession(session);
         
         if (session?.user) {
           // Fetch user role from user_roles table - check for admin or tesoureiro
           setTimeout(async () => {
-            const { data } = await supabase
+            const { data, error } = await supabase
               .from('user_roles')
               .select('role')
               .eq('user_id', session.user.id)
               .in('role', ['admin', 'tesoureiro'])
               .maybeSingle();
             
+            console.log('[TreasurerRoute] Role query result:', data, error);
             setUserRole(data?.role || null);
             setLoading(false);
           }, 0);
@@ -42,16 +44,18 @@ const TreasurerProtectedRoute: React.FC<TreasurerProtectedRouteProps> = ({ child
 
     // Then check initial session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      console.log('[TreasurerRoute] Initial session:', session?.user?.email);
       setSession(session);
       
       if (session?.user) {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', session.user.id)
           .in('role', ['admin', 'tesoureiro'])
           .maybeSingle();
         
+        console.log('[TreasurerRoute] Initial role query:', data, error);
         setUserRole(data?.role || null);
       }
       setLoading(false);

@@ -27,7 +27,7 @@ const TreasurerIndex = () => {
         onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
       
-      <main className={`p-6 transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-0' : 'lg:ml-64'}`}>
+      <main className={`p-6 transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'}`}>
         {renderCurrentPage()}
       </main>
     </div>
