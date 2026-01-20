@@ -21,6 +21,14 @@ export const useTreasurerReportsSummary = () => {
   const query = useQuery({
     queryKey: ['treasurer-reports-summary'],
     queryFn: async (): Promise<TreasurerReportSummary[]> => {
+      // Check session first
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('[Treasurer] Session check:', session ? `Active (${session.user?.email})` : 'None');
+      
+      if (!session) {
+        console.warn('[Treasurer] No active session - queries may fail due to RLS');
+      }
+      
       console.log('[Treasurer] Fetching reports summary...');
       
       // Fetch all reports
