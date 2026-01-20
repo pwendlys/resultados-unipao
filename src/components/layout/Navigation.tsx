@@ -159,9 +159,7 @@ const Navigation = ({ currentPage, onPageChange, isSidebarCollapsed, onToggleSid
                     variant={currentPage === item.id ? "default" : "ghost"}
                     className={cn(
                       "w-full justify-start gap-3",
-                      currentPage === item.id && "bg-primary text-primary-foreground",
-                      item.id === 'criar-fiscal' && "border-primary/30 bg-primary/5 hover:bg-primary/10",
-                      (item.id === 'tesoureiro-dashboard' || item.id === 'tesoureiro-fiscal') && "border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10"
+                      currentPage === item.id && "bg-primary text-primary-foreground"
                     )}
                     onClick={() => {
                       if (item.id === 'criar-fiscal') {
@@ -172,7 +170,10 @@ const Navigation = ({ currentPage, onPageChange, isSidebarCollapsed, onToggleSid
                       setIsMobileMenuOpen(false);
                     }}
                   >
-                    <Icon className="h-5 w-5" />
+                    <Icon className={cn(
+                      "h-5 w-5",
+                      (item.id === 'tesoureiro-dashboard' || item.id === 'tesoureiro-fiscal') && currentPage !== item.id && "text-amber-600"
+                    )} />
                     {item.label}
                   </Button>
                 );
