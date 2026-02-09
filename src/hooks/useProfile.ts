@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -10,28 +11,41 @@ export interface Profile {
   updated_at: string;
 }
 
-// Hook to get the current user's profile
+// Hook to get the current user's profile (with user-specific cache key)
 export const useProfile = () => {
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserId(session?.user?.id ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserId(session?.user?.id ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   return useQuery({
-    queryKey: ['profile'],
+    queryKey: ['profile', userId],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
+      if (!userId) return null;
 
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', userId)
         .maybeSingle();
 
       if (error) {
         console.error('Error fetching profile:', error);
-        // Profile might not exist yet - return null instead of throwing
         return null;
       }
 
       return data as Profile | null;
     },
+    enabled: !!userId,
   });
 };
 
@@ -115,7 +129,8 @@ export const useUpdateProfile = () => {
         throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, _vars, _ctx) => {
+      // Invalidate all profile queries (including user-specific ones)
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       toast({
         title: "Perfil atualizado",
