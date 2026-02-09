@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -46,7 +47,10 @@ const TreasurerNavigation = ({
     { id: 'tesoureiro-fiscal', label: 'Área Fiscal', icon: Shield },
   ];
 
+  const queryClient = useQueryClient();
+
   const handleLogout = async () => {
+    queryClient.clear();
     await supabase.auth.signOut();
     toast({
       title: "Logout realizado",

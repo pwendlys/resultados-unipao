@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
@@ -26,6 +27,7 @@ const FiscalNavigation = ({
   onToggleSidebar 
 }: FiscalNavigationProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const menuItems = [
     { id: 'fiscal-dashboard', label: 'Painel Fiscal', icon: Home },
@@ -33,6 +35,7 @@ const FiscalNavigation = ({
   ];
 
   const handleLogout = async () => {
+    queryClient.clear();
     await supabase.auth.signOut();
     setIsMobileMenuOpen(false);
   };
