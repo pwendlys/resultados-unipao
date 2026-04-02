@@ -16,6 +16,27 @@ export interface TreasurerReportSummary {
   hasFinalPdf: boolean;
 }
 
+async function fetchAllRows(table: string, select: string) {
+  const PAGE_SIZE = 1000;
+  let allData: any[] = [];
+  let from = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from(table as any)
+      .select(select)
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) throw error;
+    if (!data || data.length < PAGE_SIZE) hasMore = false;
+    allData = allData.concat(data || []);
+    from += PAGE_SIZE;
+  }
+
+  return allData;
+}
+
 export const useTreasurerReportsSummary = () => {
   const queryClient = useQueryClient();
 
