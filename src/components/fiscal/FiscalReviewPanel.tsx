@@ -44,6 +44,8 @@ import FiscalReviewItem from './FiscalReviewItem';
 import FiscalObservationModal from './FiscalObservationModal';
 import FiscalSignatureModal from './FiscalSignatureModal';
 import { generateFiscalPDF } from '@/utils/fiscalPdfGenerator';
+import { useTreasurerSignature } from '@/hooks/useTreasurerSignature';
+import { useProfilesByIds } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 
 interface FiscalReviewPanelProps {
