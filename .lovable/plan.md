@@ -1,33 +1,61 @@
 
 
-## Ajuste de Layout Mobile - Painel Fiscal
+## Correção: Botão "Assinar como Tesoureiro" não aparece
 
-### Problema
-Na viewport de 390px, os botões de ação ("Aprovar Todos Pendentes", "Exportar PDF") e os botões dentro de cada card de transação ("Divergente", "Aprovar") estão saindo da tela ou ficando apertados.
+### Causa Raiz
 
-### Mudanças (apenas CSS/layout, zero alteração de lógica)
+O hook `useTreasurerReportsSummary` busca **todas** as reviews de `fiscal_user_reviews` em uma única query sem paginação. O Supabase limita a 1000 linhas por padrão. A tabela tem ~2.856+ registros, então a maioria dos relatórios fica sem dados de reviews, resultando em `approvedTransactions = 0` e `pendingCount = 10`.
 
-#### 1. `src/components/fiscal/FiscalReviewPanel.tsx` - Botões de ação superiores (linhas 498-542)
+Como `canSignAsTreasurer` exige `pendingCount === 0`, o botão nunca aparece.
 
-Trocar `flex flex-wrap gap-2` por layout em coluna no mobile:
-- `flex flex-col sm:flex-row sm:flex-wrap gap-2`
-- Botões com `w-full sm:w-auto` para ocupar largura total no mobile
+### Solução
 
-#### 2. `src/components/fiscal/FiscalReviewItem.tsx` - Botões de ação do card (linhas 231-304)
+Modificar **apenas** `src/hooks/useTreasurerReportsSummary.ts` para buscar as reviews com paginação, contornando o limite de 1000 linhas.
 
-Ajustar a row de ações:
-- Trocar `flex items-center justify-between` por `flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2`
-- Os botões "Divergente" e "Aprovar" ficam em `flex gap-2` com tamanho `flex-1 sm:flex-none` no mobile
-- O botão "Confirmar Diligência" também ganha `w-full sm:w-auto`
-- Texto dos botões com `text-xs sm:text-sm` para caber melhor
+#### Arquivo: `src/hooks/useTreasurerReportsSummary.ts`
 
-### Arquivos modificados
-| Arquivo | Tipo de mudança |
-|---------|----------------|
-| `src/components/fiscal/FiscalReviewPanel.tsx` | Classes CSS dos botões de ação |
-| `src/components/fiscal/FiscalReviewItem.tsx` | Classes CSS da row de ações |
+Criar uma função auxiliar `fetchAllRows` que busca em blocos de 1000 até esgotar os dados:
+
+```typescript
+async function fetchAllRows(table: string, select: string) {
+  const PAGE_SIZE = 1000;
+  let allData: any[] = [];
+  let from = 0;
+  let hasMore = true;
+  
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from(table)
+      .select(select)
+      .range(from, from + PAGE_SIZE - 1);
+    
+    if (error) throw error;
+    if (!data || data.length < PAGE_SIZE) hasMore = false;
+    allData = allData.concat(data || []);
+    from += PAGE_SIZE;
+  }
+  
+  return allData;
+}
+```
+
+Substituir a query atual de `fiscal_user_reviews` (linhas 49-51) para usar essa função:
+
+```typescript
+// Antes:
+const { data: allReviews, error: reviewsError } = await supabase
+  .from('fiscal_user_reviews')
+  .select('report_id, transaction_id, user_id, status, observation, diligence_ack, diligence_created_by');
+
+// Depois:
+const allReviews = await fetchAllRows(
+  'fiscal_user_reviews',
+  'report_id, transaction_id, user_id, status, observation, diligence_ack, diligence_created_by'
+);
+```
 
 ### O que NÃO será alterado
-- Nenhuma funcionalidade, handler, lógica ou prop
-- Nenhum outro componente ou arquivo
+- Nenhuma outra funcionalidade, componente, ou hook
+- A lógica de `canSignAsTreasurer`, `canGenerateFinal`, e todo o cálculo de métricas permanece idêntica
+- Apenas a forma como os dados são buscados muda (paginação)
 
