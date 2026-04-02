@@ -584,7 +584,7 @@ const TreasurerReportCard = ({
                     <Button 
                       variant="default"
                       size="sm"
-                      onClick={handleGenerateFinalPDF}
+                      onClick={() => handleGenerateFinalPDF()}
                       disabled={!canGenerateFinal || isGenerating}
                       className={cn(
                         "gap-1",
