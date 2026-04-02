@@ -16,6 +16,27 @@ export interface TreasurerReportSummary {
   hasFinalPdf: boolean;
 }
 
+async function fetchAllRows(table: string, select: string) {
+  const PAGE_SIZE = 1000;
+  let allData: any[] = [];
+  let from = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from(table as any)
+      .select(select)
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) throw error;
+    if (!data || data.length < PAGE_SIZE) hasMore = false;
+    allData = allData.concat(data || []);
+    from += PAGE_SIZE;
+  }
+
+  return allData;
+}
+
 export const useTreasurerReportsSummary = () => {
   const queryClient = useQueryClient();
 
@@ -45,16 +66,11 @@ export const useTreasurerReportsSummary = () => {
       
       if (!reports || reports.length === 0) return [];
 
-      // Fetch all user reviews
-      const { data: allReviews, error: reviewsError } = await supabase
-        .from('fiscal_user_reviews')
-        .select('report_id, transaction_id, user_id, status, observation, diligence_ack, diligence_created_by');
-
-      if (reviewsError) {
-        console.error('[Treasurer] Error fetching reviews:', reviewsError);
-        throw reviewsError;
-      }
-      console.log('[Treasurer] Reviews fetched:', allReviews?.length, allReviews);
+      const allReviews = await fetchAllRows(
+        'fiscal_user_reviews',
+        'report_id, transaction_id, user_id, status, observation, diligence_ack, diligence_created_by'
+      );
+      console.log('[Treasurer] Reviews fetched (paginated):', allReviews?.length);
 
       // Fetch all fiscal signatures
       const { data: allSignatures, error: signaturesError } = await supabase
