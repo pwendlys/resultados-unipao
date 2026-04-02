@@ -66,16 +66,11 @@ export const useTreasurerReportsSummary = () => {
       
       if (!reports || reports.length === 0) return [];
 
-      // Fetch all user reviews
-      const { data: allReviews, error: reviewsError } = await supabase
-        .from('fiscal_user_reviews')
-        .select('report_id, transaction_id, user_id, status, observation, diligence_ack, diligence_created_by');
-
-      if (reviewsError) {
-        console.error('[Treasurer] Error fetching reviews:', reviewsError);
-        throw reviewsError;
-      }
-      console.log('[Treasurer] Reviews fetched:', allReviews?.length, allReviews);
+      const allReviews = await fetchAllRows(
+        'fiscal_user_reviews',
+        'report_id, transaction_id, user_id, status, observation, diligence_ack, diligence_created_by'
+      );
+      console.log('[Treasurer] Reviews fetched (paginated):', allReviews?.length);
 
       // Fetch all fiscal signatures
       const { data: allSignatures, error: signaturesError } = await supabase
