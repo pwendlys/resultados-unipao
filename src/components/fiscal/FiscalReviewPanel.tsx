@@ -92,6 +92,20 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
   const { data: myReviews = [] } = useFiscalUserReviews(reportId, authUserId || undefined);
   const { data: approvalCounts = {} } = useTransactionApprovalCounts(reportId);
   const { data: diligenceStatus = {} } = useTransactionDiligenceStatus(reportId);
+  const { data: treasurerSignatureData } = useTreasurerSignature(reportId);
+
+  // Collect user IDs for profiles (signers + treasurer + diligence creators)
+  const pdfProfileUserIds = useMemo(() => {
+    const ids = new Set<string>();
+    signatures.forEach(s => ids.add(s.user_id));
+    if (treasurerSignatureData?.user_id) ids.add(treasurerSignatureData.user_id);
+    Object.values(diligenceStatus).forEach(d => {
+      if (d.diligenceCreatedBy) ids.add(d.diligenceCreatedBy);
+    });
+    return Array.from(ids);
+  }, [signatures, treasurerSignatureData, diligenceStatus]);
+
+  const { data: pdfProfiles = {} } = useProfilesByIds(pdfProfileUserIds);
   const { createOrUpdateReview, bulkCreateReviews, confirmDiligence } = useFiscalUserReviewsActions();
 
   // Build a map of my reviews by transaction_id for quick lookup
@@ -391,7 +405,7 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
       return;
     }
     
-    generateFiscalPDF(report, reviews, signatures, diligenceStatus);
+    generateFiscalPDF(report, reviews, signatures, diligenceStatus, treasurerSignatureData || undefined, pdfProfiles);
     toast({
       title: "PDF Gerado",
       description: "O relatório foi exportado com sucesso.",
