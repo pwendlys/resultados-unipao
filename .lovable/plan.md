@@ -1,61 +1,48 @@
 
 
-## Correção: Botão "Assinar como Tesoureiro" não aparece
+## Correção: Assinaturas não aparecem no PDF final
 
-### Causa Raiz
+### Problemas Identificados
 
-O hook `useTreasurerReportsSummary` busca **todas** as reviews de `fiscal_user_reviews` em uma única query sem paginação. O Supabase limita a 1000 linhas por padrão. A tabela tem ~2.856+ registros, então a maioria dos relatórios fica sem dados de reviews, resultando em `approvedTransactions = 0` e `pendingCount = 10`.
+**1. PDF armazenado sem assinaturas**: O PDF final já foi gerado e armazenado no Storage provavelmente antes da correção de paginação (que fazia `pendingCount` ficar errado). Uma vez gerado (`hasFinalPdf = true`), não há como regenerar — o botão "Gerar PDF" desaparece e "Download" apenas abre o PDF antigo (sem assinaturas).
 
-Como `canSignAsTreasurer` exige `pendingCount === 0`, o botão nunca aparece.
+**2. Sem opção de regenerar**: O código na linha 579 usa `{!hasFinalPdf && (...)}`, escondendo completamente o botão de gerar quando já existe um PDF. Não há forma de corrigir um PDF defeituoso.
 
-### Solução
+**3. Export do Fiscal incompleto**: No `FiscalReviewPanel.tsx` linha 392, `generateFiscalPDF` é chamado sem `treasurerSignature` e `profiles`, então o export do fiscal também gera PDF sem assinaturas.
 
-Modificar **apenas** `src/hooks/useTreasurerReportsSummary.ts` para buscar as reviews com paginação, contornando o limite de 1000 linhas.
+### Solução (2 arquivos, sem alterar lógica existente)
 
-#### Arquivo: `src/hooks/useTreasurerReportsSummary.ts`
+#### 1. `src/components/treasurer/TreasurerFiscalArea.tsx`
 
-Criar uma função auxiliar `fetchAllRows` que busca em blocos de 1000 até esgotar os dados:
+Adicionar botão "Regerar PDF" quando `hasFinalPdf` é true e todas as condições estão satisfeitas. Isso permite ao tesoureiro regenerar o PDF corrigido:
 
-```typescript
-async function fetchAllRows(table: string, select: string) {
-  const PAGE_SIZE = 1000;
-  let allData: any[] = [];
-  let from = 0;
-  let hasMore = true;
-  
-  while (hasMore) {
-    const { data, error } = await supabase
-      .from(table)
-      .select(select)
-      .range(from, from + PAGE_SIZE - 1);
-    
-    if (error) throw error;
-    if (!data || data.length < PAGE_SIZE) hasMore = false;
-    allData = allData.concat(data || []);
-    from += PAGE_SIZE;
-  }
-  
-  return allData;
-}
-```
+- Onde hoje mostra `Badge "PDF Gerado"` (linha 613-618), adicionar ao lado um botão "Regerar" que chama a mesma função `handleGenerateFinalPDF`
+- Modificar `canGenerateFinal` para remover a condição `&& !hasFinalPdf`, pois a regeneração usa a mesma lógica
+- O `handleGenerateFinalPDF` já faz `upsert: true` no upload, então sobrescreve o PDF anterior
 
-Substituir a query atual de `fiscal_user_reviews` (linhas 49-51) para usar essa função:
+#### 2. `src/components/fiscal/FiscalReviewPanel.tsx`
+
+Na linha 392, passar os parâmetros faltantes para que o export do fiscal também inclua assinaturas quando disponíveis:
 
 ```typescript
 // Antes:
-const { data: allReviews, error: reviewsError } = await supabase
-  .from('fiscal_user_reviews')
-  .select('report_id, transaction_id, user_id, status, observation, diligence_ack, diligence_created_by');
+generateFiscalPDF(report, reviews, signatures, diligenceStatus);
 
 // Depois:
-const allReviews = await fetchAllRows(
-  'fiscal_user_reviews',
-  'report_id, transaction_id, user_id, status, observation, diligence_ack, diligence_created_by'
-);
+generateFiscalPDF(report, reviews, signatures, diligenceStatus, treasurerSignature || undefined, profiles);
 ```
 
+Isso requer importar `useTreasurerSignature` e `useProfilesByIds` no FiscalReviewPanel (se ainda não importados), e coletar os user IDs relevantes.
+
+### Detalhes Técnicos
+
+| Arquivo | Mudança |
+|---------|---------|
+| `TreasurerFiscalArea.tsx` | Remover `!hasFinalPdf` de `canGenerateFinal`; adicionar botão "Regerar" ao lado do badge "PDF Gerado" |
+| `FiscalReviewPanel.tsx` | Importar hooks de treasurer signature e profiles; passar `treasurerSignature` e `profiles` ao `generateFiscalPDF` |
+
 ### O que NÃO será alterado
-- Nenhuma outra funcionalidade, componente, ou hook
-- A lógica de `canSignAsTreasurer`, `canGenerateFinal`, e todo o cálculo de métricas permanece idêntica
-- Apenas a forma como os dados são buscados muda (paginação)
+- O gerador de PDF (`fiscalPdfGenerator.ts`) permanece idêntico
+- A lógica de assinaturas, diligências, e reviews não muda
+- Nenhuma tabela ou RLS é modificada
 
