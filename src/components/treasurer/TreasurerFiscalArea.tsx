@@ -335,8 +335,8 @@ const TreasurerReportCard = ({
   // Can sign as treasurer when: 0 pending + 3/3 fiscal signatures + all diligences confirmed + not yet signed
   const canSignAsTreasurer = pendingCount === 0 && signatureCount >= 3 && allDiligencesConfirmed && !hasTreasurerSigned;
 
-  // Can generate final PDF only when: 0 pending + 3/3 fiscal + all diligences + treasurer signed + no PDF yet
-  const canGenerateFinal = pendingCount === 0 && signatureCount >= 3 && allDiligencesConfirmed && hasTreasurerSigned && !hasFinalPdf;
+  // Can generate final PDF when: 0 pending + 3/3 fiscal + all diligences + treasurer signed (allow regeneration)
+  const canGenerateFinal = pendingCount === 0 && signatureCount >= 3 && allDiligencesConfirmed && hasTreasurerSigned;
 
   // Tooltip message for disabled generate button
   const getGenerateTooltip = (): string | null => {
@@ -348,7 +348,7 @@ const TreasurerReportCard = ({
     return null;
   };
 
-  const handleGenerateFinalPDF = async () => {
+  const handleGenerateFinalPDF = async (isRegenerate = false) => {
     if (!canGenerateFinal) return;
     
     setIsGenerating(true);
@@ -584,7 +584,7 @@ const TreasurerReportCard = ({
                     <Button 
                       variant="default"
                       size="sm"
-                      onClick={handleGenerateFinalPDF}
+                      onClick={() => handleGenerateFinalPDF()}
                       disabled={!canGenerateFinal || isGenerating}
                       className={cn(
                         "gap-1",
@@ -609,12 +609,30 @@ const TreasurerReportCard = ({
             </TooltipProvider>
           )}
 
-          {/* PDF Generated Badge */}
+          {/* PDF Generated Badge + Regenerate */}
           {hasFinalPdf && (
-            <Badge className="bg-green-500 text-white gap-1 py-1.5 px-3">
-              <CheckCircle2 className="h-3 w-3" />
-              PDF Gerado
-            </Badge>
+            <>
+              <Badge className="bg-green-500 text-white gap-1 py-1.5 px-3">
+                <CheckCircle2 className="h-3 w-3" />
+                PDF Gerado
+              </Badge>
+              {canGenerateFinal && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleGenerateFinalPDF(true)}
+                  disabled={isGenerating}
+                  className="gap-1 text-amber-600 border-amber-500 hover:bg-amber-50"
+                >
+                  {isGenerating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileCheck className="h-4 w-4" />
+                  )}
+                  Regerar PDF
+                </Button>
+              )}
+            </>
           )}
           
           {/* Download PDF Button */}
