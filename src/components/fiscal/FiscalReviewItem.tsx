@@ -228,7 +228,7 @@ const FiscalReviewItem = ({
         </div>
 
         {/* Actions Row */}
-        <div className="flex items-center justify-between mt-3 pt-3 border-t">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between mt-3 pt-3 border-t gap-2">
           <Button
             variant="ghost"
             size="sm"
@@ -256,7 +256,7 @@ const FiscalReviewItem = ({
                 size="sm"
                 variant="outline"
                 onClick={onConfirmDiligence}
-                className="text-orange-600 border-orange-500 hover:bg-orange-100"
+                className="text-orange-600 border-orange-500 hover:bg-orange-100 w-full sm:w-auto text-xs sm:text-sm"
               >
                 <AlertCircle className="h-4 w-4 mr-1" />
                 Confirmar Diligência
@@ -273,12 +273,12 @@ const FiscalReviewItem = ({
 
             {/* Show action buttons if not reviewed and not in diligence mode */}
             {!isReviewed && !isDiligence && (
-              <>
+              <div className="flex gap-2 w-full sm:w-auto">
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={onFlag}
-                  className="text-destructive border-destructive hover:bg-destructive/10"
+                  className="text-destructive border-destructive hover:bg-destructive/10 flex-1 sm:flex-none text-xs sm:text-sm"
                 >
                   <AlertTriangle className="h-4 w-4 mr-1" />
                   Divergente
@@ -286,12 +286,12 @@ const FiscalReviewItem = ({
                 <Button
                   size="sm"
                   onClick={onApprove}
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-green-600 hover:bg-green-700 flex-1 sm:flex-none text-xs sm:text-sm"
                 >
                   <CheckCircle className="h-4 w-4 mr-1" />
                   Aprovar
                 </Button>
-              </>
+              </div>
             )}
 
             {/* Show status badge if reviewed and not in diligence */}

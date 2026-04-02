@@ -495,13 +495,14 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
       </Card>
 
       {/* Actions */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
         {attachedFile && (
           <Button 
             variant="outline" 
             size="sm"
             onClick={handleViewStatementPDF}
             disabled={getFileUrl.isPending}
+            className="w-full sm:w-auto"
           >
             <FileText className="h-4 w-4 mr-2" />
             Ver Extrato (PDF)
@@ -513,6 +514,7 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
           size="sm"
           onClick={handleApproveAllPending}
           disabled={stats.pending === 0 || stats.pending === stats.diligences}
+          className="w-full sm:w-auto"
         >
           <CheckCircle className="h-4 w-4 mr-2" />
           Aprovar Todos Pendentes
@@ -522,7 +524,7 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
           <Button 
             size="sm"
             onClick={() => setSignatureModalOpen(true)}
-            className="bg-primary"
+            className="bg-primary w-full sm:w-auto"
           >
             <PenTool className="h-4 w-4 mr-2" />
             Assinar Relatório
@@ -535,6 +537,7 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
           onClick={handleExportPDF}
           disabled={!isFinished}
           title={isFinished ? "Exportar PDF" : "Disponível apenas quando concluído"}
+          className="w-full sm:w-auto"
         >
           <Download className="h-4 w-4 mr-2" />
           Exportar PDF
