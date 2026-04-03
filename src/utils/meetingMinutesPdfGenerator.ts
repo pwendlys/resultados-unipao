@@ -41,8 +41,18 @@ const createMeetingMinutesPDF = (data: MeetingMinutesPdfData): jsPDF => {
   // Minutes text - split by paragraphs
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
+
+  const minutesContent = (data.minutesText || '').trim();
+  console.log(`[MeetingMinutesPDF] minutesText length: ${minutesContent.length}`);
+
+  if (!minutesContent) {
+    doc.setTextColor(200, 0, 0);
+    doc.text('Texto da ata não disponível.', margin, yPos);
+    doc.setTextColor(0, 0, 0);
+    yPos += 10;
+  }
   
-  const paragraphs = data.minutesText.split('\n\n').filter(p => p.trim() && !p.startsWith('ATA DA'));
+  const paragraphs = minutesContent.split('\n\n').filter(p => p.trim() && !p.trim().startsWith('ATA DA'));
   
   for (const paragraph of paragraphs) {
     const trimmed = paragraph.trim();
