@@ -1,55 +1,35 @@
 
 
-## Correções do Módulo ATA - Plano
+## Correção: Relatórios não aparecem na ATA
 
 ### Causa Raiz
 
-O hook `useFiscalUsersFromRoles` consulta `user_roles` filtrando `role = 'fiscal'`, mas a RLS da tabela `user_roles` só permite que cada usuário veja **suas próprias** roles (`user_id = auth.uid()`), exceto admins. O tesoureiro (que tem sessão Supabase Auth válida) não consegue ver as roles de outros usuários, então a lista de fiscais retorna vazia. Sem fiscais selecionados, o texto da ata não gera (o `useEffect` exige `selectedFiscais.length > 0`). Os relatórios concluídos **já carregam** corretamente (a tabela `fiscal_reports` tem RLS pública).
+Todos os 12 relatórios no banco têm `status = 'open'`. O label "Concluído" exibido na "Área Fiscal" e no painel do Tesoureiro é **derivado em tempo real** a partir de métricas (pending_count=0, signatureCount>=3, etc.) — nunca é gravado na coluna `status`.
 
-### Alterações
+O módulo ATA filtra com `r.status === 'finished'`, que nunca retorna resultados.
 
-#### 1. Migration: RLS em `user_roles` para tesoureiro
+### Solução
 
-Adicionar policy SELECT permitindo tesoureiro ver roles de outros usuários:
+Em vez de filtrar pelo campo `status`, o módulo ATA deve usar a mesma lógica derivada: buscar o summary de cada relatório (via `useTreasurerReportsSummary`) e considerar "concluído" aqueles onde `isFinished === true` OU `(pendingTransactions === 0 && signatureCount >= 3 && allDiligencesConfirmed)`.
 
-```sql
-CREATE POLICY "Treasurer can view all roles"
-ON public.user_roles FOR SELECT TO authenticated
-USING (has_role(auth.uid(), 'tesoureiro'::app_role));
-```
+### Alteração: `MeetingMinutesForm.tsx`
 
-Isso resolve a query de fiscais sem alterar nenhuma tabela ou policy existente.
-
-#### 2. `src/components/meeting-minutes/MeetingMinutesForm.tsx`
-
-- Adicionar campo **"Houve diligências?"** (Switch sim/não) + campo **"Resumo das diligências"** (Textarea, visível quando sim)
-- Passar `hadDiligencias` e `diligencesSummary` ao `generateMinutesText`
-- Adicionar estados de loading/error para fiscais e relatórios (usar `isLoading`/`isError` dos hooks)
-- Salvar `had_diligences` e `diligences_summary` no snapshot da ata (campo `snapshot` jsonb já existente -- sem alterar schema)
-
-#### 3. `src/utils/meetingMinutesTemplate.ts`
-
-- Adicionar `diligencesSummary?: string` ao `MinutesTemplateParams`
-- Quando `hasDiligencias = true` e houver summary, gerar parágrafo:
-  *"O Conselho Fiscal registrou que houve diligências e observações no período analisado, conforme descrito a seguir: {summary}. Ainda assim, deliberou-se pela APROVAÇÃO..."*
-- Quando `hasDiligencias = false`: manter texto atual
-
-#### 4. `src/utils/meetingMinutesPdfGenerator.ts`
-
-- Na seção "Diligências Consolidadas", quando `data.diligencias.length === 0` e existir `diligencesSummary` no snapshot, renderizar o resumo informado pelo tesoureiro em vez de "Não foram registradas diligências"
+1. Importar `useTreasurerReportsSummary` e `TreasurerReportSummary`
+2. Substituir o filtro `r.status === 'finished'` por lógica derivada:
+   - Para cada relatório em `allReports`, verificar se o summary correspondente indica conclusão
+   - Um relatório é "concluído" se: `summary.isFinished === true` OU `(summary.pendingTransactions === 0 && summary.signatureCount >= 3 && summary.allDiligencesConfirmed)` OU `report.status === 'finished'` (fallback)
+3. Mostrar na lista cada relatório com: titulo, competencia, account_type
+4. Adicionar estado de loading enquanto o summary carrega
+5. Quando nenhum relatório concluído for encontrado, mostrar mensagem com o total de relatórios encontrados e quantos estão "em andamento" para ajudar o debug
 
 ### Arquivos Modificados
 
-| Arquivo | Tipo |
-|---------|------|
-| Migration SQL (nova) | RLS policy em `user_roles` |
-| `MeetingMinutesForm.tsx` | +Switch diligências, +loading states |
-| `meetingMinutesTemplate.ts` | +diligencesSummary no texto |
-| `meetingMinutesPdfGenerator.ts` | Ajuste seção diligências |
+| Arquivo | Mudanca |
+|---------|--------|
+| `MeetingMinutesForm.tsx` | Importar hook de summary, derivar status "concluído" em vez de filtrar por `status === 'finished'` |
 
-### O que NÃO será alterado
-- Nenhuma tabela existente (schema)
-- Nenhum componente fora do módulo ATA
-- Nenhum fluxo de relatórios/assinaturas existente
-- As 4 tabelas de meeting minutes permanecem como estão
+### O que NAO sera alterado
+- Nenhum outro componente, hook, ou utilitario
+- Nenhuma tabela ou RLS
+- A logica de derivacao de status no Tesoureiro/Fiscal permanece identica
 
