@@ -1,35 +1,50 @@
 
 
-## Correção: Relatórios não aparecem na ATA
+## Correção: RLS ao gerar PDF da ATA
 
 ### Causa Raiz
 
-Todos os 12 relatórios no banco têm `status = 'open'`. O label "Concluído" exibido na "Área Fiscal" e no painel do Tesoureiro é **derivado em tempo real** a partir de métricas (pending_count=0, signatureCount>=3, etc.) — nunca é gravado na coluna `status`.
+O bucket de storage `fiscal-files` tem policies que permitem upload (INSERT) apenas para **admin**. O tesoureiro não tem permissão de upload, causando o erro "new row violates row-level security policy" ao fazer `supabase.storage.from('fiscal-files').upload(...)`.
 
-O módulo ATA filtra com `r.status === 'finished'`, que nunca retorna resultados.
+Policies atuais do storage:
+- **INSERT**: apenas `admin`
+- **SELECT**: apenas `admin` e `fiscal`
+- **DELETE**: apenas `admin`
 
-### Solução
+O tesoureiro está excluído de todas as operações de storage.
 
-Em vez de filtrar pelo campo `status`, o módulo ATA deve usar a mesma lógica derivada: buscar o summary de cada relatório (via `useTreasurerReportsSummary`) e considerar "concluído" aqueles onde `isFinished === true` OU `(pendingTransactions === 0 && signatureCount >= 3 && allDiligencesConfirmed)`.
+### Solução: Migration com novas storage policies
 
-### Alteração: `MeetingMinutesForm.tsx`
+Adicionar 2 policies no storage `objects`:
 
-1. Importar `useTreasurerReportsSummary` e `TreasurerReportSummary`
-2. Substituir o filtro `r.status === 'finished'` por lógica derivada:
-   - Para cada relatório em `allReports`, verificar se o summary correspondente indica conclusão
-   - Um relatório é "concluído" se: `summary.isFinished === true` OU `(summary.pendingTransactions === 0 && summary.signatureCount >= 3 && summary.allDiligencesConfirmed)` OU `report.status === 'finished'` (fallback)
-3. Mostrar na lista cada relatório com: titulo, competencia, account_type
-4. Adicionar estado de loading enquanto o summary carrega
-5. Quando nenhum relatório concluído for encontrado, mostrar mensagem com o total de relatórios encontrados e quantos estão "em andamento" para ajudar o debug
+1. **INSERT** para tesoureiro — permitir upload de PDFs da ATA
+2. **SELECT** para tesoureiro — permitir download/leitura dos PDFs
+
+```sql
+CREATE POLICY "Treasurer can upload fiscal files"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (
+  bucket_id = 'fiscal-files'
+  AND has_role(auth.uid(), 'tesoureiro'::app_role)
+);
+
+CREATE POLICY "Treasurer can read fiscal files"
+ON storage.objects FOR SELECT TO authenticated
+USING (
+  bucket_id = 'fiscal-files'
+  AND has_role(auth.uid(), 'tesoureiro'::app_role)
+);
+```
 
 ### Arquivos Modificados
 
-| Arquivo | Mudanca |
-|---------|--------|
-| `MeetingMinutesForm.tsx` | Importar hook de summary, derivar status "concluído" em vez de filtrar por `status === 'finished'` |
+| Arquivo | Mudança |
+|---------|---------|
+| Migration SQL (nova) | +2 storage policies para tesoureiro no bucket `fiscal-files` |
 
-### O que NAO sera alterado
-- Nenhum outro componente, hook, ou utilitario
-- Nenhuma tabela ou RLS
-- A logica de derivacao de status no Tesoureiro/Fiscal permanece identica
+### O que NÃO será alterado
+- Nenhuma tabela do módulo ATA (RLS já está correto)
+- Nenhum componente ou hook
+- Nenhuma policy existente de admin/fiscal
+- Nenhuma tabela antiga
 
