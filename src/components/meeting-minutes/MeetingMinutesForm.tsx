@@ -34,8 +34,8 @@ interface MeetingMinutesFormProps {
 
 const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
   const { toast } = useToast();
-  const { data: fiscalUsers = [] } = useFiscalUsersFromRoles();
-  const { data: allReports = [] } = useAllFiscalReports();
+  const { data: fiscalUsers = [], isLoading: isLoadingFiscais, isError: isErrorFiscais } = useFiscalUsersFromRoles();
+  const { data: allReports = [], isLoading: isLoadingReports, isError: isErrorReports } = useAllFiscalReports();
   const { data: profile } = useProfile();
   const { createMinutes, updateMinutesStatus, saveSignatureSources } = useMeetingMinutesActions();
 
