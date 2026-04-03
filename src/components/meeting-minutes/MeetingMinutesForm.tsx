@@ -158,6 +158,30 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
 
+      // Safeguard: auto-generate minutes text if empty
+      let finalMinutesText = minutesText;
+      if (!finalMinutesText.trim()) {
+        const fiscaisNomes = selectedFiscais.map(uid => {
+          const u = fiscalUsers.find(f => f.userId === uid);
+          return u?.fullName || 'Fiscal';
+        });
+        const convidadosNomes = convidados.split(',').map(s => s.trim()).filter(Boolean);
+        const selectedReportsForText = finishedReports.filter(r => selectedReportIds.includes(r.id));
+        const competenciasTexto = [...new Set(selectedReportsForText.map(r => r.competencia))].join(', ');
+
+        finalMinutesText = generateMinutesText({
+          meetingDate,
+          meetingType,
+          fiscaisNomes,
+          tesoureiroNome,
+          convidadosNomes,
+          competenciasTexto,
+          hasDiligencias: hadDiligencias,
+          diligencesSummary: hadDiligencias ? diligencesSummary : undefined,
+        });
+        setMinutesText(finalMinutesText);
+      }
+
       // Build participants list
       const participants = [
         { user_id: user.id, participant_role: 'tesoureiro', display_name_snapshot: tesoureiroNome, is_required_signature: true },
