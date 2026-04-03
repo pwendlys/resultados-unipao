@@ -1,50 +1,41 @@
 
 
-## Correção: RLS ao gerar PDF da ATA
+## Correção: Assinatura do Tesoureiro na ATA
 
-### Causa Raiz
+### Diagnóstico
 
-O bucket de storage `fiscal-files` tem policies que permitem upload (INSERT) apenas para **admin**. O tesoureiro não tem permissão de upload, causando o erro "new row violates row-level security policy" ao fazer `supabase.storage.from('fiscal-files').upload(...)`.
+O código do resolver (`meetingSignatureResolver.ts`) está correto em teoria — busca das duas tabelas (`fiscal_report_signatures` e `treasurer_signatures`). Porém há dois problemas:
 
-Policies atuais do storage:
-- **INSERT**: apenas `admin`
-- **SELECT**: apenas `admin` e `fiscal`
-- **DELETE**: apenas `admin`
+1. **Erro silencioso**: As queries não fazem `error` handling. Se a query de `treasurer_signatures` falhar (ex: RLS), `data` vem `null`, `treasurerSigs?.find()` retorna `undefined`, e o tesoureiro vai para `missing` sem nenhum log.
 
-O tesoureiro está excluído de todas as operações de storage.
+2. **Formato do payload**: O renderer do PDF faz `sig.signaturePayload.startsWith('data:image')`. Se o payload do tesoureiro estiver em formato diferente (base64 puro, URL de storage, etc.), a imagem não renderiza — o nome aparece mas a imagem fica em branco.
 
-### Solução: Migration com novas storage policies
+### Alterações
 
-Adicionar 2 policies no storage `objects`:
+**1. `meetingSignatureResolver.ts`** — Adicionar error handling e logs de debug:
+- Log errors nas queries de ambas as tabelas
+- Log para cada participante: found/not found e de qual tabela
+- Se query falhar, continuar com array vazio em vez de null
 
-1. **INSERT** para tesoureiro — permitir upload de PDFs da ATA
-2. **SELECT** para tesoureiro — permitir download/leitura dos PDFs
+**2. `meetingMinutesPdfGenerator.ts`** — Adicionar `normalizeSignatureData` helper:
+- Se payload começa com `data:image` → manter
+- Se payload é base64 puro (não começa com `data:`) → prefixar `data:image/png;base64,`
+- Aplicar normalização antes de `doc.addImage()`
+- Aplicar para TODAS as assinaturas (fiscal e tesoureiro)
 
-```sql
-CREATE POLICY "Treasurer can upload fiscal files"
-ON storage.objects FOR INSERT TO authenticated
-WITH CHECK (
-  bucket_id = 'fiscal-files'
-  AND has_role(auth.uid(), 'tesoureiro'::app_role)
-);
-
-CREATE POLICY "Treasurer can read fiscal files"
-ON storage.objects FOR SELECT TO authenticated
-USING (
-  bucket_id = 'fiscal-files'
-  AND has_role(auth.uid(), 'tesoureiro'::app_role)
-);
-```
+**3. `meetingSignatureResolver.ts`** — Garantir que o tesoureiro é buscado primeiro na tabela correta:
+- Inverter a ordem de busca: se `participant.role === 'tesoureiro'`, checar `treasurer_signatures` primeiro (em vez de `fiscal_report_signatures` primeiro)
+- Isso evita uma busca desnecessária e possível confusão
 
 ### Arquivos Modificados
 
 | Arquivo | Mudança |
 |---------|---------|
-| Migration SQL (nova) | +2 storage policies para tesoureiro no bucket `fiscal-files` |
+| `meetingSignatureResolver.ts` | Error handling, logs, ordem de busca por role |
+| `meetingMinutesPdfGenerator.ts` | Helper `normalizeSignatureData` aplicado a todos os payloads |
 
 ### O que NÃO será alterado
-- Nenhuma tabela do módulo ATA (RLS já está correto)
-- Nenhum componente ou hook
-- Nenhuma policy existente de admin/fiscal
-- Nenhuma tabela antiga
+- Nenhuma tabela, RLS, ou migration
+- Nenhum componente de UI
+- Nenhum fluxo de relatórios existente
 
