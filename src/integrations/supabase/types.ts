@@ -1127,6 +1127,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_meeting_minutes: {
+        Args: { p_minutes_id: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
