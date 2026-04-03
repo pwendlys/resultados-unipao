@@ -298,6 +298,162 @@ export type Database = {
         }
         Relationships: []
       }
+      fiscal_meeting_minutes: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          id: string
+          location: string | null
+          meeting_date: string
+          meeting_type: string
+          minutes_text: string | null
+          pdf_url: string | null
+          snapshot: Json | null
+          status: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          id?: string
+          location?: string | null
+          meeting_date: string
+          meeting_type?: string
+          minutes_text?: string | null
+          pdf_url?: string | null
+          snapshot?: Json | null
+          status?: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          location?: string | null
+          meeting_date?: string
+          meeting_type?: string
+          minutes_text?: string | null
+          pdf_url?: string | null
+          snapshot?: Json | null
+          status?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      fiscal_meeting_minutes_participants: {
+        Row: {
+          created_at: string | null
+          display_name_snapshot: string | null
+          id: string
+          is_required_signature: boolean | null
+          minutes_id: string
+          participant_role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          display_name_snapshot?: string | null
+          id?: string
+          is_required_signature?: boolean | null
+          minutes_id: string
+          participant_role: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          display_name_snapshot?: string | null
+          id?: string
+          is_required_signature?: boolean | null
+          minutes_id?: string
+          participant_role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_meeting_minutes_participants_minutes_id_fkey"
+            columns: ["minutes_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_meeting_minutes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_meeting_minutes_reports: {
+        Row: {
+          approved: boolean | null
+          created_at: string | null
+          fiscal_report_id: string
+          id: string
+          minutes_id: string
+        }
+        Insert: {
+          approved?: boolean | null
+          created_at?: string | null
+          fiscal_report_id: string
+          id?: string
+          minutes_id: string
+        }
+        Update: {
+          approved?: boolean | null
+          created_at?: string | null
+          fiscal_report_id?: string
+          id?: string
+          minutes_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_meeting_minutes_reports_minutes_id_fkey"
+            columns: ["minutes_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_meeting_minutes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_meeting_minutes_signature_sources: {
+        Row: {
+          created_at: string | null
+          id: string
+          minutes_id: string
+          signature_payload: string
+          signed_at_original: string | null
+          source_report_id: string
+          source_signature_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          minutes_id: string
+          signature_payload: string
+          signed_at_original?: string | null
+          source_report_id: string
+          source_signature_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          minutes_id?: string
+          signature_payload?: string
+          signed_at_original?: string | null
+          source_report_id?: string
+          source_signature_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_meeting_minutes_signature_sources_minutes_id_fkey"
+            columns: ["minutes_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_meeting_minutes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fiscal_report_assignees: {
         Row: {
           created_at: string | null

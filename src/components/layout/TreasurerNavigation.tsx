@@ -12,7 +12,8 @@ import {
   ChevronRight,
   Home,
   Shield,
-  FileCheck
+  FileCheck,
+  BookOpen
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -45,6 +46,7 @@ const TreasurerNavigation = ({
   const menuItems = [
     { id: 'tesoureiro-dashboard', label: 'Painel Tesoureiro', icon: Home },
     { id: 'tesoureiro-fiscal', label: 'Área Fiscal', icon: Shield },
+    { id: 'tesoureiro-atas', label: 'Atas do Conselho', icon: BookOpen },
   ];
 
   const queryClient = useQueryClient();
