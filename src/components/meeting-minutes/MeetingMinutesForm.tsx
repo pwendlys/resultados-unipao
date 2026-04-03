@@ -21,6 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useFiscalUsersFromRoles } from '@/hooks/useFiscalUsersFromRoles';
 import { useAllFiscalReports } from '@/hooks/useFiscalReports';
+import { useTreasurerReportsSummary } from '@/hooks/useTreasurerReportsSummary';
 import { useMeetingMinutesActions } from '@/hooks/useMeetingMinutes';
 import { useProfile } from '@/hooks/useProfile';
 import { generateMinutesText } from '@/utils/meetingMinutesTemplate';
