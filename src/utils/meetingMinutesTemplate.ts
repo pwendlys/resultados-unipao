@@ -63,7 +63,9 @@ export const generateMinutesText = (params: MinutesTemplateParams): string => {
     : '';
 
   const resultadoDiligencias = hasDiligencias
-    ? 'na reunião, foram registradas diligências e observações, devidamente consolidadas nesta ata'
+    ? (params.diligencesSummary
+        ? `houve diligências e observações no período analisado, conforme descrito a seguir: ${params.diligencesSummary}. Ainda assim, deliberou-se pela APROVAÇÃO dos relatórios relacionados nesta ata, ficando as diligências registradas para acompanhamento`
+        : 'na reunião, foram registradas diligências e observações, devidamente consolidadas nesta ata')
     : 'na reunião, não foi identificada qualquer alteração ou divergência relevante';
 
   return `ATA DA REUNIÃO DO CONSELHO FISCAL DA COOPERATIVA UNIPÃO
