@@ -172,6 +172,12 @@ const createMeetingMinutesPDF = (data: MeetingMinutesPdfData): jsPDF => {
   return doc;
 };
 
+const normalizeSignatureData = (payload: string): string => {
+  if (!payload) return '';
+  if (payload.startsWith('data:image')) return payload;
+  return `data:image/png;base64,${payload}`;
+};
+
 const renderSignature = (doc: jsPDF, sig: SignatureSource, margin: number, yPos: number, pageWidth: number) => {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
