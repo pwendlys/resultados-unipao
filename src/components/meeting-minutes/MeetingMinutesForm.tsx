@@ -339,8 +339,15 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
           <CardTitle className="text-lg">Relatórios Aprovados *</CardTitle>
         </CardHeader>
         <CardContent>
-          {finishedReports.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum relatório concluído disponível</p>
+          {isLoadingReports ? (
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+          ) : isErrorReports ? (
+            <p className="text-sm text-destructive">Erro ao carregar relatórios.</p>
+          ) : finishedReports.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum relatório concluído disponível. Os relatórios precisam ter status "Concluído" para aparecerem aqui.</p>
           ) : (
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {finishedReports.map(r => (
