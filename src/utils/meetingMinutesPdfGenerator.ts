@@ -172,6 +172,12 @@ const createMeetingMinutesPDF = (data: MeetingMinutesPdfData): jsPDF => {
   return doc;
 };
 
+const normalizeSignatureData = (payload: string): string => {
+  if (!payload) return '';
+  if (payload.startsWith('data:image')) return payload;
+  return `data:image/png;base64,${payload}`;
+};
+
 const renderSignature = (doc: jsPDF, sig: SignatureSource, margin: number, yPos: number, pageWidth: number) => {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
@@ -193,9 +199,12 @@ const renderSignature = (doc: jsPDF, sig: SignatureSource, margin: number, yPos:
   yPos += 8;
 
   try {
-    if (sig.signaturePayload && sig.signaturePayload.startsWith('data:image')) {
-      doc.addImage(sig.signaturePayload, 'PNG', margin, yPos, 80, 35);
-      yPos += 38;
+    if (sig.signaturePayload) {
+      const normalizedPayload = normalizeSignatureData(sig.signaturePayload);
+      if (normalizedPayload) {
+        doc.addImage(normalizedPayload, 'PNG', margin, yPos, 80, 35);
+        yPos += 38;
+      }
     }
   } catch (error) {
     console.error('Error adding signature image:', error);
