@@ -1,41 +1,57 @@
 
 
-## Correção: Assinatura do Tesoureiro na ATA
+## Plan: Delete Atas + Include Minutes Text in PDF
 
-### Diagnóstico
+### 1. Delete Ata (Full Cascade)
 
-O código do resolver (`meetingSignatureResolver.ts`) está correto em teoria — busca das duas tabelas (`fiscal_report_signatures` e `treasurer_signatures`). Porém há dois problemas:
+**Problem**: Current delete only works for `draft` status, uses a simple `confirm()`, and doesn't clean up child records or storage files.
 
-1. **Erro silencioso**: As queries não fazem `error` handling. Se a query de `treasurer_signatures` falhar (ex: RLS), `data` vem `null`, `treasurerSigs?.find()` retorna `undefined`, e o tesoureiro vai para `missing` sem nenhum log.
+**Solution**:
 
-2. **Formato do payload**: O renderer do PDF faz `sig.signaturePayload.startsWith('data:image')`. Se o payload do tesoureiro estiver em formato diferente (base64 puro, URL de storage, etc.), a imagem não renderiza — o nome aparece mas a imagem fica em branco.
+**1.1 New RPC function** (`delete_meeting_minutes`):
+- SECURITY DEFINER function that checks permission (creator or admin)
+- Deletes children in order: signature_sources, reports, participants
+- Deletes storage file if pdf_url exists (via `storage.objects`)
+- Deletes main record
+- Returns void or raises exception if unauthorized
 
-### Alterações
+**1.2 Update `MeetingMinutesList.tsx`**:
+- Show delete button for ALL statuses (remove `m.status === 'draft'` condition)
+- Replace `confirm()` with AlertDialog confirmation modal
+- Add state for loading/deleting
+- Before calling RPC, also delete storage file client-side via `supabase.storage.from('fiscal-files').remove([pdf_url])`
 
-**1. `meetingSignatureResolver.ts`** — Adicionar error handling e logs de debug:
-- Log errors nas queries de ambas as tabelas
-- Log para cada participante: found/not found e de qual tabela
-- Se query falhar, continuar com array vazio em vez de null
+**1.3 Update `useMeetingMinutes.ts`**:
+- Change `deleteMinutes` mutation to call the RPC instead of direct table delete
 
-**2. `meetingMinutesPdfGenerator.ts`** — Adicionar `normalizeSignatureData` helper:
-- Se payload começa com `data:image` → manter
-- Se payload é base64 puro (não começa com `data:`) → prefixar `data:image/png;base64,`
-- Aplicar normalização antes de `doc.addImage()`
-- Aplicar para TODAS as assinaturas (fiscal e tesoureiro)
+### 2. PDF Missing Minutes Text
 
-**3. `meetingSignatureResolver.ts`** — Garantir que o tesoureiro é buscado primeiro na tabela correta:
-- Inverter a ordem de busca: se `participant.role === 'tesoureiro'`, checar `treasurer_signatures` primeiro (em vez de `fiscal_report_signatures` primeiro)
-- Isso evita uma busca desnecessária e possível confusão
+**Problem**: The PDF generator filters paragraphs with `!p.startsWith('ATA DA')`, which correctly removes the title duplicate. However, the snapshot saved on line 227 doesn't include `minutes_text`, so if the text is somehow lost between state and generation, it won't render.
 
-### Arquivos Modificados
+**Root cause identified**: The template text starts with `"ATA DA REUNIÃO..."` as the first paragraph. The filter on line 45 removes it. The remaining 4 paragraphs should render. But the real issue may be that the text passed to the PDF is actually empty (e.g., `minutesText` state not populated because the useEffect dependencies didn't trigger).
 
-| Arquivo | Mudança |
-|---------|---------|
-| `meetingSignatureResolver.ts` | Error handling, logs, ordem de busca por role |
-| `meetingMinutesPdfGenerator.ts` | Helper `normalizeSignatureData` aplicado a todos os payloads |
+**Fixes**:
 
-### O que NÃO será alterado
-- Nenhuma tabela, RLS, ou migration
-- Nenhum componente de UI
-- Nenhum fluxo de relatórios existente
+**2.1 `MeetingMinutesForm.tsx`** — Add safeguard before PDF generation:
+- If `minutesText` is empty/whitespace, auto-generate it using the template before proceeding
+- Include `minutes_text` in the snapshot object
+
+**2.2 `meetingMinutesPdfGenerator.ts`** — Add defensive logging:
+- Log `minutesText.length` at the start of `createMeetingMinutesPDF`
+- If `minutesText` is empty, render a visible warning in the PDF: "Texto da ata não disponível"
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| New migration SQL | RPC `delete_meeting_minutes` + DELETE policies for child tables |
+| `MeetingMinutesList.tsx` | AlertDialog confirmation, delete for all statuses, storage cleanup |
+| `useMeetingMinutes.ts` | Use RPC for delete |
+| `MeetingMinutesForm.tsx` | Safeguard empty text, include minutes_text in snapshot |
+| `meetingMinutesPdfGenerator.ts` | Defensive empty-text handling |
+
+### What Will NOT Change
+- No changes to fiscal reports, signatures, or treasurer flows
+- No changes to existing RLS on non-ATA tables
+- No UI changes outside the ATA module
 
