@@ -216,6 +216,8 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
         participants: participants.map(p => ({ ...p })),
         signatures: sources,
         diligencias,
+        had_diligences: hadDiligencias,
+        diligences_summary: hadDiligencias ? diligencesSummary : null,
       };
 
       await updateMinutesStatus.mutateAsync({
