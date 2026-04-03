@@ -37,10 +37,22 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
   const { toast } = useToast();
   const { data: fiscalUsers = [], isLoading: isLoadingFiscais, isError: isErrorFiscais } = useFiscalUsersFromRoles();
   const { data: allReports = [], isLoading: isLoadingReports, isError: isErrorReports } = useAllFiscalReports();
+  const { data: reportSummaries = [], isLoading: isLoadingSummaries } = useTreasurerReportsSummary();
   const { data: profile } = useProfile();
   const { createMinutes, updateMinutesStatus, saveSignatureSources } = useMeetingMinutesActions();
 
-  const finishedReports = useMemo(() => allReports.filter(r => r.status === 'finished'), [allReports]);
+  const finishedReports = useMemo(() => {
+    if (!reportSummaries.length) return [];
+    return allReports.filter(r => {
+      const summary = reportSummaries.find(s => s.reportId === r.id);
+      if (!summary) return r.status === 'finished';
+      return summary.isFinished || (
+        summary.pendingTransactions === 0 &&
+        summary.signatureCount >= 3 &&
+        summary.allDiligencesConfirmed
+      );
+    });
+  }, [allReports, reportSummaries]);
 
   const [meetingDate, setMeetingDate] = useState<Date>();
   const [meetingType, setMeetingType] = useState('ordinária');
