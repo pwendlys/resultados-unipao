@@ -365,7 +365,30 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
         </CardContent>
       </Card>
 
-      {/* Text editor */}
+      {/* Diligências */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Diligências</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Switch checked={hadDiligencias} onCheckedChange={setHadDiligencias} />
+            <Label>Houve diligências nesta reunião?</Label>
+          </div>
+          {hadDiligencias && (
+            <div>
+              <Label className="mb-2 block">Resumo das diligências</Label>
+              <Textarea
+                value={diligencesSummary}
+                onChange={e => setDiligencesSummary(e.target.value)}
+                className="min-h-[100px]"
+                placeholder="Descreva as diligências e observações registradas na reunião..."
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Texto da Ata</CardTitle>
