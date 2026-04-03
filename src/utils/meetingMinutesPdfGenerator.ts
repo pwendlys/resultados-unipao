@@ -8,6 +8,7 @@ export interface MeetingMinutesPdfData {
   reports: { title: string; competencia: string; account_type: string }[];
   diligencias: { description: string; observation: string; reportTitle: string }[];
   signatures: SignatureSource[];
+  diligencesSummary?: string;
 }
 
 const createMeetingMinutesPDF = (data: MeetingMinutesPdfData): jsPDF => {
