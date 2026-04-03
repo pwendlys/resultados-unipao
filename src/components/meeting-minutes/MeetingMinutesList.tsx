@@ -1,10 +1,21 @@
 
+import { useState } from 'react';
 import { useMeetingMinutes, MeetingMinutes } from '@/hooks/useMeetingMinutes';
 import { useMeetingMinutesActions } from '@/hooks/useMeetingMinutes';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Eye, Trash2, Download, FileText } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Plus, Eye, Trash2, Download, FileText, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -29,6 +40,8 @@ const MeetingMinutesList = ({ onNewMinutes, onViewDetail }: MeetingMinutesListPr
   const { data: minutes = [], isLoading } = useMeetingMinutes();
   const { deleteMinutes } = useMeetingMinutesActions();
   const { toast } = useToast();
+  const [deleteTarget, setDeleteTarget] = useState<MeetingMinutes | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDownload = async (m: MeetingMinutes) => {
     if (!m.pdf_url) return;
@@ -39,6 +52,19 @@ const MeetingMinutesList = ({ onNewMinutes, onViewDetail }: MeetingMinutesListPr
       }
     } catch {
       toast({ title: 'Erro ao baixar PDF', variant: 'destructive' });
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await deleteMinutes.mutateAsync(deleteTarget.id);
+      setDeleteTarget(null);
+    } catch {
+      // error handled by mutation
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -97,17 +123,13 @@ const MeetingMinutesList = ({ onNewMinutes, onViewDetail }: MeetingMinutesListPr
                         PDF
                       </Button>
                     )}
-                    {m.status === 'draft' && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => {
-                          if (confirm('Excluir esta ata?')) deleteMinutes.mutate(m.id);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setDeleteTarget(m)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -115,6 +137,37 @@ const MeetingMinutesList = ({ onNewMinutes, onViewDetail }: MeetingMinutesListPr
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir ata</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta ata?
+              {deleteTarget?.pdf_url && (
+                <span className="block mt-2 font-medium">
+                  A exclusão remove a ata e o PDF armazenado.
+                </span>
+              )}
+              <span className="block mt-2 text-xs">
+                Esta ação não pode ser desfeita.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

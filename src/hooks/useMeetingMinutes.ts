@@ -256,10 +256,7 @@ export const useMeetingMinutesActions = () => {
 
   const deleteMinutes = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('fiscal_meeting_minutes')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.rpc('delete_meeting_minutes', { p_minutes_id: id });
       if (error) throw error;
     },
     onSuccess: () => {
