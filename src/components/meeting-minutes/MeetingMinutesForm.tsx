@@ -209,7 +209,7 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
         meeting_type: meetingType,
         location: location || undefined,
         created_by: user.id,
-        minutes_text: minutesText,
+        minutes_text: finalMinutesText,
         participants,
         report_ids: selectedReportIds,
       });
