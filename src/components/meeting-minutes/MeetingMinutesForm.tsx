@@ -255,7 +255,7 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
         diligencias,
         had_diligences: hadDiligencias,
         diligences_summary: hadDiligencias ? diligencesSummary : null,
-        minutes_text: minutesText,
+        minutes_text: finalMinutesText,
       };
 
       await updateMinutesStatus.mutateAsync({
