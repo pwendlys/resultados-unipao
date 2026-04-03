@@ -33,6 +33,7 @@ export interface MinutesTemplateParams {
   convidadosNomes: string[];
   competenciasTexto: string;
   hasDiligencias: boolean;
+  diligencesSummary?: string;
 }
 
 export const generateMinutesText = (params: MinutesTemplateParams): string => {
