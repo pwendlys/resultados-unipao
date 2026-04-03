@@ -46,6 +46,7 @@ const TreasurerNavigation = ({
   const menuItems = [
     { id: 'tesoureiro-dashboard', label: 'Painel Tesoureiro', icon: Home },
     { id: 'tesoureiro-fiscal', label: 'Área Fiscal', icon: Shield },
+    { id: 'tesoureiro-atas', label: 'Atas do Conselho', icon: BookOpen },
   ];
 
   const queryClient = useQueryClient();

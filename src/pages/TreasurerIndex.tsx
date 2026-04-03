@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import TreasurerNavigation from '@/components/layout/TreasurerNavigation';
 import TreasurerDashboard from '@/components/treasurer/TreasurerDashboard';
 import TreasurerFiscalArea from '@/components/treasurer/TreasurerFiscalArea';
+import MeetingMinutesPage from '@/components/meeting-minutes/MeetingMinutesPage';
 
 const TreasurerIndex = () => {
   const [currentPage, setCurrentPage] = useState('tesoureiro-dashboard');
@@ -13,6 +14,8 @@ const TreasurerIndex = () => {
         return <TreasurerDashboard />;
       case 'tesoureiro-fiscal':
         return <TreasurerFiscalArea onNavigateToPage={setCurrentPage} />;
+      case 'tesoureiro-atas':
+        return <MeetingMinutesPage />;
       default:
         return <TreasurerDashboard />;
     }
