@@ -48,6 +48,8 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
   const [convidados, setConvidados] = useState('');
   const [selectedReportIds, setSelectedReportIds] = useState<string[]>([]);
   const [minutesText, setMinutesText] = useState('');
+  const [hadDiligencias, setHadDiligencias] = useState(false);
+  const [diligencesSummary, setDiligencesSummary] = useState('');
   const [isValidating, setIsValidating] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [validationResult, setValidationResult] = useState<{ ok: boolean; missing: string[]; resolved: Map<string, SignatureSource> } | null>(null);
