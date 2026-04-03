@@ -231,7 +231,7 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
       // 4. Generate PDF
       const pdfData: MeetingMinutesPdfData = {
         title,
-        minutesText,
+        minutesText: finalMinutesText,
         reports: selectedReports.map(r => ({ title: r.title, competencia: r.competencia, account_type: r.account_type })),
         diligencias,
         signatures: Array.from(validationResult.resolved.values()),
