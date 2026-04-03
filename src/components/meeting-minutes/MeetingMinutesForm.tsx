@@ -198,6 +198,7 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
         reports: selectedReports.map(r => ({ title: r.title, competencia: r.competencia, account_type: r.account_type })),
         diligencias,
         signatures: Array.from(validationResult.resolved.values()),
+        diligencesSummary: hadDiligencias ? diligencesSummary : undefined,
       };
 
       const blob = await generateMeetingMinutesPDFBlob(pdfData);
