@@ -8,6 +8,7 @@ export interface MeetingMinutesPdfData {
   reports: { title: string; competencia: string; account_type: string }[];
   diligencias: { description: string; observation: string; reportTitle: string }[];
   signatures: SignatureSource[];
+  diligencesSummary?: string;
 }
 
 const createMeetingMinutesPDF = (data: MeetingMinutesPdfData): jsPDF => {
@@ -92,8 +93,12 @@ const createMeetingMinutesPDF = (data: MeetingMinutesPdfData): jsPDF => {
   doc.setFont('helvetica', 'normal');
 
   if (data.diligencias.length === 0) {
-    doc.text('Não foram registradas diligências ou divergências relevantes nos relatórios analisados.', margin + 5, yPos);
-    yPos += 8;
+    const diligText = data.diligencesSummary
+      ? `Resumo das diligências informadas pelo Tesoureiro: ${data.diligencesSummary}`
+      : 'Não foram registradas diligências ou divergências relevantes nos relatórios analisados.';
+    const diligLines = doc.splitTextToSize(diligText, textWidth - 10);
+    doc.text(diligLines, margin + 5, yPos);
+    yPos += diligLines.length * 5 + 3;
   } else {
     data.diligencias.forEach((dil, idx) => {
       checkPageBreak(20);

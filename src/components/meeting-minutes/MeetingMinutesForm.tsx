@@ -7,10 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, CalendarIcon, CheckCircle, AlertTriangle, FileText, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -32,8 +34,8 @@ interface MeetingMinutesFormProps {
 
 const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
   const { toast } = useToast();
-  const { data: fiscalUsers = [] } = useFiscalUsersFromRoles();
-  const { data: allReports = [] } = useAllFiscalReports();
+  const { data: fiscalUsers = [], isLoading: isLoadingFiscais, isError: isErrorFiscais } = useFiscalUsersFromRoles();
+  const { data: allReports = [], isLoading: isLoadingReports, isError: isErrorReports } = useAllFiscalReports();
   const { data: profile } = useProfile();
   const { createMinutes, updateMinutesStatus, saveSignatureSources } = useMeetingMinutesActions();
 
@@ -46,6 +48,8 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
   const [convidados, setConvidados] = useState('');
   const [selectedReportIds, setSelectedReportIds] = useState<string[]>([]);
   const [minutesText, setMinutesText] = useState('');
+  const [hadDiligencias, setHadDiligencias] = useState(false);
+  const [diligencesSummary, setDiligencesSummary] = useState('');
   const [isValidating, setIsValidating] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [validationResult, setValidationResult] = useState<{ ok: boolean; missing: string[]; resolved: Map<string, SignatureSource> } | null>(null);
@@ -67,7 +71,6 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
     const competencias = [...new Set(selectedReports.map(r => r.competencia))];
     const competenciasTexto = competencias.join(', ');
 
-    // We don't know diligencias yet, default to false
     const text = generateMinutesText({
       meetingDate,
       meetingType,
@@ -75,12 +78,13 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
       tesoureiroNome,
       convidadosNomes,
       competenciasTexto,
-      hasDiligencias: false,
+      hasDiligencias: hadDiligencias,
+      diligencesSummary: hadDiligencias ? diligencesSummary : undefined,
     });
 
     setMinutesText(text);
     setValidationResult(null);
-  }, [meetingDate, meetingType, selectedFiscais, selectedReportIds, convidados, fiscalUsers, finishedReports, tesoureiroNome]);
+  }, [meetingDate, meetingType, selectedFiscais, selectedReportIds, convidados, fiscalUsers, finishedReports, tesoureiroNome, hadDiligencias, diligencesSummary]);
 
   const handleToggleFiscal = (userId: string) => {
     setSelectedFiscais(prev => 
@@ -194,6 +198,7 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
         reports: selectedReports.map(r => ({ title: r.title, competencia: r.competencia, account_type: r.account_type })),
         diligencias,
         signatures: Array.from(validationResult.resolved.values()),
+        diligencesSummary: hadDiligencias ? diligencesSummary : undefined,
       };
 
       const blob = await generateMeetingMinutesPDFBlob(pdfData);
@@ -211,6 +216,8 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
         participants: participants.map(p => ({ ...p })),
         signatures: sources,
         diligencias,
+        had_diligences: hadDiligencias,
+        diligences_summary: hadDiligencias ? diligencesSummary : null,
       };
 
       await updateMinutesStatus.mutateAsync({
@@ -292,21 +299,30 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
           {/* Fiscais */}
           <div>
             <Label className="mb-2 block">Fiscais *</Label>
-            <div className="space-y-2">
-              {fiscalUsers.map(u => (
-                <div key={u.userId} className="flex items-center gap-2">
-                  <Checkbox
-                    checked={selectedFiscais.includes(u.userId)}
-                    onCheckedChange={() => handleToggleFiscal(u.userId)}
-                  />
-                  <span>{u.fullName}</span>
-                  <span className="text-xs text-muted-foreground">({u.email})</span>
-                </div>
-              ))}
-              {fiscalUsers.length === 0 && (
-                <p className="text-sm text-muted-foreground">Nenhum fiscal encontrado</p>
-              )}
-            </div>
+            {isLoadingFiscais ? (
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-6 w-40" />
+                <Skeleton className="h-6 w-44" />
+              </div>
+            ) : isErrorFiscais ? (
+              <p className="text-sm text-destructive">Erro ao carregar fiscais. Verifique suas permissões.</p>
+            ) : fiscalUsers.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum fiscal cadastrado no sistema. Verifique se existem usuários com role "fiscal" na tabela user_roles.</p>
+            ) : (
+              <div className="space-y-2">
+                {fiscalUsers.map(u => (
+                  <div key={u.userId} className="flex items-center gap-2">
+                    <Checkbox
+                      checked={selectedFiscais.includes(u.userId)}
+                      onCheckedChange={() => handleToggleFiscal(u.userId)}
+                    />
+                    <span>{u.fullName}</span>
+                    <span className="text-xs text-muted-foreground">({u.email})</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Convidados */}
@@ -323,8 +339,15 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
           <CardTitle className="text-lg">Relatórios Aprovados *</CardTitle>
         </CardHeader>
         <CardContent>
-          {finishedReports.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum relatório concluído disponível</p>
+          {isLoadingReports ? (
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+          ) : isErrorReports ? (
+            <p className="text-sm text-destructive">Erro ao carregar relatórios.</p>
+          ) : finishedReports.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum relatório concluído disponível. Os relatórios precisam ter status "Concluído" para aparecerem aqui.</p>
           ) : (
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {finishedReports.map(r => (
@@ -342,7 +365,30 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
         </CardContent>
       </Card>
 
-      {/* Text editor */}
+      {/* Diligências */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Diligências</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Switch checked={hadDiligencias} onCheckedChange={setHadDiligencias} />
+            <Label>Houve diligências nesta reunião?</Label>
+          </div>
+          {hadDiligencias && (
+            <div>
+              <Label className="mb-2 block">Resumo das diligências</Label>
+              <Textarea
+                value={diligencesSummary}
+                onChange={e => setDiligencesSummary(e.target.value)}
+                className="min-h-[100px]"
+                placeholder="Descreva as diligências e observações registradas na reunião..."
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Texto da Ata</CardTitle>
