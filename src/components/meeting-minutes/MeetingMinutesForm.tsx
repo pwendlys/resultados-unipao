@@ -299,21 +299,30 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
           {/* Fiscais */}
           <div>
             <Label className="mb-2 block">Fiscais *</Label>
-            <div className="space-y-2">
-              {fiscalUsers.map(u => (
-                <div key={u.userId} className="flex items-center gap-2">
-                  <Checkbox
-                    checked={selectedFiscais.includes(u.userId)}
-                    onCheckedChange={() => handleToggleFiscal(u.userId)}
-                  />
-                  <span>{u.fullName}</span>
-                  <span className="text-xs text-muted-foreground">({u.email})</span>
-                </div>
-              ))}
-              {fiscalUsers.length === 0 && (
-                <p className="text-sm text-muted-foreground">Nenhum fiscal encontrado</p>
-              )}
-            </div>
+            {isLoadingFiscais ? (
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-6 w-40" />
+                <Skeleton className="h-6 w-44" />
+              </div>
+            ) : isErrorFiscais ? (
+              <p className="text-sm text-destructive">Erro ao carregar fiscais. Verifique suas permissões.</p>
+            ) : fiscalUsers.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum fiscal cadastrado no sistema. Verifique se existem usuários com role "fiscal" na tabela user_roles.</p>
+            ) : (
+              <div className="space-y-2">
+                {fiscalUsers.map(u => (
+                  <div key={u.userId} className="flex items-center gap-2">
+                    <Checkbox
+                      checked={selectedFiscais.includes(u.userId)}
+                      onCheckedChange={() => handleToggleFiscal(u.userId)}
+                    />
+                    <span>{u.fullName}</span>
+                    <span className="text-xs text-muted-foreground">({u.email})</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Convidados */}
