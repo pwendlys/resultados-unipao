@@ -21,6 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useFiscalUsersFromRoles } from '@/hooks/useFiscalUsersFromRoles';
 import { useAllFiscalReports } from '@/hooks/useFiscalReports';
+import { useTreasurerReportsSummary } from '@/hooks/useTreasurerReportsSummary';
 import { useMeetingMinutesActions } from '@/hooks/useMeetingMinutes';
 import { useProfile } from '@/hooks/useProfile';
 import { generateMinutesText } from '@/utils/meetingMinutesTemplate';
@@ -36,10 +37,22 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
   const { toast } = useToast();
   const { data: fiscalUsers = [], isLoading: isLoadingFiscais, isError: isErrorFiscais } = useFiscalUsersFromRoles();
   const { data: allReports = [], isLoading: isLoadingReports, isError: isErrorReports } = useAllFiscalReports();
+  const { data: reportSummaries = [], isLoading: isLoadingSummaries } = useTreasurerReportsSummary();
   const { data: profile } = useProfile();
   const { createMinutes, updateMinutesStatus, saveSignatureSources } = useMeetingMinutesActions();
 
-  const finishedReports = useMemo(() => allReports.filter(r => r.status === 'finished'), [allReports]);
+  const finishedReports = useMemo(() => {
+    if (!reportSummaries.length) return [];
+    return allReports.filter(r => {
+      const summary = reportSummaries.find(s => s.reportId === r.id);
+      if (!summary) return r.status === 'finished';
+      return summary.isFinished || (
+        summary.pendingTransactions === 0 &&
+        summary.signatureCount >= 3 &&
+        summary.allDiligencesConfirmed
+      );
+    });
+  }, [allReports, reportSummaries]);
 
   const [meetingDate, setMeetingDate] = useState<Date>();
   const [meetingType, setMeetingType] = useState('ordinária');
@@ -339,7 +352,7 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
           <CardTitle className="text-lg">Relatórios Aprovados *</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoadingReports ? (
+          {(isLoadingReports || isLoadingSummaries) ? (
             <div className="space-y-2">
               <Skeleton className="h-8 w-full" />
               <Skeleton className="h-8 w-full" />
@@ -347,7 +360,10 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
           ) : isErrorReports ? (
             <p className="text-sm text-destructive">Erro ao carregar relatórios.</p>
           ) : finishedReports.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum relatório concluído disponível. Os relatórios precisam ter status "Concluído" para aparecerem aqui.</p>
+            <p className="text-sm text-muted-foreground">
+              Nenhum relatório concluído disponível.
+              {allReports.length > 0 && ` (${allReports.length} relatório(s) encontrado(s), mas nenhum atende aos critérios: 0 pendências, 3/3 assinaturas fiscais e diligências confirmadas).`}
+            </p>
           ) : (
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {finishedReports.map(r => (
