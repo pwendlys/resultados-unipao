@@ -71,7 +71,6 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
     const competencias = [...new Set(selectedReports.map(r => r.competencia))];
     const competenciasTexto = competencias.join(', ');
 
-    // We don't know diligencias yet, default to false
     const text = generateMinutesText({
       meetingDate,
       meetingType,
@@ -79,12 +78,13 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
       tesoureiroNome,
       convidadosNomes,
       competenciasTexto,
-      hasDiligencias: false,
+      hasDiligencias: hadDiligencias,
+      diligencesSummary: hadDiligencias ? diligencesSummary : undefined,
     });
 
     setMinutesText(text);
     setValidationResult(null);
-  }, [meetingDate, meetingType, selectedFiscais, selectedReportIds, convidados, fiscalUsers, finishedReports, tesoureiroNome]);
+  }, [meetingDate, meetingType, selectedFiscais, selectedReportIds, convidados, fiscalUsers, finishedReports, tesoureiroNome, hadDiligencias, diligencesSummary]);
 
   const handleToggleFiscal = (userId: string) => {
     setSelectedFiscais(prev => 
