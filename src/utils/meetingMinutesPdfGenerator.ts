@@ -224,14 +224,20 @@ const renderSignature = (doc: jsPDF, sig: SignatureSource, margin: number, yPos:
   try {
     if (sig.signaturePayload) {
       const normalizedPayload = normalizeSignatureData(sig.signaturePayload);
-      if (normalizedPayload) {
-        doc.addImage(normalizedPayload, 'PNG', margin, yPos, 80, 35);
-        yPos += 38;
+      console.log(`[MeetingMinutesPDF] Rendering signature for ${sig.displayName} (${sig.role}), payload length: ${normalizedPayload.length}`);
+      if (normalizedPayload && normalizedPayload.length > 100) {
+        const imgFormat = getImageFormat(normalizedPayload);
+        doc.addImage(normalizedPayload, imgFormat, margin, yPos, 120, 50);
+        yPos += 53;
+      } else {
+        doc.text('[Assinatura registrada no sistema]', margin, yPos);
+        yPos += 8;
       }
     }
   } catch (error) {
     console.error('Error adding signature image:', error);
     doc.text('[Assinatura não pôde ser renderizada]', margin, yPos);
+    yPos += 8;
   }
 
   doc.setFontSize(8);
