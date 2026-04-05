@@ -73,6 +73,8 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
   }>({ open: false, review: null });
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const [focusedDiligenceId, setFocusedDiligenceId] = useState<string | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Get auth user id for signatures
   useEffect(() => {
