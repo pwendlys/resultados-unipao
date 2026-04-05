@@ -1,42 +1,60 @@
 
 
-## Fix: Treasurer Signature Not Rendering in ATA PDF
+## Progress 90%/100% + Visual Improvements for FiscalReportsList
 
-### Root Cause
+### What Changes
 
-Arthur signed ~12 reports in rapid succession on 2026-04-02 (within 40 seconds). Most of these produced **blank canvas exports** (2118 chars = a transparent 400x200 PNG). The `resolveSignatures` function picks the first match ordered by `signed_at DESC`, which is always one of these blank signatures.
+**New progress logic** replacing the current broken calculation, plus a visual refresh of the report cards.
 
-The signature data is technically valid `data:image/png;base64,...` but contains no visible strokes — just a transparent canvas. jsPDF renders it, but nothing is visible.
+### Progress Rules
 
-### Solution
+| Condition | Progress | Status Label |
+|-----------|----------|-------------|
+| `pdf_url` exists OR `status === 'finished'` | **100%** | Finalizado |
+| `signatureCount >= 3` (no final PDF yet) | **90%** | Aguardando Tesouraria |
+| Otherwise | **0-89%** based on review + signatures | Em Revisão |
 
-Modify `resolveSignatures` in `meetingSignatureResolver.ts` to **prefer the largest signature payload** for each user across the selected reports, instead of just the most recent. A larger payload means more actual drawing content.
+Formula for "in progress":
+```
+reviewed = total_entries - pending_count
+base = floor((reviewed / total_entries) * 80)
+progress = min(base + signatureCount * 3, 89)
+```
 
-### Changes
+### Data Sources (all already available)
 
-**File: `src/utils/meetingSignatureResolver.ts`**
+- `report.total_entries`, `report.pending_count`, `report.approved_count` -- from `useFiscalReports`
+- `report.pdf_url`, `report.status` -- from `useFiscalReports`
+- `signatureCount` -- from `useReportsListStats`
+- `diligenceCount` -- from `useReportsListStats`
 
-Replace the `.find()` calls with logic that picks the signature with the **longest `signature_data`** for each user:
-
-1. For treasurer lookup in `treasurer_signatures`: instead of `safeTreasurerSigs.find(s => s.user_id === id)` (which returns the first = most recent), filter all matches for that user and pick the one with `max(signature_data.length)`.
-
-2. Same for fiscal lookup in `fiscal_report_signatures`.
-
-3. Add a minimum payload length check (e.g., 3000 chars). If the best signature is still below this threshold, log a warning but still include it (don't block PDF generation).
-
-4. Add debug logs: for each resolved signature, log the chosen payload length and source report.
-
-This is a ~15-line change in the resolver. No other files need modification — the PDF generator and form already handle the data correctly.
+No new queries or database changes needed.
 
 ### Files Modified
 
 | File | Change |
 |------|--------|
-| `src/utils/meetingSignatureResolver.ts` | Pick largest signature payload per user instead of most recent; add minimum-length warning |
+| `src/components/fiscal/FiscalReportsList.tsx` | Replace `getProgressPercentage` with new `computeReportProgress` function; update `getStatusInfo` to use 3-tier logic; redesign card layout with labeled KPI chips, color-coded progress bar, prominent "Abrir" CTA button, and "Tesouraria: PDF Sim/Nao" indicator |
 
-### What Will NOT Change
-- No changes to the PDF generator (it already renders correctly when given good data)
-- No changes to MeetingMinutesForm
-- No database changes
-- No changes to fiscal reports module
+### UI Card Layout (new structure)
+
+```text
++----------------------------------------------------------+
+| [Title]                          [Badge: status label]   |
+| Calendar icon  Competencia  |  Building icon  Tipo       |
+|                                                          |
+| ✅ Aprovadas: X  ⚠️ Diligencias: X  ⏳ Pendentes: X     |
+| ✍️ Fiscais: X/3  📄 Tesouraria: Sim/Nao                  |
+|                                                          |
+| [===========progress bar===========] 90%  [Abrir →]      |
+| Em Revisão / Aguardando Tesouraria / Finalizado          |
++----------------------------------------------------------+
+```
+
+Key visual changes:
+- KPI chips with labels (not just icons + numbers)
+- Progress bar color: green at 100%, amber at 90%, blue otherwise
+- Status sub-label below the progress bar
+- "Abrir" button replaces the subtle arrow icon
+- Treasurer PDF indicator added as a new KPI chip
 
