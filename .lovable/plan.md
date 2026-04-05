@@ -1,75 +1,38 @@
 
 
-## Fix: Treasurer Signature Image Not Rendering in ATA PDF
+## Fix: Delete Ata — Use Storage API Instead of Direct SQL
 
 ### Root Cause
 
-The `renderSignature` function in `meetingMinutesPdfGenerator.ts` hardcodes `'PNG'` as the image format for `doc.addImage()`. If the treasurer's signature payload has a slightly different encoding or if jsPDF silently fails for certain base64 strings, the image won't render but no error is thrown (the catch block never fires).
+The `delete_meeting_minutes` RPC function includes `DELETE FROM storage.objects WHERE ...`, which Supabase forbids. Storage must be managed via the Storage API.
 
-Additionally, the current `normalizeSignatureData` doesn't log anything, making it impossible to diagnose whether the payload is valid.
+### Solution
 
-### Fix
+Two changes — simplest approach (no edge function needed since `pdf_url` already stores the file path and the treasurer has Storage RLS permissions):
 
-**File: `src/utils/meetingMinutesPdfGenerator.ts`**
+**1. Update the `delete_meeting_minutes` RPC** — Remove the `storage.objects` DELETE line. Keep the rest (permission check + cascade delete of child records + main record).
 
-1. Improve `normalizeSignatureData` to:
-   - Log payload length and prefix for debugging
-   - Handle edge cases: empty string, whitespace-only, very short payloads
-   - Strip any accidental double `data:image` prefix
-
-2. Improve `renderSignature` to:
-   - Detect image type from the data URL (`PNG` vs `JPEG`) instead of hardcoding `'PNG'`
-   - Log before `addImage` call: payload length, detected type
-   - Use larger dimensions (120x50 instead of 80x35) for better visibility
-   - Add explicit fallback text if payload is present but `addImage` silently fails (render a "signature registered" note)
-
-### Specific Changes
-
-```typescript
-// normalizeSignatureData — enhanced
-const normalizeSignatureData = (payload: string): string => {
-  if (!payload || !payload.trim()) {
-    console.warn('[MeetingMinutesPDF] Empty signature payload');
-    return '';
-  }
-  const trimmed = payload.trim();
-  // Already a proper data URL
-  if (trimmed.startsWith('data:image/')) return trimmed;
-  // Raw base64 — add PNG prefix
-  console.log('[MeetingMinutesPDF] Adding data:image prefix to raw base64');
-  return `data:image/png;base64,${trimmed}`;
-};
-
-// Detect format for addImage
-const getImageFormat = (dataUrl: string): string => {
-  if (dataUrl.includes('image/jpeg') || dataUrl.includes('image/jpg')) return 'JPEG';
-  return 'PNG';
-};
-
-// In renderSignature — replace the addImage block:
-if (sig.signaturePayload) {
-  const normalizedPayload = normalizeSignatureData(sig.signaturePayload);
-  console.log(`[MeetingMinutesPDF] Rendering signature for ${sig.displayName} (${sig.role}), payload length: ${normalizedPayload.length}`);
-  if (normalizedPayload && normalizedPayload.length > 100) {
-    const imgFormat = getImageFormat(normalizedPayload);
-    doc.addImage(normalizedPayload, imgFormat, margin, yPos, 120, 50);
-    yPos += 53;
-  } else {
-    doc.text('[Assinatura registrada no sistema]', margin, yPos);
-    yPos += 8;
-  }
-}
+**2. Update `MeetingMinutesList.tsx`** — Before calling the RPC, delete the PDF via Storage API client-side:
 ```
+if (deleteTarget.pdf_url) {
+  await supabase.storage.from('fiscal-files').remove([deleteTarget.pdf_url]);
+}
+await deleteMinutes.mutateAsync(deleteTarget.id);
+```
+
+The treasurer already has `SELECT` and `INSERT` RLS on `storage.objects` for `fiscal-files` bucket. We also need a **DELETE** RLS policy so the treasurer can remove their own files.
+
+**3. Add Storage RLS policy for DELETE** — Migration to allow tesoureiro (and admin) to delete files from the `fiscal-files` bucket.
 
 ### Files Modified
 
-| File | Change |
+| File/Resource | Change |
 |------|--------|
-| `meetingMinutesPdfGenerator.ts` | Enhanced normalization, auto-detect image format, larger dimensions, debug logging |
+| Migration (SQL) | Remove `storage.objects` delete from RPC; add DELETE RLS policy on `storage.objects` |
+| `MeetingMinutesList.tsx` | Delete PDF via `supabase.storage.remove()` before calling RPC |
 
 ### What Will NOT Change
-- No changes to signature collection (TreasurerSignatureModal, FiscalSignatureModal)
-- No changes to the resolver (`meetingSignatureResolver.ts`)
-- No database changes
-- No changes to the fiscal reports module
+- No edge function needed (client-side Storage API works with proper RLS)
+- No new columns needed (`pdf_url` already stores the path)
+- No changes to fiscal reports module
 
