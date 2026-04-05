@@ -61,6 +61,7 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
   const [convidados, setConvidados] = useState('');
   const [selectedReportIds, setSelectedReportIds] = useState<string[]>([]);
   const [minutesText, setMinutesText] = useState('');
+  const [manuallyEdited, setManuallyEdited] = useState(false);
   const [hadDiligencias, setHadDiligencias] = useState(false);
   const [diligencesSummary, setDiligencesSummary] = useState('');
   const [isValidating, setIsValidating] = useState(false);
@@ -95,9 +96,11 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
       diligencesSummary: hadDiligencias ? diligencesSummary : undefined,
     });
 
-    setMinutesText(text);
+    if (!manuallyEdited) {
+      setMinutesText(text);
+    }
     setValidationResult(null);
-  }, [meetingDate, meetingType, selectedFiscais, selectedReportIds, convidados, fiscalUsers, finishedReports, tesoureiroNome, hadDiligencias, diligencesSummary]);
+  }, [meetingDate, meetingType, selectedFiscais, selectedReportIds, convidados, fiscalUsers, finishedReports, tesoureiroNome, hadDiligencias, diligencesSummary, manuallyEdited]);
 
   const handleToggleFiscal = (userId: string) => {
     setSelectedFiscais(prev => 
@@ -447,13 +450,27 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">Texto da Ata</CardTitle>
+          {manuallyEdited && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setManuallyEdited(false);
+              }}
+            >
+              Regenerar texto automático
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <Textarea
             value={minutesText}
-            onChange={e => setMinutesText(e.target.value)}
+            onChange={e => {
+              setMinutesText(e.target.value);
+              setManuallyEdited(true);
+            }}
             className="min-h-[300px] font-mono text-sm"
             placeholder="Selecione data, fiscais e relatórios para gerar o texto automaticamente..."
           />
