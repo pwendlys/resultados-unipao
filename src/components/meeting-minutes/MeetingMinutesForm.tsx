@@ -96,9 +96,11 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
       diligencesSummary: hadDiligencias ? diligencesSummary : undefined,
     });
 
-    setMinutesText(text);
+    if (!manuallyEdited) {
+      setMinutesText(text);
+    }
     setValidationResult(null);
-  }, [meetingDate, meetingType, selectedFiscais, selectedReportIds, convidados, fiscalUsers, finishedReports, tesoureiroNome, hadDiligencias, diligencesSummary]);
+  }, [meetingDate, meetingType, selectedFiscais, selectedReportIds, convidados, fiscalUsers, finishedReports, tesoureiroNome, hadDiligencias, diligencesSummary, manuallyEdited]);
 
   const handleToggleFiscal = (userId: string) => {
     setSelectedFiscais(prev => 
