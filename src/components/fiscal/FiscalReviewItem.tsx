@@ -108,8 +108,22 @@ const FiscalReviewItem = ({
     ? 'bg-orange-50 border-orange-300' 
     : statusInfo.bg;
 
+  // Auto-expand when highlighted and is diligence
+  useEffect(() => {
+    if (isHighlighted && isDiligence && !expanded) {
+      setExpanded(true);
+    }
+  }, [isHighlighted]);
+
   return (
-    <Card className={cn("transition-all", cardBg)}>
+    <Card 
+      id={`review-${review.transaction_id}`}
+      className={cn(
+        "transition-all",
+        cardBg,
+        isHighlighted && "ring-2 ring-orange-400 animate-pulse"
+      )}
+    >
       <CardContent className="p-3 md:p-4">
         {/* Main Row */}
         <div className="flex items-start gap-3">
