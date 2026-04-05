@@ -186,9 +186,19 @@ const createMeetingMinutesPDF = (data: MeetingMinutesPdfData): jsPDF => {
 };
 
 const normalizeSignatureData = (payload: string): string => {
-  if (!payload) return '';
-  if (payload.startsWith('data:image')) return payload;
-  return `data:image/png;base64,${payload}`;
+  if (!payload || !payload.trim()) {
+    console.warn('[MeetingMinutesPDF] Empty signature payload');
+    return '';
+  }
+  const trimmed = payload.trim();
+  if (trimmed.startsWith('data:image/')) return trimmed;
+  console.log('[MeetingMinutesPDF] Adding data:image prefix to raw base64, length:', trimmed.length);
+  return `data:image/png;base64,${trimmed}`;
+};
+
+const getImageFormat = (dataUrl: string): string => {
+  if (dataUrl.includes('image/jpeg') || dataUrl.includes('image/jpg')) return 'JPEG';
+  return 'PNG';
 };
 
 const renderSignature = (doc: jsPDF, sig: SignatureSource, margin: number, yPos: number, pageWidth: number) => {
@@ -214,14 +224,20 @@ const renderSignature = (doc: jsPDF, sig: SignatureSource, margin: number, yPos:
   try {
     if (sig.signaturePayload) {
       const normalizedPayload = normalizeSignatureData(sig.signaturePayload);
-      if (normalizedPayload) {
-        doc.addImage(normalizedPayload, 'PNG', margin, yPos, 80, 35);
-        yPos += 38;
+      console.log(`[MeetingMinutesPDF] Rendering signature for ${sig.displayName} (${sig.role}), payload length: ${normalizedPayload.length}`);
+      if (normalizedPayload && normalizedPayload.length > 100) {
+        const imgFormat = getImageFormat(normalizedPayload);
+        doc.addImage(normalizedPayload, imgFormat, margin, yPos, 120, 50);
+        yPos += 53;
+      } else {
+        doc.text('[Assinatura registrada no sistema]', margin, yPos);
+        yPos += 8;
       }
     }
   } catch (error) {
     console.error('Error adding signature image:', error);
     doc.text('[Assinatura não pôde ser renderizada]', margin, yPos);
+    yPos += 8;
   }
 
   doc.setFontSize(8);
