@@ -61,6 +61,7 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
   const [convidados, setConvidados] = useState('');
   const [selectedReportIds, setSelectedReportIds] = useState<string[]>([]);
   const [minutesText, setMinutesText] = useState('');
+  const [manuallyEdited, setManuallyEdited] = useState(false);
   const [hadDiligencias, setHadDiligencias] = useState(false);
   const [diligencesSummary, setDiligencesSummary] = useState('');
   const [isValidating, setIsValidating] = useState(false);
