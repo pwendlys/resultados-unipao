@@ -373,8 +373,24 @@ const MeetingMinutesForm = ({ onBack, onCreated }: MeetingMinutesFormProps) => {
 
       {/* Reports */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">Relatórios Aprovados *</CardTitle>
+          {finishedReports.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (selectedReportIds.length === finishedReports.length) {
+                  setSelectedReportIds([]);
+                } else {
+                  setSelectedReportIds(finishedReports.map(r => r.id));
+                }
+              }}
+            >
+              {selectedReportIds.length === finishedReports.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {(isLoadingReports || isLoadingSummaries) ? (
