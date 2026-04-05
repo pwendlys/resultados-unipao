@@ -1,60 +1,62 @@
 
 
-## Progress 90%/100% + Visual Improvements for FiscalReportsList
+## Auto-Navigation Between Diligences
 
 ### What Changes
 
-**New progress logic** replacing the current broken calculation, plus a visual refresh of the report cards.
+Add diligence-focused navigation to `FiscalReviewPanel`: clicking the diligence counter scrolls to the next pending diligence, and confirming one auto-navigates to the next. A highlight animation and position indicator ("Diligencia 2 de 5") enhance orientation.
 
-### Progress Rules
+### Implementation
 
-| Condition | Progress | Status Label |
-|-----------|----------|-------------|
-| `pdf_url` exists OR `status === 'finished'` | **100%** | Finalizado |
-| `signatureCount >= 3` (no final PDF yet) | **90%** | Aguardando Tesouraria |
-| Otherwise | **0-89%** based on review + signatures | Em Revisão |
+**File: `src/components/fiscal/FiscalReviewPanel.tsx`**
 
-Formula for "in progress":
+1. **New state**: `focusedDiligenceId: string | null` to track current diligence in focus.
+
+2. **Computed list** `diligenceIds`: derived from `sortedFilteredReviews`, filtered to items where `diligenceStatus[tx_id]?.isDiligence && !myReviewsMap[tx_id]?.diligence_ack` (pending diligences the user hasn't acknowledged). Respects current filters and sort order.
+
+3. **`navigateToDiligence(targetId)`** helper:
+   - Sets `focusedDiligenceId = targetId`
+   - Calls `document.getElementById('review-' + targetId)?.scrollIntoView({ behavior: 'smooth', block: 'center' })`
+   - Auto-clears highlight after 2s
+
+4. **`goToNextDiligence()`**: finds next ID after `focusedDiligenceId` in `diligenceIds`, or wraps to `[0]`. If none remain, shows toast "Todas as diligencias foram revisadas".
+
+5. **Diligence counter becomes clickable**: the existing `AlertCircle` + count section in the summary bar gets wrapped in a `<button>` with "Ir para proxima" label. Calls `goToNextDiligence()`.
+
+6. **Position indicator**: when `focusedDiligenceId` is set and diligences exist, show small text "Diligencia X de Y" next to the counter.
+
+7. **After `handleConfirmDiligence` succeeds**: call `goToNextDiligence()` (with a short delay to allow query invalidation to settle — use `setTimeout` of ~500ms after the mutation succeeds).
+
+**File: `src/components/fiscal/FiscalReviewItem.tsx`**
+
+8. **Add `id` attribute**: set `id={'review-' + review.transaction_id}` on the root `<Card>`.
+
+9. **Add `isHighlighted` prop** (boolean): when true, apply a pulsing ring animation (`ring-2 ring-orange-400 animate-pulse` for ~2s).
+
+10. **Auto-expand on highlight**: if `isHighlighted && isDiligence && !expanded`, call `setExpanded(true)`.
+
+### Data Flow
+
+```text
+diligenceIds = sortedFilteredReviews
+  .filter(r => diligenceStatus[r.tx_id]?.isDiligence 
+            && !myReviewsMap[r.tx_id]?.diligence_ack)
+  .map(r => r.transaction_id)
+
+Click counter → goToNextDiligence() → navigateToDiligence(nextId)
+Confirm diligence → mutation success → goToNextDiligence()
+No more → toast "Todas as diligencias foram revisadas"
 ```
-reviewed = total_entries - pending_count
-base = floor((reviewed / total_entries) * 80)
-progress = min(base + signatureCount * 3, 89)
-```
-
-### Data Sources (all already available)
-
-- `report.total_entries`, `report.pending_count`, `report.approved_count` -- from `useFiscalReports`
-- `report.pdf_url`, `report.status` -- from `useFiscalReports`
-- `signatureCount` -- from `useReportsListStats`
-- `diligenceCount` -- from `useReportsListStats`
-
-No new queries or database changes needed.
 
 ### Files Modified
 
 | File | Change |
 |------|--------|
-| `src/components/fiscal/FiscalReportsList.tsx` | Replace `getProgressPercentage` with new `computeReportProgress` function; update `getStatusInfo` to use 3-tier logic; redesign card layout with labeled KPI chips, color-coded progress bar, prominent "Abrir" CTA button, and "Tesouraria: PDF Sim/Nao" indicator |
+| `src/components/fiscal/FiscalReviewPanel.tsx` | Add `focusedDiligenceId` state, `diligenceIds` memo, navigation helpers, clickable counter with indicator, auto-navigate after confirm |
+| `src/components/fiscal/FiscalReviewItem.tsx` | Add `id` attr on Card, `isHighlighted` prop with ring animation, auto-expand on highlight |
 
-### UI Card Layout (new structure)
-
-```text
-+----------------------------------------------------------+
-| [Title]                          [Badge: status label]   |
-| Calendar icon  Competencia  |  Building icon  Tipo       |
-|                                                          |
-| ✅ Aprovadas: X  ⚠️ Diligencias: X  ⏳ Pendentes: X     |
-| ✍️ Fiscais: X/3  📄 Tesouraria: Sim/Nao                  |
-|                                                          |
-| [===========progress bar===========] 90%  [Abrir →]      |
-| Em Revisão / Aguardando Tesouraria / Finalizado          |
-+----------------------------------------------------------+
-```
-
-Key visual changes:
-- KPI chips with labels (not just icons + numbers)
-- Progress bar color: green at 100%, amber at 90%, blue otherwise
-- Status sub-label below the progress bar
-- "Abrir" button replaces the subtle arrow icon
-- Treasurer PDF indicator added as a new KPI chip
+### What Will NOT Change
+- No business logic changes (diligence rules, signatures, approvals)
+- No database changes
+- No changes to other modules
 
