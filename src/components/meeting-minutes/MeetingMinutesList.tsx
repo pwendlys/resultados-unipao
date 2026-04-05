@@ -59,6 +59,10 @@ const MeetingMinutesList = ({ onNewMinutes, onViewDetail }: MeetingMinutesListPr
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
+      // Delete PDF from Storage API first (direct SQL on storage.objects is forbidden)
+      if (deleteTarget.pdf_url) {
+        await supabase.storage.from('fiscal-files').remove([deleteTarget.pdf_url]);
+      }
       await deleteMinutes.mutateAsync(deleteTarget.id);
       setDeleteTarget(null);
     } catch {
