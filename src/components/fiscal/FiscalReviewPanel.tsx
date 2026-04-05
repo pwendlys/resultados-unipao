@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -73,6 +73,8 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
   }>({ open: false, review: null });
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const [focusedDiligenceId, setFocusedDiligenceId] = useState<string | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Get auth user id for signatures
   useEffect(() => {
@@ -203,6 +205,42 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
   // Apply sorting to filtered reviews
   const sortedFilteredReviews = sortReviews(filteredReviews);
 
+  // === Diligence navigation ===
+  const pendingDiligenceIds = useMemo(() => {
+    return sortedFilteredReviews
+      .filter(r => {
+        const txDil = diligenceStatus[r.transaction_id];
+        const myRev = myReviewsMap[r.transaction_id];
+        return txDil?.isDiligence && !myRev?.diligence_ack;
+      })
+      .map(r => r.transaction_id);
+  }, [sortedFilteredReviews, diligenceStatus, myReviewsMap]);
+
+  const navigateToDiligence = useCallback((targetId: string) => {
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    setFocusedDiligenceId(targetId);
+    setTimeout(() => {
+      document.getElementById(`review-${targetId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+    highlightTimerRef.current = setTimeout(() => {
+      setFocusedDiligenceId(null);
+    }, 2000);
+  }, []);
+
+  const goToNextDiligence = useCallback(() => {
+    if (pendingDiligenceIds.length === 0) {
+      toast({ title: "✅ Todas as diligências foram revisadas" });
+      return;
+    }
+    const currentIdx = focusedDiligenceId ? pendingDiligenceIds.indexOf(focusedDiligenceId) : -1;
+    const nextIdx = (currentIdx + 1) % pendingDiligenceIds.length;
+    navigateToDiligence(pendingDiligenceIds[nextIdx]);
+  }, [pendingDiligenceIds, focusedDiligenceId, navigateToDiligence, toast]);
+
+  const currentDiligencePosition = focusedDiligenceId
+    ? pendingDiligenceIds.indexOf(focusedDiligenceId) + 1
+    : 0;
+
   // Stats calculated from the current fiscal user's perspective
   const myApprovedCount = myReviews.filter(r => r.status === 'approved').length;
   const myDivergentCount = myReviews.filter(r => r.status === 'divergent').length;
@@ -308,6 +346,10 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
         title: "Diligência Confirmada",
         description: "Você confirmou ciência da diligência.",
       });
+      // Auto-navigate to next pending diligence after a short delay
+      setTimeout(() => {
+        goToNextDiligence();
+      }, 500);
     } catch (error) {
       toast({
         title: "Erro",
@@ -493,11 +535,22 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
               <span className="text-xs">Pendentes</span>
             </div>
             {stats.diligences > 0 && (
-              <div className="flex items-center gap-1 text-orange-600">
+              <button
+                onClick={goToNextDiligence}
+                className="flex items-center gap-1 text-orange-600 hover:text-orange-700 transition-colors cursor-pointer group"
+                title="Ir para próxima diligência pendente"
+              >
                 <AlertCircle className="h-4 w-4" />
                 <span className="font-medium">{stats.diligences}</span>
                 <span className="text-muted-foreground text-xs">Diligências</span>
-              </div>
+                {pendingDiligenceIds.length > 0 && (
+                  <span className="text-xs text-orange-500 group-hover:underline ml-1">
+                    {currentDiligencePosition > 0 
+                      ? `(${currentDiligencePosition}/${pendingDiligenceIds.length})`
+                      : `→ Ir`}
+                  </span>
+                )}
+              </button>
             )}
             <div className="flex items-center gap-1">
               <PenTool className="h-4 w-4 text-muted-foreground" />
@@ -633,6 +686,7 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
                 diligenceCreatorName={txDiligence?.diligenceCreatorName}
                 diligenceCreatedAt={txDiligence?.diligenceCreatedAt}
                 diligenceObservation={txDiligence?.divergentObservation}
+                isHighlighted={focusedDiligenceId === review.transaction_id}
                 onApprove={() => handleApprove(review)}
                 onFlag={() => handleFlag(review)}
                 onConfirmDiligence={() => handleConfirmDiligence(review.transaction_id)}
