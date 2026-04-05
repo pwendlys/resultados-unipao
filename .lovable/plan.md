@@ -1,38 +1,75 @@
 
 
-## Fix: Minutes Text Not Rendering in PDF
+## Fix: Treasurer Signature Image Not Rendering in ATA PDF
 
 ### Root Cause
 
-The PDF generator has the text rendering code (lines 41-65), and the data is being passed correctly. The bug is in how long paragraphs are rendered:
+The `renderSignature` function in `meetingMinutesPdfGenerator.ts` hardcodes `'PNG'` as the image format for `doc.addImage()`. If the treasurer's signature payload has a slightly different encoding or if jsPDF silently fails for certain base64 strings, the image won't render but no error is thrown (the catch block never fires).
 
-1. **`checkPageBreak(lines.length * 6 + 10)`** checks if the ENTIRE paragraph fits. If it doesn't fit, it adds ONE page — but if the paragraph is taller than a full page (which the first content paragraph with all names certainly is), it overflows past the page boundary and becomes invisible.
-
-2. **`doc.text(lines, margin, yPos, { align: 'justify', maxWidth: textWidth })`** renders all lines at once from a single `yPos`. jsPDF doesn't auto-paginate — text that goes past the page bottom simply disappears.
+Additionally, the current `normalizeSignatureData` doesn't log anything, making it impossible to diagnose whether the payload is valid.
 
 ### Fix
 
-**`src/utils/meetingMinutesPdfGenerator.ts`** — Replace the paragraph rendering block (lines 55-65) with line-by-line rendering that checks for page breaks after each line:
+**File: `src/utils/meetingMinutesPdfGenerator.ts`**
 
-```
-for each paragraph:
-  split into lines with splitTextToSize
-  for each line:
-    checkPageBreak(7)        // check per-line, not per-paragraph
-    doc.text(line, margin, yPos)
-    yPos += 6
-  yPos += 4                 // paragraph spacing
-```
+1. Improve `normalizeSignatureData` to:
+   - Log payload length and prefix for debugging
+   - Handle edge cases: empty string, whitespace-only, very short payloads
+   - Strip any accidental double `data:image` prefix
 
-This ensures long paragraphs flow across pages correctly instead of being rendered as a single block that overflows.
+2. Improve `renderSignature` to:
+   - Detect image type from the data URL (`PNG` vs `JPEG`) instead of hardcoding `'PNG'`
+   - Log before `addImage` call: payload length, detected type
+   - Use larger dimensions (120x50 instead of 80x35) for better visibility
+   - Add explicit fallback text if payload is present but `addImage` silently fails (render a "signature registered" note)
+
+### Specific Changes
+
+```typescript
+// normalizeSignatureData — enhanced
+const normalizeSignatureData = (payload: string): string => {
+  if (!payload || !payload.trim()) {
+    console.warn('[MeetingMinutesPDF] Empty signature payload');
+    return '';
+  }
+  const trimmed = payload.trim();
+  // Already a proper data URL
+  if (trimmed.startsWith('data:image/')) return trimmed;
+  // Raw base64 — add PNG prefix
+  console.log('[MeetingMinutesPDF] Adding data:image prefix to raw base64');
+  return `data:image/png;base64,${trimmed}`;
+};
+
+// Detect format for addImage
+const getImageFormat = (dataUrl: string): string => {
+  if (dataUrl.includes('image/jpeg') || dataUrl.includes('image/jpg')) return 'JPEG';
+  return 'PNG';
+};
+
+// In renderSignature — replace the addImage block:
+if (sig.signaturePayload) {
+  const normalizedPayload = normalizeSignatureData(sig.signaturePayload);
+  console.log(`[MeetingMinutesPDF] Rendering signature for ${sig.displayName} (${sig.role}), payload length: ${normalizedPayload.length}`);
+  if (normalizedPayload && normalizedPayload.length > 100) {
+    const imgFormat = getImageFormat(normalizedPayload);
+    doc.addImage(normalizedPayload, imgFormat, margin, yPos, 120, 50);
+    yPos += 53;
+  } else {
+    doc.text('[Assinatura registrada no sistema]', margin, yPos);
+    yPos += 8;
+  }
+}
+```
 
 ### Files Modified
 
 | File | Change |
 |------|--------|
-| `meetingMinutesPdfGenerator.ts` | Line-by-line rendering with per-line page breaks |
+| `meetingMinutesPdfGenerator.ts` | Enhanced normalization, auto-detect image format, larger dimensions, debug logging |
 
 ### What Will NOT Change
-- No changes to the template, form, hooks, or any other module
+- No changes to signature collection (TreasurerSignatureModal, FiscalSignatureModal)
+- No changes to the resolver (`meetingSignatureResolver.ts`)
 - No database changes
+- No changes to the fiscal reports module
 
