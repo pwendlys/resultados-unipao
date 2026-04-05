@@ -54,6 +54,20 @@ export const resolveSignatures = async (
 
   console.log(`[SignatureResolver] Found ${safeFiscalSigs.length} fiscal sigs, ${safeTreasurerSigs.length} treasurer sigs across ${selectedReportIds.length} reports`);
 
+  const MIN_PAYLOAD_LENGTH = 3000;
+
+  // Helper: pick the signature with the longest payload (most drawing content)
+  const pickBest = <T extends { user_id: string; signature_data: string }>(
+    sigs: T[],
+    userId: string
+  ): T | undefined => {
+    const matches = sigs.filter(s => s.user_id === userId);
+    if (matches.length === 0) return undefined;
+    // Sort by payload length descending — largest = most strokes
+    matches.sort((a, b) => (b.signature_data?.length ?? 0) - (a.signature_data?.length ?? 0));
+    return matches[0];
+  };
+
   const resolved = new Map<string, SignatureSource>();
   const missing: string[] = [];
 
@@ -61,10 +75,13 @@ export const resolveSignatures = async (
     const isTreasurer = participant.role === 'tesoureiro';
 
     if (isTreasurer) {
-      // Search treasurer table first for treasurer participants
-      const treasurerSig = safeTreasurerSigs.find(s => s.user_id === participant.userId);
+      const treasurerSig = pickBest(safeTreasurerSigs, participant.userId);
       if (treasurerSig) {
-        console.log(`[SignatureResolver] ✅ Treasurer "${participant.displayName}" found in treasurer_signatures (report: ${treasurerSig.report_id}, payload length: ${treasurerSig.signature_data?.length})`);
+        const len = treasurerSig.signature_data?.length ?? 0;
+        if (len < MIN_PAYLOAD_LENGTH) {
+          console.warn(`[SignatureResolver] ⚠️ Treasurer "${participant.displayName}" best signature is only ${len} chars (possibly blank canvas)`);
+        }
+        console.log(`[SignatureResolver] ✅ Treasurer "${participant.displayName}" found in treasurer_signatures (report: ${treasurerSig.report_id}, payload length: ${len})`);
         resolved.set(participant.userId, {
           userId: participant.userId,
           signaturePayload: treasurerSig.signature_data,
@@ -77,10 +94,13 @@ export const resolveSignatures = async (
         continue;
       }
 
-      // Fallback: check fiscal signatures table
-      const fiscalSig = safeFiscalSigs.find(s => s.user_id === participant.userId);
+      const fiscalSig = pickBest(safeFiscalSigs, participant.userId);
       if (fiscalSig) {
-        console.log(`[SignatureResolver] ✅ Treasurer "${participant.displayName}" found in fiscal_report_signatures (fallback)`);
+        const len = fiscalSig.signature_data?.length ?? 0;
+        if (len < MIN_PAYLOAD_LENGTH) {
+          console.warn(`[SignatureResolver] ⚠️ Treasurer "${participant.displayName}" fallback signature is only ${len} chars (possibly blank canvas)`);
+        }
+        console.log(`[SignatureResolver] ✅ Treasurer "${participant.displayName}" found in fiscal_report_signatures (fallback, payload length: ${len})`);
         resolved.set(participant.userId, {
           userId: participant.userId,
           signaturePayload: fiscalSig.signature_data,
@@ -93,10 +113,13 @@ export const resolveSignatures = async (
         continue;
       }
     } else {
-      // Search fiscal signatures first for fiscal participants
-      const fiscalSig = safeFiscalSigs.find(s => s.user_id === participant.userId);
+      const fiscalSig = pickBest(safeFiscalSigs, participant.userId);
       if (fiscalSig) {
-        console.log(`[SignatureResolver] ✅ Fiscal "${participant.displayName}" found in fiscal_report_signatures (payload length: ${fiscalSig.signature_data?.length})`);
+        const len = fiscalSig.signature_data?.length ?? 0;
+        if (len < MIN_PAYLOAD_LENGTH) {
+          console.warn(`[SignatureResolver] ⚠️ Fiscal "${participant.displayName}" best signature is only ${len} chars (possibly blank canvas)`);
+        }
+        console.log(`[SignatureResolver] ✅ Fiscal "${participant.displayName}" found in fiscal_report_signatures (payload length: ${len})`);
         resolved.set(participant.userId, {
           userId: participant.userId,
           signaturePayload: fiscalSig.signature_data,
@@ -109,10 +132,13 @@ export const resolveSignatures = async (
         continue;
       }
 
-      // Fallback: check treasurer signatures table
-      const treasurerSig = safeTreasurerSigs.find(s => s.user_id === participant.userId);
+      const treasurerSig = pickBest(safeTreasurerSigs, participant.userId);
       if (treasurerSig) {
-        console.log(`[SignatureResolver] ✅ Fiscal "${participant.displayName}" found in treasurer_signatures (fallback)`);
+        const len = treasurerSig.signature_data?.length ?? 0;
+        if (len < MIN_PAYLOAD_LENGTH) {
+          console.warn(`[SignatureResolver] ⚠️ Fiscal "${participant.displayName}" fallback signature is only ${len} chars (possibly blank canvas)`);
+        }
+        console.log(`[SignatureResolver] ✅ Fiscal "${participant.displayName}" found in treasurer_signatures (fallback, payload length: ${len})`);
         resolved.set(participant.userId, {
           userId: participant.userId,
           signaturePayload: treasurerSig.signature_data,
