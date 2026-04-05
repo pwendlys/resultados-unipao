@@ -205,6 +205,42 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
   // Apply sorting to filtered reviews
   const sortedFilteredReviews = sortReviews(filteredReviews);
 
+  // === Diligence navigation ===
+  const pendingDiligenceIds = useMemo(() => {
+    return sortedFilteredReviews
+      .filter(r => {
+        const txDil = diligenceStatus[r.transaction_id];
+        const myRev = myReviewsMap[r.transaction_id];
+        return txDil?.isDiligence && !myRev?.diligence_ack;
+      })
+      .map(r => r.transaction_id);
+  }, [sortedFilteredReviews, diligenceStatus, myReviewsMap]);
+
+  const navigateToDiligence = useCallback((targetId: string) => {
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    setFocusedDiligenceId(targetId);
+    setTimeout(() => {
+      document.getElementById(`review-${targetId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+    highlightTimerRef.current = setTimeout(() => {
+      setFocusedDiligenceId(null);
+    }, 2000);
+  }, []);
+
+  const goToNextDiligence = useCallback(() => {
+    if (pendingDiligenceIds.length === 0) {
+      toast({ title: "✅ Todas as diligências foram revisadas" });
+      return;
+    }
+    const currentIdx = focusedDiligenceId ? pendingDiligenceIds.indexOf(focusedDiligenceId) : -1;
+    const nextIdx = (currentIdx + 1) % pendingDiligenceIds.length;
+    navigateToDiligence(pendingDiligenceIds[nextIdx]);
+  }, [pendingDiligenceIds, focusedDiligenceId, navigateToDiligence, toast]);
+
+  const currentDiligencePosition = focusedDiligenceId
+    ? pendingDiligenceIds.indexOf(focusedDiligenceId) + 1
+    : 0;
+
   // Stats calculated from the current fiscal user's perspective
   const myApprovedCount = myReviews.filter(r => r.status === 'approved').length;
   const myDivergentCount = myReviews.filter(r => r.status === 'divergent').length;
