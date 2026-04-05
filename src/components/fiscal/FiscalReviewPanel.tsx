@@ -535,11 +535,22 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
               <span className="text-xs">Pendentes</span>
             </div>
             {stats.diligences > 0 && (
-              <div className="flex items-center gap-1 text-orange-600">
+              <button
+                onClick={goToNextDiligence}
+                className="flex items-center gap-1 text-orange-600 hover:text-orange-700 transition-colors cursor-pointer group"
+                title="Ir para próxima diligência pendente"
+              >
                 <AlertCircle className="h-4 w-4" />
                 <span className="font-medium">{stats.diligences}</span>
                 <span className="text-muted-foreground text-xs">Diligências</span>
-              </div>
+                {pendingDiligenceIds.length > 0 && (
+                  <span className="text-xs text-orange-500 group-hover:underline ml-1">
+                    {currentDiligencePosition > 0 
+                      ? `(${currentDiligencePosition}/${pendingDiligenceIds.length})`
+                      : `→ Ir`}
+                  </span>
+                )}
+              </button>
             )}
             <div className="flex items-center gap-1">
               <PenTool className="h-4 w-4 text-muted-foreground" />
