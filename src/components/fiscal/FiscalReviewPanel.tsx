@@ -686,6 +686,7 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
                 diligenceCreatorName={txDiligence?.diligenceCreatorName}
                 diligenceCreatedAt={txDiligence?.diligenceCreatedAt}
                 diligenceObservation={txDiligence?.divergentObservation}
+                isHighlighted={focusedDiligenceId === review.transaction_id}
                 onApprove={() => handleApprove(review)}
                 onFlag={() => handleFlag(review)}
                 onConfirmDiligence={() => handleConfirmDiligence(review.transaction_id)}
