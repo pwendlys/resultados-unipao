@@ -1,31 +1,54 @@
 
 
-## Fix: Manual Edits to Minutes Text Being Overwritten
+## Fix: Minutes Text Not Appearing in PDF + Professional Cover Page
 
-### Problem
+### Root Cause Found
 
-The `useEffect` that auto-generates the minutes text runs on every change to meeting date, type, selected fiscais, selected reports, convidados, and diligencias. It calls `setMinutesText(text)`, which **overwrites any manual edits** the user made in the textarea.
+**Line 55 of `meetingMinutesPdfGenerator.ts`:**
+```js
+const paragraphs = minutesContent.split('\n\n').filter(p => p.trim() && !p.trim().startsWith('ATA DA'));
+```
 
-So if you paste/edit your custom text and then change anything else (e.g. toggle a report checkbox), your text is replaced by the auto-generated template.
+The filter `!p.trim().startsWith('ATA DA')` removes any paragraph starting with "ATA DA". When the user pastes manually-edited text that starts with "ATA DA REUNIÃO..." and uses single `\n` line breaks (not `\n\n`), the entire text is treated as ONE paragraph, which starts with "ATA DA" — so it gets **completely filtered out**. Zero paragraphs remain. The PDF skips straight to "RELATÓRIOS APROVADOS".
 
-### Fix
+### Solution
 
-**File: `src/components/meeting-minutes/MeetingMinutesForm.tsx`**
+Two changes in one file + copy the logo image:
 
-Add a `manuallyEdited` flag (boolean state). When the user types in the textarea, set it to `true`. The `useEffect` only calls `setMinutesText` when `manuallyEdited` is `false`.
+**1. Copy the uploaded Unipao logo** to `src/assets/unipao-logo.png` for use in the PDF cover page.
 
-Add a small "Regenerar texto" button near the textarea so the user can explicitly reset to the auto-generated template if they want (this sets `manuallyEdited` back to `false`).
+**2. Rewrite `meetingMinutesPdfGenerator.ts`** with:
 
-### Changes
+- **Remove the `startsWith('ATA DA')` filter** — split on both `\n\n` and `\n` to handle all paragraph styles; no content filtering.
 
-1. Add state: `const [manuallyEdited, setManuallyEdited] = useState(false);`
-2. In the `useEffect` — wrap `setMinutesText(text)` with `if (!manuallyEdited)`
-3. In the `Textarea onChange` — add `setManuallyEdited(true)` alongside `setMinutesText`
-4. Add a "Regenerar texto automaticamente" button that forces regeneration and sets `manuallyEdited = false`
+- **Page 1 — Cover page** with:
+  - Unipao logo (imported as base64 from assets)
+  - Large title "ATA DO CONSELHO FISCAL"
+  - Subtitle "Cooperativa Unipao"
+  - Meeting date and competencies from `data.title`
+
+- **Page 2+ — "TEXTO DA ATA"** section:
+  - Section title
+  - Full `minutesText` rendered line-by-line with per-line page breaks
+  - Paragraph spacing preserved
+
+- **Next — "RELATORIOS APROVADOS"** (same page if fits, or new page)
+
+- **Next — "DILIGENCIAS CONSOLIDADAS"** (if applicable)
+
+- **New page — "ASSINATURAS"** (unchanged logic)
+
+- **Validation**: if `minutesText.length < 50`, throw error to block PDF generation. Add `console.log` with text length for debugging.
 
 ### Files Modified
 
 | File | Change |
 |------|--------|
-| `MeetingMinutesForm.tsx` | Add `manuallyEdited` guard to prevent overwriting manual edits; add regenerate button |
+| `src/assets/unipao-logo.png` | Copy uploaded logo |
+| `src/utils/meetingMinutesPdfGenerator.ts` | Remove broken filter, add cover page with logo, reorder sections, add validation |
+
+### What Will NOT Change
+- No changes to MeetingMinutesForm, hooks, template, or any other module
+- No database changes
+- No changes to fiscal reports PDF generation
 
