@@ -1,38 +1,31 @@
 
 
-## Fix: Delete Ata — Use Storage API Instead of Direct SQL
+## Fix: Manual Edits to Minutes Text Being Overwritten
 
-### Root Cause
+### Problem
 
-The `delete_meeting_minutes` RPC function includes `DELETE FROM storage.objects WHERE ...`, which Supabase forbids. Storage must be managed via the Storage API.
+The `useEffect` that auto-generates the minutes text runs on every change to meeting date, type, selected fiscais, selected reports, convidados, and diligencias. It calls `setMinutesText(text)`, which **overwrites any manual edits** the user made in the textarea.
 
-### Solution
+So if you paste/edit your custom text and then change anything else (e.g. toggle a report checkbox), your text is replaced by the auto-generated template.
 
-Two changes — simplest approach (no edge function needed since `pdf_url` already stores the file path and the treasurer has Storage RLS permissions):
+### Fix
 
-**1. Update the `delete_meeting_minutes` RPC** — Remove the `storage.objects` DELETE line. Keep the rest (permission check + cascade delete of child records + main record).
+**File: `src/components/meeting-minutes/MeetingMinutesForm.tsx`**
 
-**2. Update `MeetingMinutesList.tsx`** — Before calling the RPC, delete the PDF via Storage API client-side:
-```
-if (deleteTarget.pdf_url) {
-  await supabase.storage.from('fiscal-files').remove([deleteTarget.pdf_url]);
-}
-await deleteMinutes.mutateAsync(deleteTarget.id);
-```
+Add a `manuallyEdited` flag (boolean state). When the user types in the textarea, set it to `true`. The `useEffect` only calls `setMinutesText` when `manuallyEdited` is `false`.
 
-The treasurer already has `SELECT` and `INSERT` RLS on `storage.objects` for `fiscal-files` bucket. We also need a **DELETE** RLS policy so the treasurer can remove their own files.
+Add a small "Regenerar texto" button near the textarea so the user can explicitly reset to the auto-generated template if they want (this sets `manuallyEdited` back to `false`).
 
-**3. Add Storage RLS policy for DELETE** — Migration to allow tesoureiro (and admin) to delete files from the `fiscal-files` bucket.
+### Changes
+
+1. Add state: `const [manuallyEdited, setManuallyEdited] = useState(false);`
+2. In the `useEffect` — wrap `setMinutesText(text)` with `if (!manuallyEdited)`
+3. In the `Textarea onChange` — add `setManuallyEdited(true)` alongside `setMinutesText`
+4. Add a "Regenerar texto automaticamente" button that forces regeneration and sets `manuallyEdited = false`
 
 ### Files Modified
 
-| File/Resource | Change |
+| File | Change |
 |------|--------|
-| Migration (SQL) | Remove `storage.objects` delete from RPC; add DELETE RLS policy on `storage.objects` |
-| `MeetingMinutesList.tsx` | Delete PDF via `supabase.storage.remove()` before calling RPC |
-
-### What Will NOT Change
-- No edge function needed (client-side Storage API works with proper RLS)
-- No new columns needed (`pdf_url` already stores the path)
-- No changes to fiscal reports module
+| `MeetingMinutesForm.tsx` | Add `manuallyEdited` guard to prevent overwriting manual edits; add regenerate button |
 
