@@ -186,9 +186,19 @@ const createMeetingMinutesPDF = (data: MeetingMinutesPdfData): jsPDF => {
 };
 
 const normalizeSignatureData = (payload: string): string => {
-  if (!payload) return '';
-  if (payload.startsWith('data:image')) return payload;
-  return `data:image/png;base64,${payload}`;
+  if (!payload || !payload.trim()) {
+    console.warn('[MeetingMinutesPDF] Empty signature payload');
+    return '';
+  }
+  const trimmed = payload.trim();
+  if (trimmed.startsWith('data:image/')) return trimmed;
+  console.log('[MeetingMinutesPDF] Adding data:image prefix to raw base64, length:', trimmed.length);
+  return `data:image/png;base64,${trimmed}`;
+};
+
+const getImageFormat = (dataUrl: string): string => {
+  if (dataUrl.includes('image/jpeg') || dataUrl.includes('image/jpg')) return 'JPEG';
+  return 'PNG';
 };
 
 const renderSignature = (doc: jsPDF, sig: SignatureSource, margin: number, yPos: number, pageWidth: number) => {
