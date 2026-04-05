@@ -346,6 +346,10 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
         title: "Diligência Confirmada",
         description: "Você confirmou ciência da diligência.",
       });
+      // Auto-navigate to next pending diligence after a short delay
+      setTimeout(() => {
+        goToNextDiligence();
+      }, 500);
     } catch (error) {
       toast({
         title: "Erro",
