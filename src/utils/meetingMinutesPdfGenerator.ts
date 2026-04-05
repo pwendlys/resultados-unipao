@@ -59,9 +59,12 @@ const createMeetingMinutesPDF = (data: MeetingMinutesPdfData): jsPDF => {
     if (!trimmed) continue;
     
     const lines = doc.splitTextToSize(trimmed, textWidth);
-    checkPageBreak(lines.length * 6 + 10);
-    doc.text(lines, margin, yPos, { align: 'justify', maxWidth: textWidth });
-    yPos += lines.length * 6 + 8;
+    for (const line of lines) {
+      checkPageBreak(7);
+      doc.text(line, margin, yPos);
+      yPos += 6;
+    }
+    yPos += 4;
   }
 
   // Reports Section
