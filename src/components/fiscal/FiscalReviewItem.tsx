@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,10 +23,11 @@ interface FiscalReviewItemProps {
   approvalCount?: number;
   isDiligence?: boolean;
   diligenceAckCount?: number;
-  reviewCount?: number;           // NEW: How many fiscals reviewed
-  diligenceCreatorName?: string;  // NEW: Who created the diligence
-  diligenceCreatedAt?: string;    // NEW: When diligence was created
-  diligenceObservation?: string;  // NEW: Reason/observation for diligence
+  reviewCount?: number;
+  diligenceCreatorName?: string;
+  diligenceCreatedAt?: string;
+  diligenceObservation?: string;
+  isHighlighted?: boolean;
   onApprove: () => void;
   onFlag: () => void;
   onConfirmDiligence?: () => void;
@@ -43,6 +44,7 @@ const FiscalReviewItem = ({
   diligenceCreatorName,
   diligenceCreatedAt,
   diligenceObservation,
+  isHighlighted = false,
   onApprove, 
   onFlag,
   onConfirmDiligence
