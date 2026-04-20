@@ -32,7 +32,7 @@ const Categorization = () => {
   const { toast } = useToast();
 
   // Filter transactions based on search term, date range, and uncategorized filter
-  const filteredTransactions = filterTransactions(transactions, searchTerm, dateRange, showOnlyUncategorized, searchType);
+  const filteredTransactions = filterTransactions(transactions, searchTerm, dateRange, showOnlyUncategorized, searchType, categoryFilter, typeFilter);
 
   // Pagination
   const indexOfLastItem = currentPage * itemsPerPage;
