@@ -7,7 +7,9 @@ export const filterTransactions = (
   searchTerm: string,
   dateRange: DateRange | undefined,
   showOnlyUncategorized: boolean = false,
-  searchType: 'description' | 'value' = 'description'
+  searchType: 'description' | 'value' = 'description',
+  categoryFilter: string = 'ALL',
+  typeFilter: 'ALL' | 'entrada' | 'saida' = 'ALL'
 ): Transaction[] => {
   return transactions?.filter(transaction => {
     const searchTermLower = searchTerm.toLowerCase().trim();
