@@ -147,6 +147,11 @@ const Categorization = () => {
           setSearchType={setSearchType}
           showOnlyUncategorized={showOnlyUncategorized}
           setShowOnlyUncategorized={setShowOnlyUncategorized}
+          categoryFilter={categoryFilter}
+          setCategoryFilter={setCategoryFilter}
+          typeFilter={typeFilter}
+          setTypeFilter={setTypeFilter}
+          categories={categories}
         />
 
       {/* Bulk Actions Bar */}
