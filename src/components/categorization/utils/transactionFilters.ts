@@ -7,7 +7,9 @@ export const filterTransactions = (
   searchTerm: string,
   dateRange: DateRange | undefined,
   showOnlyUncategorized: boolean = false,
-  searchType: 'description' | 'value' = 'description'
+  searchType: 'description' | 'value' = 'description',
+  categoryFilter: string = 'ALL',
+  typeFilter: 'ALL' | 'entrada' | 'saida' = 'ALL'
 ): Transaction[] => {
   return transactions?.filter(transaction => {
     const searchTermLower = searchTerm.toLowerCase().trim();
@@ -49,6 +51,9 @@ export const filterTransactions = (
 
     const matchesUncategorizedFilter = !showOnlyUncategorized || transaction.status === 'pendente';
 
-    return matchesSearchTerm && matchesDateRange && matchesUncategorizedFilter;
+    const matchesCategory = categoryFilter === 'ALL' || transaction.category === categoryFilter;
+    const matchesType = typeFilter === 'ALL' || transaction.type === typeFilter;
+
+    return matchesSearchTerm && matchesDateRange && matchesUncategorizedFilter && matchesCategory && matchesType;
   });
 };

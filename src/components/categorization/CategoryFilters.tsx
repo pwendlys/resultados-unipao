@@ -30,6 +30,11 @@ interface CategoryFiltersProps {
   setSearchType: (type: 'description' | 'value') => void;
   showOnlyUncategorized: boolean;
   setShowOnlyUncategorized: (show: boolean) => void;
+  categoryFilter?: string;
+  setCategoryFilter?: (category: string) => void;
+  typeFilter?: 'ALL' | 'entrada' | 'saida';
+  setTypeFilter?: (type: 'ALL' | 'entrada' | 'saida') => void;
+  categories?: Array<{ id: string; name: string; type: string }>;
 }
 
 const CategoryFilters = ({
@@ -42,7 +47,12 @@ const CategoryFilters = ({
   searchType,
   setSearchType,
   showOnlyUncategorized,
-  setShowOnlyUncategorized
+  setShowOnlyUncategorized,
+  categoryFilter = 'ALL',
+  setCategoryFilter,
+  typeFilter = 'ALL',
+  setTypeFilter,
+  categories = []
 }: CategoryFiltersProps) => {
   return (
     <div className="space-y-4">
@@ -128,6 +138,46 @@ const CategoryFilters = ({
           </div>
         </div>
       </div>
+
+      {/* Category and Type Filters */}
+      {(setCategoryFilter || setTypeFilter) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {setCategoryFilter && (
+            <div>
+              <Label htmlFor="categoryFilter">Categoria</Label>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Todas as Categorias" />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50 max-h-72">
+                  <SelectItem value="ALL">Todas as Categorias</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.name}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {setTypeFilter && (
+            <div>
+              <Label htmlFor="typeFilter">Tipo</Label>
+              <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as 'ALL' | 'entrada' | 'saida')}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Todos os Tipos" />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  <SelectItem value="ALL">Todos os Tipos</SelectItem>
+                  <SelectItem value="entrada">Entrada</SelectItem>
+                  <SelectItem value="saida">Saída</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Show Only Uncategorized Filter */}
       <div className="flex items-center space-x-2">

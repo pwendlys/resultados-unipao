@@ -20,6 +20,8 @@ const Categorization = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState<'description' | 'value'>('description');
   const [showOnlyUncategorized, setShowOnlyUncategorized] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
+  const [typeFilter, setTypeFilter] = useState<'ALL' | 'entrada' | 'saida'>('ALL');
   const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
@@ -30,7 +32,7 @@ const Categorization = () => {
   const { toast } = useToast();
 
   // Filter transactions based on search term, date range, and uncategorized filter
-  const filteredTransactions = filterTransactions(transactions, searchTerm, dateRange, showOnlyUncategorized, searchType);
+  const filteredTransactions = filterTransactions(transactions, searchTerm, dateRange, showOnlyUncategorized, searchType, categoryFilter, typeFilter);
 
   // Pagination
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -145,6 +147,11 @@ const Categorization = () => {
           setSearchType={setSearchType}
           showOnlyUncategorized={showOnlyUncategorized}
           setShowOnlyUncategorized={setShowOnlyUncategorized}
+          categoryFilter={categoryFilter}
+          setCategoryFilter={setCategoryFilter}
+          typeFilter={typeFilter}
+          setTypeFilter={setTypeFilter}
+          categories={categories}
         />
 
       {/* Bulk Actions Bar */}
