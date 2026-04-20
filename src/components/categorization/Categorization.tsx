@@ -20,6 +20,8 @@ const Categorization = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState<'description' | 'value'>('description');
   const [showOnlyUncategorized, setShowOnlyUncategorized] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
+  const [typeFilter, setTypeFilter] = useState<'ALL' | 'entrada' | 'saida'>('ALL');
   const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
