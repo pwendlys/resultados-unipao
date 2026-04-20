@@ -51,6 +51,9 @@ export const filterTransactions = (
 
     const matchesUncategorizedFilter = !showOnlyUncategorized || transaction.status === 'pendente';
 
-    return matchesSearchTerm && matchesDateRange && matchesUncategorizedFilter;
+    const matchesCategory = categoryFilter === 'ALL' || transaction.category === categoryFilter;
+    const matchesType = typeFilter === 'ALL' || transaction.type === typeFilter;
+
+    return matchesSearchTerm && matchesDateRange && matchesUncategorizedFilter && matchesCategory && matchesType;
   });
 };
