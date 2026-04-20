@@ -1,62 +1,60 @@
 
 
-## Auto-Navigation Between Diligences
+## Adicionar Filtros de Categoria e Tipo na Categorização
 
-### What Changes
+### Análise de Impacto (não-quebra)
 
-Add diligence-focused navigation to `FiscalReviewPanel`: clicking the diligence counter scrolls to the next pending diligence, and confirming one auto-navigates to the next. A highlight animation and position indicator ("Diligencia 2 de 5") enhance orientation.
+A função `filterTransactions` já recebe parâmetros opcionais e combina condições com AND. Vou apenas:
+- Adicionar 2 novos parâmetros opcionais (`categoryFilter`, `typeFilter`) com default `'ALL'`
+- Adicionar 2 novos estados em `Categorization.tsx`
+- Adicionar 2 novos `<Select>` em `CategoryFilters.tsx`
 
-### Implementation
+Nada existente é alterado — todos os filtros antigos (conta, período, busca, não-categorizadas) continuam funcionando exatamente como hoje. Assinaturas das funções mantêm compatibilidade via parâmetros opcionais.
 
-**File: `src/components/fiscal/FiscalReviewPanel.tsx`**
+### Mudanças
 
-1. **New state**: `focusedDiligenceId: string | null` to track current diligence in focus.
+**1. `src/components/categorization/utils/transactionFilters.ts`**
 
-2. **Computed list** `diligenceIds`: derived from `sortedFilteredReviews`, filtered to items where `diligenceStatus[tx_id]?.isDiligence && !myReviewsMap[tx_id]?.diligence_ack` (pending diligences the user hasn't acknowledged). Respects current filters and sort order.
-
-3. **`navigateToDiligence(targetId)`** helper:
-   - Sets `focusedDiligenceId = targetId`
-   - Calls `document.getElementById('review-' + targetId)?.scrollIntoView({ behavior: 'smooth', block: 'center' })`
-   - Auto-clears highlight after 2s
-
-4. **`goToNextDiligence()`**: finds next ID after `focusedDiligenceId` in `diligenceIds`, or wraps to `[0]`. If none remain, shows toast "Todas as diligencias foram revisadas".
-
-5. **Diligence counter becomes clickable**: the existing `AlertCircle` + count section in the summary bar gets wrapped in a `<button>` with "Ir para proxima" label. Calls `goToNextDiligence()`.
-
-6. **Position indicator**: when `focusedDiligenceId` is set and diligences exist, show small text "Diligencia X de Y" next to the counter.
-
-7. **After `handleConfirmDiligence` succeeds**: call `goToNextDiligence()` (with a short delay to allow query invalidation to settle — use `setTimeout` of ~500ms after the mutation succeeds).
-
-**File: `src/components/fiscal/FiscalReviewItem.tsx`**
-
-8. **Add `id` attribute**: set `id={'review-' + review.transaction_id}` on the root `<Card>`.
-
-9. **Add `isHighlighted` prop** (boolean): when true, apply a pulsing ring animation (`ring-2 ring-orange-400 animate-pulse` for ~2s).
-
-10. **Auto-expand on highlight**: if `isHighlighted && isDiligence && !expanded`, call `setExpanded(true)`.
-
-### Data Flow
-
-```text
-diligenceIds = sortedFilteredReviews
-  .filter(r => diligenceStatus[r.tx_id]?.isDiligence 
-            && !myReviewsMap[r.tx_id]?.diligence_ack)
-  .map(r => r.transaction_id)
-
-Click counter → goToNextDiligence() → navigateToDiligence(nextId)
-Confirm diligence → mutation success → goToNextDiligence()
-No more → toast "Todas as diligencias foram revisadas"
+Adicionar dois parâmetros opcionais ao final da assinatura (mantém retrocompatibilidade):
+```ts
+categoryFilter: string = 'ALL',
+typeFilter: 'ALL' | 'entrada' | 'saida' = 'ALL'
 ```
 
-### Files Modified
+Adicionar duas condições AND ao filtro existente:
+- `matchesCategory = categoryFilter === 'ALL' || transaction.category === categoryFilter`
+- `matchesType = typeFilter === 'ALL' || transaction.type === typeFilter`
 
-| File | Change |
-|------|--------|
-| `src/components/fiscal/FiscalReviewPanel.tsx` | Add `focusedDiligenceId` state, `diligenceIds` memo, navigation helpers, clickable counter with indicator, auto-navigate after confirm |
-| `src/components/fiscal/FiscalReviewItem.tsx` | Add `id` attr on Card, `isHighlighted` prop with ring animation, auto-expand on highlight |
+**2. `src/components/categorization/Categorization.tsx`**
 
-### What Will NOT Change
-- No business logic changes (diligence rules, signatures, approvals)
-- No database changes
-- No changes to other modules
+Adicionar dois estados novos:
+```ts
+const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
+const [typeFilter, setTypeFilter] = useState<'ALL' | 'entrada' | 'saida'>('ALL');
+```
+
+Passar ambos para `filterTransactions(...)` e para `<CategoryFilters>` como props.
+
+**3. `src/components/categorization/CategoryFilters.tsx`**
+
+Adicionar duas props opcionais e dois novos `<Select>` numa segunda linha do grid (para não quebrar o layout atual de 3 colunas):
+- **Categoria**: opções = "Todas" + lista dinâmica vinda de `categories` (passada via prop)
+- **Tipo**: opções = "Todos", "Entrada", "Saída"
+
+Layout: criar uma segunda linha `grid grid-cols-1 md:grid-cols-2 gap-4` abaixo do grid existente, antes do checkbox de "não categorizadas".
+
+### Arquivos Modificados
+
+| Arquivo | Mudança |
+|---------|---------|
+| `src/components/categorization/utils/transactionFilters.ts` | +2 parâmetros opcionais, +2 condições AND |
+| `src/components/categorization/Categorization.tsx` | +2 estados, +2 props passadas (categories também) |
+| `src/components/categorization/CategoryFilters.tsx` | +2 props, +2 selects numa nova linha |
+
+### O Que NÃO Muda
+
+- Nenhuma assinatura de função existente quebra (parâmetros novos são opcionais)
+- Filtros atuais (conta, período, busca descrição/valor, não-categorizadas) permanecem idênticos
+- Paginação, seleção em massa, categorização individual: sem alterações
+- Nenhuma mudança em hooks, banco de dados ou queries
 
