@@ -30,6 +30,11 @@ interface CategoryFiltersProps {
   setSearchType: (type: 'description' | 'value') => void;
   showOnlyUncategorized: boolean;
   setShowOnlyUncategorized: (show: boolean) => void;
+  categoryFilter?: string;
+  setCategoryFilter?: (category: string) => void;
+  typeFilter?: 'ALL' | 'entrada' | 'saida';
+  setTypeFilter?: (type: 'ALL' | 'entrada' | 'saida') => void;
+  categories?: Array<{ id: string; name: string; type: string }>;
 }
 
 const CategoryFilters = ({
@@ -42,7 +47,12 @@ const CategoryFilters = ({
   searchType,
   setSearchType,
   showOnlyUncategorized,
-  setShowOnlyUncategorized
+  setShowOnlyUncategorized,
+  categoryFilter = 'ALL',
+  setCategoryFilter,
+  typeFilter = 'ALL',
+  setTypeFilter,
+  categories = []
 }: CategoryFiltersProps) => {
   return (
     <div className="space-y-4">
