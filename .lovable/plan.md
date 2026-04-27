@@ -1,60 +1,60 @@
+## Selecionar Todas as Transações (Todas as Páginas)
 
+### Problema
 
-## Adicionar Filtros de Categoria e Tipo na Categorização
+Hoje o checkbox "Selecionar todos" do cabeçalho da tabela seleciona apenas as 10 transações da página atual. Quando há 155 resultados filtrados, o usuário precisa repetir a operação 16 vezes para categorizar tudo de uma vez.
 
-### Análise de Impacto (não-quebra)
+### Solução (sem quebrar nada)
 
-A função `filterTransactions` já recebe parâmetros opcionais e combina condições com AND. Vou apenas:
-- Adicionar 2 novos parâmetros opcionais (`categoryFilter`, `typeFilter`) com default `'ALL'`
-- Adicionar 2 novos estados em `Categorization.tsx`
-- Adicionar 2 novos `<Select>` em `CategoryFilters.tsx`
+Adicionar uma **faixa contextual** que aparece logo acima/dentro da `BulkActionsBar` quando o usuário marcar o checkbox "selecionar todos" da página. A faixa oferece um botão extra:
 
-Nada existente é alterado — todos os filtros antigos (conta, período, busca, não-categorizadas) continuam funcionando exatamente como hoje. Assinaturas das funções mantêm compatibilidade via parâmetros opcionais.
+> **"10 selecionadas nesta página. Selecionar todas as 155 transações filtradas?"** [Selecionar todas as 155]
+
+Ao clicar, o sistema marca o conjunto completo de IDs filtrados (todas as páginas). Todo o resto do fluxo de bulk categorize permanece igual — `handleBulkCategorize` já recebe `Array.from(selectedTransactions)` e chama `bulkUpdateTransactions.mutateAsync(updates)`, então funciona automaticamente para 155 itens.
+
+### Análise de Não-Quebra
+
+- `handleSelectAll(selected)` continua igual (seleciona apenas a página atual)
+- `handleSelectTransaction`, paginação, filtros, categorização individual: **sem alteração**
+- `bulkUpdateTransactions.mutateAsync` já aceita arrays grandes (não há limite no código)
+- `TransactionTable` continua recebendo o `Set` igual; o cabeçalho fica `checked` quando todos da página estão marcados (comportamento atual preservado)
+- Nenhuma assinatura de função existente muda; nenhuma query/banco/hook é alterado
 
 ### Mudanças
 
-**1. `src/components/categorization/utils/transactionFilters.ts`**
+**1. `src/components/categorization/Categorization.tsx`**
+- Adicionar handler novo `handleSelectAllFiltered()` que faz `setSelectedTransactions(new Set(filteredTransactions.map(t => t.id)))`
+- Passar `filteredCount={filteredTransactions.length}` e `onSelectAllFiltered` para `BulkActionsBar`
+- Não toca em `handleSelectAll` nem em nada existente
 
-Adicionar dois parâmetros opcionais ao final da assinatura (mantém retrocompatibilidade):
-```ts
-categoryFilter: string = 'ALL',
-typeFilter: 'ALL' | 'entrada' | 'saida' = 'ALL'
-```
+**2. `src/components/categorization/BulkActionsBar.tsx`**
+- Adicionar 2 props opcionais: `filteredCount?: number` e `onSelectAllFiltered?: () => void`
+- Quando `selectedCount > 0 && selectedCount < filteredCount`, mostrar uma linha extra acima dos botões existentes:
+  ```
+  [info icon] 10 selecionadas nesta página. [Selecionar todas as 155 transações filtradas]
+  ```
+- Quando `selectedCount === filteredCount && filteredCount > itemsPerPage`, mostrar texto "Todas as 155 transações filtradas selecionadas"
+- Layout existente (badge + select + botão Categorizar + Limpar) permanece **idêntico**
 
-Adicionar duas condições AND ao filtro existente:
-- `matchesCategory = categoryFilter === 'ALL' || transaction.category === categoryFilter`
-- `matchesType = typeFilter === 'ALL' || transaction.type === typeFilter`
+### Fluxo Final do Usuário
 
-**2. `src/components/categorization/Categorization.tsx`**
-
-Adicionar dois estados novos:
-```ts
-const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
-const [typeFilter, setTypeFilter] = useState<'ALL' | 'entrada' | 'saida'>('ALL');
-```
-
-Passar ambos para `filterTransactions(...)` e para `<CategoryFilters>` como props.
-
-**3. `src/components/categorization/CategoryFilters.tsx`**
-
-Adicionar duas props opcionais e dois novos `<Select>` numa segunda linha do grid (para não quebrar o layout atual de 3 colunas):
-- **Categoria**: opções = "Todas" + lista dinâmica vinda de `categories` (passada via prop)
-- **Tipo**: opções = "Todos", "Entrada", "Saída"
-
-Layout: criar uma segunda linha `grid grid-cols-1 md:grid-cols-2 gap-4` abaixo do grid existente, antes do checkbox de "não categorizadas".
+1. Aplica filtros (ex.: 155 transações)
+2. Marca checkbox do cabeçalho → seleciona 10 da página (igual hoje)
+3. **NOVO**: aparece faixa "Selecionar todas as 155 transações filtradas?" → clica
+4. Seleciona categoria no dropdown existente → "Categorizar Selecionadas"
+5. Todas as 155 são categorizadas em massa (usando o `bulkUpdateTransactions` atual)
 
 ### Arquivos Modificados
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/components/categorization/utils/transactionFilters.ts` | +2 parâmetros opcionais, +2 condições AND |
-| `src/components/categorization/Categorization.tsx` | +2 estados, +2 props passadas (categories também) |
-| `src/components/categorization/CategoryFilters.tsx` | +2 props, +2 selects numa nova linha |
+| `src/components/categorization/Categorization.tsx` | +1 handler, +2 props passadas para `BulkActionsBar` |
+| `src/components/categorization/BulkActionsBar.tsx` | +2 props opcionais, +1 linha de UI condicional |
 
 ### O Que NÃO Muda
 
-- Nenhuma assinatura de função existente quebra (parâmetros novos são opcionais)
-- Filtros atuais (conta, período, busca descrição/valor, não-categorizadas) permanecem idênticos
-- Paginação, seleção em massa, categorização individual: sem alterações
-- Nenhuma mudança em hooks, banco de dados ou queries
-
+- `TransactionTable` e seu checkbox de cabeçalho: **sem alteração**
+- `handleSelectAll`, `handleSelectTransaction`, paginação: **sem alteração**
+- `handleBulkCategorize` e `bulkUpdateTransactions`: **sem alteração** (já suportam N itens)
+- Filtros (categoria, tipo, conta, período, busca): **sem alteração**
+- Banco de dados, hooks, queries: **sem alteração**

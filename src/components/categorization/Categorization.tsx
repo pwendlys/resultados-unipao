@@ -123,6 +123,11 @@ const Categorization = () => {
     setSelectedTransactions(new Set());
   };
 
+  const handleSelectAllFiltered = () => {
+    const allFilteredIds = new Set(filteredTransactions?.map(t => t.id) || []);
+    setSelectedTransactions(allFilteredIds);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -160,6 +165,8 @@ const Categorization = () => {
         categories={categories}
         onBulkCategorize={handleBulkCategorize}
         onClearSelection={handleClearSelection}
+        filteredCount={filteredTransactions?.length || 0}
+        onSelectAllFiltered={handleSelectAllFiltered}
       />
 
       {/* Transactions Table */}
