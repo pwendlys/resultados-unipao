@@ -2,7 +2,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, FileText, Eye, Send } from 'lucide-react';
-import { useTransactionsByAccount, useExtratos } from '@/hooks/useSupabaseData';
+import { useExtratos } from '@/hooks/useSupabaseData';
+import { useAllTransactions } from '@/hooks/useAllTransactions';
 import { useCategories } from '@/hooks/useCategories';
 import { useToast } from '@/hooks/use-toast';
 import { ReportBuilder } from './ReportBuilder';
