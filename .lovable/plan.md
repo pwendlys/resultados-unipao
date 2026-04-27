@@ -1,60 +1,47 @@
-## Selecionar Todas as Transações (Todas as Páginas)
+## Problema
 
-### Problema
+No "Relatório Operacional Personalizado" (módulo `CustomReports`), o preview mostra **0 transações** ao filtrar **Cora + MENSALIDADES E TX ADM** em **janeiro/2026**, mesmo havendo 184 transações dessas contas em janeiro no banco (Mensalidade, Taxa Administrativa, Conta Sicoob Mensalidades e Tx Adm, Tranf. Cora TX ADM e Mensalidade).
 
-Hoje o checkbox "Selecionar todos" do cabeçalho da tabela seleciona apenas as 10 transações da página atual. Quando há 155 resultados filtrados, o usuário precisa repetir a operação 16 vezes para categorizar tudo de uma vez.
+## Causa raiz (confirmada por console + DB)
 
-### Solução (sem quebrar nada)
+O hook `useTransactionsByAccount('ALL')` (em `src/hooks/useSupabaseData.ts`) usa `.range(0, 19999)` mas o PostgREST do projeto está retornando apenas **1000 linhas** (limite efetivo do servidor). O console confirma: `"Transações recebidas do hook: 1000"`.
 
-Adicionar uma **faixa contextual** que aparece logo acima/dentro da `BulkActionsBar` quando o usuário marcar o checkbox "selecionar todos" da página. A faixa oferece um botão extra:
+Como a query ordena por `created_at desc`, as 1000 transações mais recentes são todas de **março/2026** (`12/03/2026, 17/03/2026...`). Resultado: ao filtrar por janeiro/2026, sobra **zero** — embora o banco contenha 6.123 transações categorizadas, incluindo as de janeiro.
 
-> **"10 selecionadas nesta página. Selecionar todas as 155 transações filtradas?"** [Selecionar todas as 155]
+Já existe no projeto um hook que resolve exatamente isso para outro módulo: `useAllCategorizedTransactions` (em `src/hooks/useAllCategorizedTransactions.ts`), que faz paginação automática de 1000 em 1000 e traz tudo.
 
-Ao clicar, o sistema marca o conjunto completo de IDs filtrados (todas as páginas). Todo o resto do fluxo de bulk categorize permanece igual — `handleBulkCategorize` já recebe `Array.from(selectedTransactions)` e chama `bulkUpdateTransactions.mutateAsync(updates)`, então funciona automaticamente para 155 itens.
+## Solução (sem refatorar nada existente)
 
-### Análise de Não-Quebra
-
-- `handleSelectAll(selected)` continua igual (seleciona apenas a página atual)
-- `handleSelectTransaction`, paginação, filtros, categorização individual: **sem alteração**
-- `bulkUpdateTransactions.mutateAsync` já aceita arrays grandes (não há limite no código)
-- `TransactionTable` continua recebendo o `Set` igual; o cabeçalho fica `checked` quando todos da página estão marcados (comportamento atual preservado)
-- Nenhuma assinatura de função existente muda; nenhuma query/banco/hook é alterado
+Criar um hook irmão **novo e dedicado** para o módulo de relatórios personalizados, que pagina todas as transações (não apenas as categorizadas, pois CustomReports filtra por `status === 'categorizado'` no final mas precisa de todas para os filtros intermediários funcionarem corretamente).
 
 ### Mudanças
 
-**1. `src/components/categorization/Categorization.tsx`**
-- Adicionar handler novo `handleSelectAllFiltered()` que faz `setSelectedTransactions(new Set(filteredTransactions.map(t => t.id)))`
-- Passar `filteredCount={filteredTransactions.length}` e `onSelectAllFiltered` para `BulkActionsBar`
-- Não toca em `handleSelectAll` nem em nada existente
+**1. Novo hook `src/hooks/useAllTransactions.ts`** (criar)
+- Mesma estratégia de paginação do `useAllCategorizedTransactions`
+- Busca **todas** as transações (sem filtro de status), ordenadas por `created_at desc`
+- Loop com `range(from, to)` em páginas de 1000 até o servidor retornar menos
+- `queryKey: ['all-transactions-paginated']`, `staleTime: 5min`
+- Retorna o mesmo shape que o hook atual (`Transaction[]`)
 
-**2. `src/components/categorization/BulkActionsBar.tsx`**
-- Adicionar 2 props opcionais: `filteredCount?: number` e `onSelectAllFiltered?: () => void`
-- Quando `selectedCount > 0 && selectedCount < filteredCount`, mostrar uma linha extra acima dos botões existentes:
-  ```
-  [info icon] 10 selecionadas nesta página. [Selecionar todas as 155 transações filtradas]
-  ```
-- Quando `selectedCount === filteredCount && filteredCount > itemsPerPage`, mostrar texto "Todas as 155 transações filtradas selecionadas"
-- Layout existente (badge + select + botão Categorizar + Limpar) permanece **idêntico**
+**2. `src/components/custom-reports/CustomReports.tsx`** (1 linha alterada)
+- Trocar `useTransactionsByAccount('ALL')` por `useAllTransactions()`
+- Nenhuma outra lógica muda (filtros, totais, datas, categorias permanecem idênticos)
 
-### Fluxo Final do Usuário
+### O que NÃO muda
 
-1. Aplica filtros (ex.: 155 transações)
-2. Marca checkbox do cabeçalho → seleciona 10 da página (igual hoje)
-3. **NOVO**: aparece faixa "Selecionar todas as 155 transações filtradas?" → clica
-4. Seleciona categoria no dropdown existente → "Categorizar Selecionadas"
-5. Todas as 155 são categorizadas em massa (usando o `bulkUpdateTransactions` atual)
+- `useTransactionsByAccount` continua existindo e sendo usado pelos demais módulos (Reports, Dashboard, Categorization, etc.) — **zero impacto** neles.
+- `useAllCategorizedTransactions` continua exclusivo do "Relatórios Enviar".
+- Lógica de filtros (`getFilteredData`, `parseTransactionDate`, normalização de datas) intacta.
+- PDF generator, preview, envio para cooperado/fiscal: sem alteração.
+- Banco de dados, RLS, edge functions: sem alteração.
 
-### Arquivos Modificados
+## Resultado esperado
+
+Após a mudança, ao filtrar Cora + MENSALIDADES E TX ADM em 01/01/2026–31/01/2026, o preview vai exibir as 184 transações de janeiro corretamente, com totais de Receitas/Despesas, Resultado Líquido e categorias preenchidas.
+
+## Arquivos
 
 | Arquivo | Mudança |
-|---------|---------|
-| `src/components/categorization/Categorization.tsx` | +1 handler, +2 props passadas para `BulkActionsBar` |
-| `src/components/categorization/BulkActionsBar.tsx` | +2 props opcionais, +1 linha de UI condicional |
-
-### O Que NÃO Muda
-
-- `TransactionTable` e seu checkbox de cabeçalho: **sem alteração**
-- `handleSelectAll`, `handleSelectTransaction`, paginação: **sem alteração**
-- `handleBulkCategorize` e `bulkUpdateTransactions`: **sem alteração** (já suportam N itens)
-- Filtros (categoria, tipo, conta, período, busca): **sem alteração**
-- Banco de dados, hooks, queries: **sem alteração**
+|---|---|
+| `src/hooks/useAllTransactions.ts` | **Novo** — paginação automática até esgotar |
+| `src/components/custom-reports/CustomReports.tsx` | 1 linha: trocar hook |

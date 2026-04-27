@@ -2,7 +2,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, FileText, Eye, Send } from 'lucide-react';
-import { useTransactionsByAccount, useExtratos } from '@/hooks/useSupabaseData';
+import { useExtratos } from '@/hooks/useSupabaseData';
+import { useAllTransactions } from '@/hooks/useAllTransactions';
 import { useCategories } from '@/hooks/useCategories';
 import { useToast } from '@/hooks/use-toast';
 import { ReportBuilder } from './ReportBuilder';
@@ -38,7 +39,7 @@ const [reportConfig, setReportConfig] = useState<CustomReportConfig>({
   const [isSendingToCooperado, setIsSendingToCooperado] = useState(false);
 
   // Buscar todas as transações e extratos para permitir filtro múltiplo
-  const { data: transactions = [], isLoading: transactionsLoading } = useTransactionsByAccount('ALL');
+  const { data: transactions = [], isLoading: transactionsLoading } = useAllTransactions();
   const { data: extratos = [], isLoading: extratosLoading } = useExtratos();
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
   const { toast } = useToast();
