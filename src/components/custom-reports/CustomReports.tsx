@@ -39,7 +39,7 @@ const [reportConfig, setReportConfig] = useState<CustomReportConfig>({
   const [isSendingToCooperado, setIsSendingToCooperado] = useState(false);
 
   // Buscar todas as transações e extratos para permitir filtro múltiplo
-  const { data: transactions = [], isLoading: transactionsLoading } = useTransactionsByAccount('ALL');
+  const { data: transactions = [], isLoading: transactionsLoading } = useAllTransactions();
   const { data: extratos = [], isLoading: extratosLoading } = useExtratos();
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
   const { toast } = useToast();
