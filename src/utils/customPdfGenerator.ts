@@ -379,11 +379,16 @@ if (data.categorizedTransactions.length > 0) {
         doc.text(`Descrição: ${description}${transaction.description && transaction.description.length > maxDescLength ? '...' : ''}`, margin + 10, yPosition);
         yPosition += 5;
 
-        if (transaction.observacao) {
-          const maxObsLength = 50;
-          const observation = transaction.observacao.substring(0, maxObsLength);
-          doc.text(`Observação: ${observation}${transaction.observacao.length > maxObsLength ? '...' : ''}`, margin + 10, yPosition);
-          yPosition += 5;
+        if (transaction.observacao && String(transaction.observacao).trim()) {
+          const obsText = String(transaction.observacao).trim();
+          const pageWidth = doc.internal.pageSize.width;
+          const maxWidth = pageWidth - (margin + 10) - margin;
+          const obsLines: string[] = doc.splitTextToSize(`Observação: ${obsText}`, maxWidth);
+          checkPageBreak(obsLines.length * 5);
+          obsLines.forEach((line) => {
+            doc.text(line, margin + 10, yPosition);
+            yPosition += 5;
+          });
         }
         yPosition += 6;
       });
