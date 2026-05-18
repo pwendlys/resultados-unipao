@@ -95,11 +95,18 @@ const Categorization = () => {
     if (selectedIds.length === 0) return;
 
     try {
-      const updates = selectedIds.map(id => ({
-        id,
-        category,
-        status: 'categorizado'
-      }));
+      const updates = selectedIds.map(id => {
+        const obs = observations[id];
+        const base: { id: string; category: string; status: string; observacao?: string } = {
+          id,
+          category,
+          status: 'categorizado',
+        };
+        if (obs !== undefined && String(obs).trim() !== '') {
+          base.observacao = String(obs).trim();
+        }
+        return base;
+      });
 
       await bulkUpdateTransactions.mutateAsync(updates);
 
@@ -109,6 +116,11 @@ const Categorization = () => {
       });
 
       setSelectedTransactions(new Set());
+      setObservations(prev => {
+        const next = { ...prev };
+        selectedIds.forEach(id => { delete next[id]; });
+        return next;
+      });
       refetch();
     } catch (error) {
       console.error('Erro ao categorizar transações em massa:', error);
@@ -118,6 +130,10 @@ const Categorization = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleObservationChange = (transactionId: string, value: string) => {
+    setObservations(prev => ({ ...prev, [transactionId]: value }));
   };
 
   const handleClearSelection = () => {
