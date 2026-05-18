@@ -23,6 +23,8 @@ interface TransactionRowProps {
   onRefresh: () => void;
   isSelected: boolean;
   onSelect: (selected: boolean) => void;
+  observationValue?: string;
+  onObservationChange?: (transactionId: string, value: string) => void;
 }
 
 const TransactionRow = ({ 
@@ -31,10 +33,21 @@ const TransactionRow = ({
   onCategorize, 
   onRefresh, 
   isSelected, 
-  onSelect 
+  onSelect,
+  observationValue,
+  onObservationChange,
 }: TransactionRowProps) => {
   const [selectedCategory, setSelectedCategory] = useState(transaction.category || '');
-  const [observation, setObservation] = useState(transaction.observacao || '');
+  const [localObservation, setLocalObservation] = useState(transaction.observacao || '');
+  const isControlled = observationValue !== undefined && !!onObservationChange;
+  const observation = isControlled ? (observationValue ?? '') : localObservation;
+  const setObservation = (value: string) => {
+    if (isControlled) {
+      onObservationChange!(transaction.id, value);
+    } else {
+      setLocalObservation(value);
+    }
+  };
 
   const handleCategorize = () => {
     if (selectedCategory) {
