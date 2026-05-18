@@ -316,14 +316,21 @@ export const useTransactionsActions = () => {
   });
 
   const bulkUpdateTransactions = useMutation({
-    mutationFn: async (updates: { id: string; category: string; status: string }[]) => {
+    mutationFn: async (updates: { id: string; category: string; status: string; observacao?: string }[]) => {
       console.log('Bulk updating transactions:', updates.length);
-      const promises = updates.map(update => 
-        supabase
+      const promises = updates.map(update => {
+        const payload: { category: string; status: string; observacao?: string } = {
+          category: update.category,
+          status: update.status,
+        };
+        if (update.observacao !== undefined) {
+          payload.observacao = update.observacao;
+        }
+        return supabase
           .from('transactions')
-          .update({ category: update.category, status: update.status })
-          .eq('id', update.id)
-      );
+          .update(payload)
+          .eq('id', update.id);
+      });
       
       const results = await Promise.all(promises);
       const errors = results.filter(result => result.error);
