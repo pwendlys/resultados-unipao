@@ -12,6 +12,8 @@ interface TransactionTableProps {
   selectedTransactions: Set<string>;
   onSelectTransaction: (transactionId: string, selected: boolean) => void;
   onSelectAll: (selected: boolean) => void;
+  observations?: Record<string, string>;
+  onObservationChange?: (transactionId: string, value: string) => void;
 }
 
 const TransactionTable = ({ 
@@ -21,7 +23,9 @@ const TransactionTable = ({
   onRefresh,
   selectedTransactions,
   onSelectTransaction,
-  onSelectAll
+  onSelectAll,
+  observations,
+  onObservationChange,
 }: TransactionTableProps) => {
   const allSelected = transactions.length > 0 && transactions.every(t => selectedTransactions.has(t.id));
   const someSelected = transactions.some(t => selectedTransactions.has(t.id));
