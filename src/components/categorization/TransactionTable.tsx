@@ -93,6 +93,8 @@ const TransactionTable = ({
                 onRefresh={onRefresh}
                 isSelected={selectedTransactions.has(transaction.id)}
                 onSelect={(selected) => onSelectTransaction(transaction.id, selected)}
+                observationValue={observations ? (observations[transaction.id] ?? transaction.observacao ?? '') : undefined}
+                onObservationChange={onObservationChange}
               />
             ))}
           </tbody>
