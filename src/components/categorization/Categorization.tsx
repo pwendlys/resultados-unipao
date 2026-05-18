@@ -23,6 +23,7 @@ const Categorization = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'entrada' | 'saida'>('ALL');
   const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
+  const [observations, setObservations] = useState<Record<string, string>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   
