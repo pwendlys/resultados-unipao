@@ -195,6 +195,8 @@ const Categorization = () => {
         selectedTransactions={selectedTransactions}
         onSelectTransaction={handleSelectTransaction}
         onSelectAll={handleSelectAll}
+        observations={observations}
+        onObservationChange={handleObservationChange}
       />
 
       {/* Pagination */}
