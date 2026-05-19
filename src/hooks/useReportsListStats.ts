@@ -5,6 +5,7 @@ export interface ReportListStats {
   signatureCount: number;
   diligenceCount: number;
   noChangeCount: number;
+  hasTreasurerSigned: boolean;
 }
 
 export const useReportsListStats = (reportIds: string[]) => {
@@ -25,12 +26,24 @@ export const useReportsListStats = (reportIds: string[]) => {
         .select('report_id, transaction_id, status')
         .in('report_id', reportIds);
 
+      // 3. Buscar assinaturas do tesoureiro
+      const { data: treasurerSigData } = await supabase
+        .from('treasurer_signatures')
+        .select('report_id')
+        .in('report_id', reportIds);
+
       // Processar dados
       const statsMap: Record<string, ReportListStats> = {};
 
       // Inicializar todos os relatórios
       for (const reportId of reportIds) {
-        statsMap[reportId] = { signatureCount: 0, diligenceCount: 0, noChangeCount: 0 };
+        statsMap[reportId] = { signatureCount: 0, diligenceCount: 0, noChangeCount: 0, hasTreasurerSigned: false };
+      }
+
+      // Marcar quais relatórios têm assinatura do tesoureiro
+      const treasurerSignedSet = new Set((treasurerSigData || []).map(s => s.report_id));
+      for (const reportId of reportIds) {
+        statsMap[reportId].hasTreasurerSigned = treasurerSignedSet.has(reportId);
       }
 
       // Contar assinaturas únicas por relatório

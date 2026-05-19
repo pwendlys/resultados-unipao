@@ -1,38 +1,58 @@
 ## Problema
 
-Hoje, ao usar "Categorizar Selecionadas" na barra de ações em massa, o sistema salva apenas `category` e `status`. O texto digitado no campo "Observação" de cada linha fica apenas no estado local de `TransactionRow` e é descartado — só é persistido quando o usuário clica no botão "Categorizar" individual da linha.
+No painel do **Fiscal** (`Relatórios para Revisão`), relatórios já finalizados pelo Tesoureiro continuam aparecendo como **"Aguardando Tesouraria" (90%)** — ex.: Cora Dez 25, Cora Nov 25, Mensalidades/Aporte/Boletos.
 
-## Objetivo
+### Causa raiz
 
-Garantir que, ao categorizar várias transações de uma só vez, as observações digitadas em cada linha selecionada também sejam salvas — sem alterar o fluxo individual atual, sem renomear funções e sem mexer em outras telas.
+Consulta no banco mostra que os relatórios têm:
+- `fiscal_report_signatures` = 3/3
+- `treasurer_signatures` = 1 (tesoureiro já assinou)
+- Porém `fiscal_reports.status = 'open'` e `pdf_url = NULL`
 
-## Mudanças (mínimas e aditivas)
+No painel do Tesoureiro (`useTreasurerReportsSummary`) já existe a lógica correta: um relatório é considerado **Finalizado** quando há assinatura do tesoureiro + 3/3 fiscais + diligências confirmadas, **mesmo sem `pdf_url` ou `status='finished'`**.
 
-### 1. `src/components/categorization/TransactionRow.tsx`
-- Adicionar duas props **opcionais**: `observationValue?: string` e `onObservationChange?: (transactionId, value) => void`.
-- Se vierem definidas, o `Input` de observação passa a ser controlado pelo pai (lifting state). Caso contrário, mantém o comportamento atual com `useState` local — preserva 100% do fluxo individual.
-- A função `handleCategorize` continua usando o valor atual (controlado ou local) — sem alteração de assinatura externa.
+Mas em `FiscalReportsList.tsx` / `useReportsListStats.ts` o critério é apenas:
+```ts
+report.pdf_url || report.status === 'finished'
+```
+— que ignora a existência de `treasurer_signatures`. Por isso o card permanece em "Aguardando Tesouraria".
 
-### 2. `src/components/categorization/TransactionTable.tsx`
-- Adicionar props opcionais `observations?: Record<string,string>` e `onObservationChange?`, repassando para cada `TransactionRow`. Sem mudanças na renderização.
+## Plano (cirúrgico, sem alterar funcionalidades existentes)
 
-### 3. `src/components/categorization/Categorization.tsx`
-- Novo estado: `const [observations, setObservations] = useState<Record<string,string>>({})`.
-- Novo handler `handleObservationChange(id, value)` que atualiza o objeto.
-- Passar `observations` e `handleObservationChange` para `TransactionTable`.
-- Em `handleBulkCategorize(category)`: montar cada update incluindo `observacao: observations[id]` apenas quando houver valor não vazio (`trim()`). Limpar o map dos ids processados ao final.
-- `handleCategorize` individual continua intacto (já envia `observacao`).
+### 1. `src/hooks/useReportsListStats.ts` (aditivo)
 
-### 4. `src/hooks/useSupabaseData.ts` — `bulkUpdateTransactions`
-- Ampliar o tipo do payload para aceitar campo opcional `observacao?: string | null`.
-- No `.update(...)`, montar o objeto condicionalmente: se `update.observacao` estiver presente, incluir; senão, manter exatamente o mesmo `{ category, status }` de hoje.
-- Nenhuma chamada existente quebra (campo é opcional e o comportamento default é idêntico).
+Buscar também `treasurer_signatures` e expor `hasTreasurerSigned: boolean` por relatório:
 
-## O que NÃO muda
-- Assinaturas públicas de `handleCategorize`, `onCategorize`, `onBulkCategorize`, `bulkUpdateTransactions` (apenas extensão opcional).
-- BulkActionsBar permanece igual.
-- Paginação, filtros, seleção (incluindo "selecionar todas as filtradas"), RLS, PDFs, relatórios — sem alteração.
-- Categorização individual continua salvando observação como hoje.
+```ts
+export interface ReportListStats {
+  signatureCount: number;
+  diligenceCount: number;
+  noChangeCount: number;
+  hasTreasurerSigned: boolean; // NOVO
+}
+```
+
+Adicionar uma query `.from('treasurer_signatures').select('report_id').in('report_id', reportIds)` e popular o flag. Sem alterar nada que já é retornado.
+
+### 2. `src/components/fiscal/FiscalReportsList.tsx` (aditivo)
+
+Em `computeReportProgress`, considerar **Finalizado** quando o tesoureiro assinou:
+
+```ts
+if (report.pdf_url || report.status === 'finished' || hasTreasurerSigned) {
+  return { progress: 100, label: 'Finalizado', ... };
+}
+```
+
+Passar `hasTreasurerSigned` (de `stats`) para a função. Também usar esse flag no indicador "Tesouraria: Sim/Não" para refletir corretamente.
+
+## O que NÃO será alterado
+
+- Estrutura/assinatura de hooks e componentes existentes.
+- Lógica do painel do Tesoureiro (já correta).
+- Fluxos de assinatura, diligências, geração de PDF, RLS, cache.
+- Demais cálculos de progresso intermediário (10–89%).
 
 ## Resultado esperado
-Após digitar observações em várias linhas, selecionar essas linhas e clicar em "Categorizar Selecionadas", as observações digitadas são persistidas junto com a categoria no Supabase, aparecendo no painel e nos PDFs (que já leem `observacao`).
+
+Os 9 relatórios que o tesoureiro já assinou passarão a aparecer no painel do fiscal como **"Finalizado" 100%** com **Tesouraria: Sim**, consistente com o painel do Tesoureiro.

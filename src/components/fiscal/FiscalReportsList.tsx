@@ -30,10 +30,11 @@ interface ProgressResult {
 
 const computeReportProgress = (
   report: { total_entries: number | null; pending_count: number | null; pdf_url: string | null; status: string },
-  signatureCount: number
+  signatureCount: number,
+  hasTreasurerSigned: boolean
 ): ProgressResult => {
-  // A) Finalizado: treasurer generated final PDF
-  if (report.pdf_url || report.status === 'finished') {
+  // A) Finalizado: treasurer generated final PDF OR treasurer already signed
+  if (report.pdf_url || report.status === 'finished' || hasTreasurerSigned) {
     return {
       progress: 100,
       label: 'Finalizado',
@@ -118,10 +119,11 @@ const FiscalReportsList = ({ onNavigateToPage }: FiscalReportsListProps) => {
             const stats = reportStats[report.id];
             const signatureCount = stats?.signatureCount || 0;
             const diligenceCount = stats?.diligenceCount || 0;
+            const hasTreasurerSigned = stats?.hasTreasurerSigned || false;
             const noChangeCount = Math.max(0, (report.approved_count || 0) - diligenceCount);
-            const hasFinalPdf = !!(report.pdf_url || report.status === 'finished');
+            const hasFinalPdf = !!(report.pdf_url || report.status === 'finished' || hasTreasurerSigned);
 
-            const prog = computeReportProgress(report, signatureCount);
+            const prog = computeReportProgress(report, signatureCount, hasTreasurerSigned);
 
             return (
               <Card 
