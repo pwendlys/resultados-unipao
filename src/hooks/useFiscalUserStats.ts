@@ -115,6 +115,10 @@ export const useFiscalUserStats = (userId: string | undefined) => {
       for (const report of reports) {
         const reportTransactions = transactionsByReport.get(report.id) || [];
         const hasSigned = signedReportIds.has(report.id);
+        const isReportFinalized =
+          report.status === 'finished' ||
+          treasurerSignedReportIds.has(report.id) ||
+          !!report.pdf_url;
         
         let pendingReviews = 0;
         let pendingDiligenceAck = 0;
@@ -133,16 +137,21 @@ export const useFiscalUserStats = (userId: string | undefined) => {
 
         const hasPendingReviews = pendingReviews > 0;
         const hasPendingDiligenceAck = pendingDiligenceAck > 0;
-        const needsSignature = !hasSigned && report.status === 'open';
+        const needsSignature = !hasSigned && !isReportFinalized && report.status === 'open';
 
-        // Calculate pending actions for this report
-        const reportPending = pendingReviews + pendingDiligenceAck + (needsSignature ? 1 : 0);
+        // Calculate pending actions for this report (skip if finalized by treasurer)
+        const reportPending = isReportFinalized
+          ? 0
+          : pendingReviews + pendingDiligenceAck + (needsSignature ? 1 : 0);
         totalPendingActions += reportPending;
 
         // Determine user status for this report
         let userStatus: 'pending' | 'completed' | 'waiting_others';
         
-        if (hasPendingReviews || hasPendingDiligenceAck || needsSignature) {
+        if (isReportFinalized) {
+          userStatus = 'completed';
+          completedReports++;
+        } else if (hasPendingReviews || hasPendingDiligenceAck || needsSignature) {
           userStatus = 'pending';
         } else if (hasSigned && report.status !== 'finished') {
           userStatus = 'waiting_others';
