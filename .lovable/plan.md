@@ -1,58 +1,83 @@
-## Problema
+# Plano para corrigir o status no painel do fiscal
 
-No painel do **Fiscal** (`Relatórios para Revisão`), relatórios já finalizados pelo Tesoureiro continuam aparecendo como **"Aguardando Tesouraria" (90%)** — ex.: Cora Dez 25, Cora Nov 25, Mensalidades/Aporte/Boletos.
+## Diagnóstico
+Encontrei dois pontos distintos causando a divergência:
 
-### Causa raiz
+1. **O início do fiscal (`FiscalDashboard`) ainda não considera a finalização pela tesouraria**.
+   - Hoje ele depende de `report.status === 'finished'` para marcar como concluído.
+   - Nos relatórios citados, vários estão com `treasurer_signatures = 1`, mas continuam com `status = 'open'` e `pdf_url = null`.
 
-Consulta no banco mostra que os relatórios têm:
-- `fiscal_report_signatures` = 3/3
-- `treasurer_signatures` = 1 (tesoureiro já assinou)
-- Porém `fiscal_reports.status = 'open'` e `pdf_url = NULL`
+2. **O fiscal provavelmente não consegue enxergar `treasurer_signatures` por RLS**.
+   - A tabela `treasurer_signatures` hoje só permite leitura para:
+     - admin/tesoureiro
+     - o próprio tesoureiro que assinou
+   - Não há política de leitura para usuários com role `fiscal`.
+   - Isso explica por que a aba de relatórios continuou sem atualizar mesmo após a lógica anterior: o frontend fiscal consulta `treasurer_signatures`, mas para o fiscal essa leitura não retorna o que precisa.
 
-No painel do Tesoureiro (`useTreasurerReportsSummary`) já existe a lógica correta: um relatório é considerado **Finalizado** quando há assinatura do tesoureiro + 3/3 fiscais + diligências confirmadas, **mesmo sem `pdf_url` ou `status='finished'`**.
+Também confirmei no banco que os relatórios recentes já têm assinatura da tesouraria, por exemplo:
+- Relatório Cora Dez 25
+- Relatório Cora Nov 25
+- Relatório Aporte e Joia Jan 26
+- Relatório Mensalidades e Tx Adm Jan 26
+- Relatório Boletos Jan 26
 
-Mas em `FiscalReportsList.tsx` / `useReportsListStats.ts` o critério é apenas:
-```ts
-report.pdf_url || report.status === 'finished'
-```
-— que ignora a existência de `treasurer_signatures`. Por isso o card permanece em "Aguardando Tesouraria".
+## O que vou implementar
 
-## Plano (cirúrgico, sem alterar funcionalidades existentes)
+### 1) Ajuste mínimo de acesso aos dados da tesouraria
+Criar uma **correção de acesso somente para leitura** da informação necessária ao fiscal sobre `treasurer_signatures`, sem mexer no fluxo de assinatura existente.
 
-### 1. `src/hooks/useReportsListStats.ts` (aditivo)
+Abordagem segura:
+- liberar leitura para usuários `fiscal` apenas nessa tabela, mantendo inserção restrita ao `tesoureiro`
+- não alterar criação, edição ou exclusão de assinaturas
 
-Buscar também `treasurer_signatures` e expor `hasTreasurerSigned: boolean` por relatório:
+Isso preserva a lógica atual e só resolve a visibilidade do status.
 
-```ts
-export interface ReportListStats {
-  signatureCount: number;
-  diligenceCount: number;
-  noChangeCount: number;
-  hasTreasurerSigned: boolean; // NOVO
-}
-```
+### 2) Corrigir a lógica do início do fiscal
+Atualizar `useFiscalUserStats` / `FiscalDashboard` para considerar como concluído quando houver evidência de conclusão da tesouraria, alinhando com a regra já usada no restante do sistema:
+- `report.status === 'finished'`
+- **ou** existir assinatura da tesouraria para o relatório
+- **ou** existir PDF final, quando aplicável
 
-Adicionar uma query `.from('treasurer_signatures').select('report_id').in('report_id', reportIds)` e popular o flag. Sem alterar nada que já é retornado.
+Com isso:
+- os cards do início deixam de mostrar “Aguardando outros” para relatórios já finalizados pela tesouraria
+- contadores de pendência/concluídos passam a refletir o estado real
 
-### 2. `src/components/fiscal/FiscalReportsList.tsx` (aditivo)
+### 3) Garantir o mesmo comportamento na aba “Relatórios”
+Revisar o caminho `FiscalReportsList` + `useReportsListStats` para que a regra funcione de ponta a ponta com os dados liberados por RLS.
 
-Em `computeReportProgress`, considerar **Finalizado** quando o tesoureiro assinou:
+Sem refatorar estrutura:
+- manter o cálculo atual
+- só garantir que `hasTreasurerSigned` chegue corretamente para o fiscal
+- validar que o status exibido vire `Finalizado` para todos os relatórios já concluídos
 
-```ts
-if (report.pdf_url || report.status === 'finished' || hasTreasurerSigned) {
-  return { progress: 100, label: 'Finalizado', ... };
-}
-```
+### 4) Garantir atualização automática da tela
+Verificar/incluir invalidação de cache e atualização reativa para o contexto fiscal quando `treasurer_signatures` mudar, evitando que a tela fique presa em estado antigo.
 
-Passar `hasTreasurerSigned` (de `stats`) para a função. Também usar esse flag no indicador "Tesouraria: Sim/Não" para refletir corretamente.
+## Arquivos que devem ser ajustados
+- `src/hooks/useFiscalUserStats.ts`
+- `src/components/fiscal/FiscalDashboard.tsx`
+- `src/hooks/useReportsListStats.ts`
+- possivelmente `src/hooks/useFiscalReports.ts` apenas se faltar invalidação/realtime para o caso fiscal
+- migração Supabase para política de leitura em `treasurer_signatures`
 
-## O que NÃO será alterado
+## O que não vou alterar
+- fluxo de revisão fiscal
+- fluxo de assinatura do tesoureiro
+- geração de PDF
+- estrutura de relatórios
+- regras de diligência
+- autenticação e navegação existentes
+- qualquer refatoração ampla
 
-- Estrutura/assinatura de hooks e componentes existentes.
-- Lógica do painel do Tesoureiro (já correta).
-- Fluxos de assinatura, diligências, geração de PDF, RLS, cache.
-- Demais cálculos de progresso intermediário (10–89%).
+## Validação
+Depois da implementação, vou validar especificamente:
+- início do fiscal mostrando os relatórios finalizados corretamente
+- aba “Relatórios para Revisão” com os mesmos relatórios como finalizados
+- ausência de impacto no painel da tesouraria
+- ausência de impacto no fluxo de assinatura existente
 
-## Resultado esperado
-
-Os 9 relatórios que o tesoureiro já assinou passarão a aparecer no painel do fiscal como **"Finalizado" 100%** com **Tesouraria: Sim**, consistente com o painel do Tesoureiro.
+## Detalhe técnico
+A correção principal é alinhar **fonte de verdade + permissão de leitura**:
+- hoje o sistema sabe que a tesouraria assinou
+- mas o fiscal não consegue usar essa informação em todos os pontos
+- a correção será **aditiva e localizada**, sem reestruturar os fluxos atuais
