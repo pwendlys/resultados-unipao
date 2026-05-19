@@ -30,10 +30,11 @@ interface ProgressResult {
 
 const computeReportProgress = (
   report: { total_entries: number | null; pending_count: number | null; pdf_url: string | null; status: string },
-  signatureCount: number
+  signatureCount: number,
+  hasTreasurerSigned: boolean
 ): ProgressResult => {
-  // A) Finalizado: treasurer generated final PDF
-  if (report.pdf_url || report.status === 'finished') {
+  // A) Finalizado: treasurer generated final PDF OR treasurer already signed
+  if (report.pdf_url || report.status === 'finished' || hasTreasurerSigned) {
     return {
       progress: 100,
       label: 'Finalizado',
