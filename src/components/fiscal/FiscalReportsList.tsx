@@ -119,10 +119,11 @@ const FiscalReportsList = ({ onNavigateToPage }: FiscalReportsListProps) => {
             const stats = reportStats[report.id];
             const signatureCount = stats?.signatureCount || 0;
             const diligenceCount = stats?.diligenceCount || 0;
+            const hasTreasurerSigned = stats?.hasTreasurerSigned || false;
             const noChangeCount = Math.max(0, (report.approved_count || 0) - diligenceCount);
-            const hasFinalPdf = !!(report.pdf_url || report.status === 'finished');
+            const hasFinalPdf = !!(report.pdf_url || report.status === 'finished' || hasTreasurerSigned);
 
-            const prog = computeReportProgress(report, signatureCount);
+            const prog = computeReportProgress(report, signatureCount, hasTreasurerSigned);
 
             return (
               <Card 
