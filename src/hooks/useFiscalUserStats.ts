@@ -26,7 +26,7 @@ export const useFiscalUserStats = (userId: string | undefined) => {
       // 1. Fetch all fiscal reports
       const { data: reports, error: reportsError } = await supabase
         .from('fiscal_reports')
-        .select('id, status, total_entries')
+        .select('id, status, total_entries, pdf_url')
         .order('created_at', { ascending: false });
 
       if (reportsError) throw reportsError;
@@ -49,6 +49,14 @@ export const useFiscalUserStats = (userId: string | undefined) => {
       if (sigError) throw sigError;
 
       const signedReportIds = new Set((signatures || []).map(s => s.report_id));
+
+      // 2b. Fetch treasurer signatures to detect finalized reports
+      const { data: treasurerSigs } = await supabase
+        .from('treasurer_signatures')
+        .select('report_id')
+        .in('report_id', reportIds);
+
+      const treasurerSignedReportIds = new Set((treasurerSigs || []).map(s => s.report_id));
 
       // 3. Fetch transaction orders for all reports
       const { data: transactionOrders, error: toError } = await supabase
