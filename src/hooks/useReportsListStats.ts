@@ -5,6 +5,7 @@ export interface ReportListStats {
   signatureCount: number;
   diligenceCount: number;
   noChangeCount: number;
+  hasTreasurerSigned: boolean;
 }
 
 export const useReportsListStats = (reportIds: string[]) => {
