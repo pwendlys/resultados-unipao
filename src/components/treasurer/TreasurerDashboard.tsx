@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAllFiscalReports } from '@/hooks/useFiscalReports';
 import { useTreasurerReportsSummary } from '@/hooks/useTreasurerReportsSummary';
 import ProfileCard from '@/components/profile/ProfileCard';
+import MySignatureCard from '@/components/profile/MySignatureCard';
 
 const TreasurerDashboard = () => {
   const { user } = useAuth();
