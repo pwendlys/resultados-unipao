@@ -26,7 +26,7 @@ export const useFiscalUserStats = (userId: string | undefined) => {
       // 1. Fetch all fiscal reports
       const { data: reports, error: reportsError } = await supabase
         .from('fiscal_reports')
-        .select('id, status, total_entries')
+        .select('id, status, total_entries, pdf_url')
         .order('created_at', { ascending: false });
 
       if (reportsError) throw reportsError;
@@ -49,6 +49,14 @@ export const useFiscalUserStats = (userId: string | undefined) => {
       if (sigError) throw sigError;
 
       const signedReportIds = new Set((signatures || []).map(s => s.report_id));
+
+      // 2b. Fetch treasurer signatures to detect finalized reports
+      const { data: treasurerSigs } = await supabase
+        .from('treasurer_signatures')
+        .select('report_id')
+        .in('report_id', reportIds);
+
+      const treasurerSignedReportIds = new Set((treasurerSigs || []).map(s => s.report_id));
 
       // 3. Fetch transaction orders for all reports
       const { data: transactionOrders, error: toError } = await supabase
@@ -107,6 +115,10 @@ export const useFiscalUserStats = (userId: string | undefined) => {
       for (const report of reports) {
         const reportTransactions = transactionsByReport.get(report.id) || [];
         const hasSigned = signedReportIds.has(report.id);
+        const isReportFinalized =
+          report.status === 'finished' ||
+          treasurerSignedReportIds.has(report.id) ||
+          !!report.pdf_url;
         
         let pendingReviews = 0;
         let pendingDiligenceAck = 0;
@@ -125,16 +137,21 @@ export const useFiscalUserStats = (userId: string | undefined) => {
 
         const hasPendingReviews = pendingReviews > 0;
         const hasPendingDiligenceAck = pendingDiligenceAck > 0;
-        const needsSignature = !hasSigned && report.status === 'open';
+        const needsSignature = !hasSigned && !isReportFinalized && report.status === 'open';
 
-        // Calculate pending actions for this report
-        const reportPending = pendingReviews + pendingDiligenceAck + (needsSignature ? 1 : 0);
+        // Calculate pending actions for this report (skip if finalized by treasurer)
+        const reportPending = isReportFinalized
+          ? 0
+          : pendingReviews + pendingDiligenceAck + (needsSignature ? 1 : 0);
         totalPendingActions += reportPending;
 
         // Determine user status for this report
         let userStatus: 'pending' | 'completed' | 'waiting_others';
         
-        if (hasPendingReviews || hasPendingDiligenceAck || needsSignature) {
+        if (isReportFinalized) {
+          userStatus = 'completed';
+          completedReports++;
+        } else if (hasPendingReviews || hasPendingDiligenceAck || needsSignature) {
           userStatus = 'pending';
         } else if (hasSigned && report.status !== 'finished') {
           userStatus = 'waiting_others';
