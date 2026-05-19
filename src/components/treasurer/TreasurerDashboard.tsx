@@ -56,6 +56,9 @@ const TreasurerDashboard = () => {
       {/* Profile Card */}
       <ProfileCard />
 
+      {/* Minha Assinatura Digital */}
+      <MySignatureCard />
+
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
