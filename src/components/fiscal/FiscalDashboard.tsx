@@ -107,6 +107,9 @@ const FiscalDashboard = ({ onNavigateToPage }: FiscalDashboardProps) => {
       {/* Profile Card */}
       <ProfileCard />
 
+      {/* Minha Assinatura Digital */}
+      <MySignatureCard />
+
       {/* Stats Cards - User-specific data */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
