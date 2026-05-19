@@ -18,6 +18,7 @@ import { useFiscalUserStats } from '@/hooks/useFiscalUserStats';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import ProfileCard from '@/components/profile/ProfileCard';
+import MySignatureCard from '@/components/profile/MySignatureCard';
 
 interface FiscalDashboardProps {
   onNavigateToPage?: (page: string) => void;
