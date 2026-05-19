@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAllFiscalReports } from '@/hooks/useFiscalReports';
 import { useTreasurerReportsSummary } from '@/hooks/useTreasurerReportsSummary';
 import ProfileCard from '@/components/profile/ProfileCard';
+import MySignatureCard from '@/components/profile/MySignatureCard';
 
 const TreasurerDashboard = () => {
   const { user } = useAuth();
@@ -54,6 +55,9 @@ const TreasurerDashboard = () => {
 
       {/* Profile Card */}
       <ProfileCard />
+
+      {/* Minha Assinatura Digital */}
+      <MySignatureCard />
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-3">

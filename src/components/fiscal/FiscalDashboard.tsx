@@ -18,6 +18,7 @@ import { useFiscalUserStats } from '@/hooks/useFiscalUserStats';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import ProfileCard from '@/components/profile/ProfileCard';
+import MySignatureCard from '@/components/profile/MySignatureCard';
 
 interface FiscalDashboardProps {
   onNavigateToPage?: (page: string) => void;
@@ -105,6 +106,9 @@ const FiscalDashboard = ({ onNavigateToPage }: FiscalDashboardProps) => {
 
       {/* Profile Card */}
       <ProfileCard />
+
+      {/* Minha Assinatura Digital */}
+      <MySignatureCard />
 
       {/* Stats Cards - User-specific data */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
