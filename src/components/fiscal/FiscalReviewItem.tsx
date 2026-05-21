@@ -11,7 +11,9 @@ import {
   Folder,
   Users,
   AlertCircle,
-  Eye
+  Eye,
+  MessageSquare
+
 } from 'lucide-react';
 import { FiscalReview } from '@/hooks/useFiscalReviews';
 import { cn } from '@/lib/utils';
@@ -210,6 +212,19 @@ const FiscalReviewItem = ({
                 </Badge>
               )}
             </div>
+            {/* Admin observation block - shows the observation made during categorization */}
+            {transaction?.observacao && (
+              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+                <div className="flex items-start gap-2 text-blue-800">
+                  <MessageSquare className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="font-medium">Observação do ADM:</span>{' '}
+                    <span>{transaction.observacao}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
 
             {/* Diligence details block - shows who created and the reason */}
             {isDiligence && (
@@ -338,8 +353,17 @@ const FiscalReviewItem = ({
               <div>
                 <span className="text-muted-foreground">Índice no Extrato:</span>
                 <p>#{review.entry_index}</p>
-              </div>
             </div>
+
+            {transaction?.observacao && (
+              <div>
+                <span className="text-muted-foreground">Observação do ADM:</span>
+                <p className="bg-blue-50 border border-blue-200 text-blue-900 p-2 rounded mt-1">
+                  {transaction.observacao}
+                </p>
+              </div>
+            )}
+
 
             <div>
               <span className="text-muted-foreground">Status:</span>

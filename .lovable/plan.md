@@ -1,41 +1,32 @@
-# Adicionar edição da assinatura padrão nos painéis
-
 ## Objetivo
-Exibir, logo abaixo do "Meu Perfil" nos painéis **Fiscal** e **Tesoureiro**, um card "Minha Assinatura Digital" onde o usuário pode visualizar a assinatura padrão salva e substituí-la por uma nova. A assinatura salva continua sendo a mesma já utilizada hoje ao assinar relatórios e atas.
 
-## Política de não-alteração
-Nada das funcionalidades atuais será modificado:
-- Tabela `fiscal_user_profiles` e hooks `useFiscalUserProfile` / `useSaveDefaultSignature` permanecem intactos (apenas reutilizados).
-- Modais `FiscalSignatureModal` e `TreasurerSignatureModal` não serão alterados.
-- Fluxos de assinatura de relatórios, atas, geração de PDF, RLS, auth e dashboards permanecem iguais.
-- Apenas dois pontos de inserção visual nos dashboards e um novo componente isolado.
+Exibir as observações feitas pelo ADM na categorização das transações dentro do painel Fiscal (e consequentemente acessível ao Tesoureiro que também usa esses itens), tanto na listagem quanto na hora de aprovar/marcar como divergente.
 
-## Mudanças
+Hoje a coluna `transactions.observacao` (preenchida na tela de Categorização pelo ADM) existe no banco, mas não é selecionada pela query do painel fiscal nem renderizada no item de revisão.
 
-### 1. Novo componente `src/components/profile/MySignatureCard.tsx`
-Card auto-contido que:
-- Recebe `userId: string` como prop.
-- Usa `useFiscalUserProfile(userId)` para mostrar a assinatura salva (preview da imagem) e a data da última atualização.
-- Botão "Editar assinatura" abre um `Dialog` com canvas de desenho (mesma UX dos modais atuais — mouse/touch, limpar, confirmar).
-- Botão "Salvar" chama `useSaveDefaultSignature` com o dataURL do canvas.
-- Se ainda não houver assinatura salva, exibe estado vazio com botão "Criar assinatura".
-- Toast de sucesso/erro via `useToast` existente.
+## Mudanças (somente additivas)
 
-### 2. `src/components/fiscal/FiscalDashboard.tsx`
-Inserir `<MySignatureCard userId={session.user.id} />` imediatamente abaixo do `<ProfileCard />` já existente. Nenhuma outra mudança.
+### 1. `src/hooks/useFiscalReviews.ts`
+- Adicionar `observacao` no `select` do relacionamento `transaction:transactions (...)`.
+- Adicionar `observacao: string | null` na interface `FiscalReview['transaction']`.
 
-### 3. `src/components/treasurer/TreasurerDashboard.tsx`
-Inserir `<MySignatureCard userId={session.user.id} />` imediatamente abaixo do `<ProfileCard />` já existente. Nenhuma outra mudança.
+Nenhuma outra função/mutation é alterada.
 
-## Detalhes técnicos
-- O canvas do novo componente é uma cópia simplificada do desenho usado em `FiscalSignatureModal` (apenas a parte de desenhar + limpar + confirmar). Não importa nem altera os modais existentes para evitar acoplamento.
-- Como `useSaveDefaultSignature` faz `upsert` em `fiscal_user_profiles`, a substituição é nativa — qualquer assinatura nova sobrescreve a anterior.
-- A assinatura salva é lida pelos modais atuais via `savedSignature` prop, então a troca aqui passa a refletir automaticamente nas próximas assinaturas de relatórios/atas, sem mudar nenhum código de assinatura.
+### 2. `src/components/fiscal/FiscalReviewItem.tsx`
+- Adicionar um bloco visual **somente quando** `transaction?.observacao` existir:
+  - Um destaque discreto (ex.: caixa com borda azul/âmbar suave + ícone) com label "Observação do ADM:" e o texto.
+  - Posicionado logo abaixo do valor/categoria (sempre visível, não escondido no expand), para que o fiscal veja antes de aprovar.
+- Também repetir no bloco "Expanded Details" para manter consistência.
 
-## Sem alterações em
-- Banco de dados / RLS / migrações
-- Edge functions
-- PDF generators
-- Hooks de relatórios, reviews, atas, signatures
-- Componentes de modal de assinatura
-- Auth, roles, navegação
+Nenhuma lógica de aprovação/divergência/diligência é tocada.
+
+## O que NÃO muda
+
+- Schema do banco, RLS, triggers.
+- Hooks `useFiscalReports`, `useFiscalReviewsActions`, fluxo de assinatura, geração de PDF, painel do tesoureiro (ele consome os mesmos componentes/queries, então passa a ver a observação automaticamente).
+- Tela de Categorização do ADM.
+- Modal `FiscalObservationModal` (observação de divergência do fiscal — campo separado em `fiscal_reviews.observation`).
+
+## Resultado
+
+Fiscais e Tesoureiro passam a ver a observação do ADM em cada lançamento dentro do painel de revisão, sem qualquer alteração nos fluxos atuais.
