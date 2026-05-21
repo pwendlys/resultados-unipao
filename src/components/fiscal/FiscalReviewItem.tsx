@@ -360,7 +360,7 @@ const FiscalReviewItem = ({
 
             {transaction?.observacao && (
               <div>
-                <span className="text-muted-foreground">Observação do ADM:</span>
+                <span className="text-muted-foreground">Observação:</span>
                 <p className="bg-blue-50 border border-blue-200 text-blue-900 p-2 rounded mt-1">
                   {transaction.observacao}
                 </p>
