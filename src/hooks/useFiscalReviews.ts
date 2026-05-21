@@ -21,6 +21,7 @@ export interface FiscalReview {
     type: string;
     category: string | null;
     entry_index: number | null;
+    observacao: string | null;
   } | null;
 }
 
@@ -44,7 +45,8 @@ export const useFiscalReviews = (fiscalReportId: string | undefined) => {
             amount,
             type,
             category,
-            entry_index
+            entry_index,
+            observacao
           )
         `)
         .eq('fiscal_report_id', fiscalReportId);
