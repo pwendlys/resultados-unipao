@@ -218,7 +218,7 @@ const FiscalReviewItem = ({
                 <div className="flex items-start gap-2 text-blue-800">
                   <MessageSquare className="h-4 w-4 mt-0.5 flex-shrink-0" />
                   <div>
-                    <span className="font-medium">Observação do ADM:</span>{' '}
+                    <span className="font-medium">Observação:</span>{' '}
                     <span>{transaction.observacao}</span>
                   </div>
                 </div>
