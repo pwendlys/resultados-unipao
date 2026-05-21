@@ -353,7 +353,10 @@ const FiscalReviewItem = ({
               <div>
                 <span className="text-muted-foreground">Índice no Extrato:</span>
                 <p>#{review.entry_index}</p>
+              </div>
             </div>
+
+
 
             {transaction?.observacao && (
               <div>
