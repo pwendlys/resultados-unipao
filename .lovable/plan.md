@@ -4,7 +4,7 @@ Após a investigação:
 
 - A coluna `transactions.observacao` está corretamente preenchida no banco (confirmado: o lançamento "PIX EMITIDO OUTRA IF — R$ 154,00" tem `observacao = "Fonte Notbook"`).
 - A query `useFiscalReviews` já inclui `observacao` no `select` do join com `transactions`.
-- O `FiscalReviewItem.tsx` já renderiza o bloco azul "Observação do ADM" tanto no card principal quanto no expand.
+- O `FiscalReviewItem.tsx` já renderiza o bloco azul "Observação" tanto no card principal quanto no expand.
 - O salvamento na tela de Categorização (individual e em massa) grava corretamente em `transactions.observacao`.
 
 **Conclusão:** o código está correto. O motivo de não aparecer na tela atual é **cache do React Query**: o painel fiscal foi aberto antes da inclusão do campo `observacao` no select, então o cache em memória ainda guarda o objeto `transaction` sem essa coluna. Como o `staleTime` padrão mantém esses dados, novos refetchs só acontecem em invalidações específicas (aprovar/divergente), e mesmo assim a sessão atual pode reusar dados antigos.
@@ -36,5 +36,5 @@ Adicionar um pequeno botão discreto "Atualizar" no header da lista que chama `q
 
 ## Resultado esperado
 
-- Ao abrir/voltar para o painel fiscal (ou painel do tesoureiro), todas as observações do ADM aparecem imediatamente, inclusive em relatórios já despachados.
+- Ao abrir/voltar para o painel fiscal (ou painel do tesoureiro), todas as observações aparecem imediatamente, inclusive em relatórios já despachados.
 - Edições de observação feitas pelo ADM depois do despacho passam a aparecer via refetch automático (janela em foco) ou via o novo botão Atualizar.

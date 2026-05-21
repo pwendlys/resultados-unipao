@@ -218,7 +218,7 @@ const FiscalReviewItem = ({
                 <div className="flex items-start gap-2 text-blue-800">
                   <MessageSquare className="h-4 w-4 mt-0.5 flex-shrink-0" />
                   <div>
-                    <span className="font-medium">Observação do ADM:</span>{' '}
+                    <span className="font-medium">Observação:</span>{' '}
                     <span>{transaction.observacao}</span>
                   </div>
                 </div>
@@ -360,7 +360,7 @@ const FiscalReviewItem = ({
 
             {transaction?.observacao && (
               <div>
-                <span className="text-muted-foreground">Observação do ADM:</span>
+                <span className="text-muted-foreground">Observação:</span>
                 <p className="bg-blue-50 border border-blue-200 text-blue-900 p-2 rounded mt-1">
                   {transaction.observacao}
                 </p>
