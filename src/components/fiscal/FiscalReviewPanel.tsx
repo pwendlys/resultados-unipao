@@ -614,6 +614,21 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
           <Download className="h-4 w-4 mr-2" />
           Exportar PDF
         </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            queryClient.invalidateQueries({ queryKey: ['fiscal-reviews', reportId] });
+            queryClient.invalidateQueries({ queryKey: ['fiscal-report', reportId] });
+            toast({ title: 'Atualizado', description: 'Dados recarregados.' });
+          }}
+          className="w-full sm:w-auto"
+          title="Recarregar observações e dados do relatório"
+        >
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Atualizar
+        </Button>
       </div>
 
       {/* Filters */}
