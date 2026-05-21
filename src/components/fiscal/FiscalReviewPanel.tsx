@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -56,6 +58,7 @@ interface FiscalReviewPanelProps {
 const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { data: report, isLoading: reportLoading, refetch: refetchReport } = useFiscalReportById(reportId);
   const { data: reviews = [], isLoading: reviewsLoading } = useFiscalReviews(reportId);
   const { data: signatures = [], refetch: refetchSignatures } = useFiscalSignatures(reportId);
@@ -610,6 +613,21 @@ const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProp
         >
           <Download className="h-4 w-4 mr-2" />
           Exportar PDF
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            queryClient.invalidateQueries({ queryKey: ['fiscal-reviews', reportId] });
+            queryClient.invalidateQueries({ queryKey: ['fiscal-report', reportId] });
+            toast({ title: 'Atualizado', description: 'Dados recarregados.' });
+          }}
+          className="w-full sm:w-auto"
+          title="Recarregar observações e dados do relatório"
+        >
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Atualizar
         </Button>
       </div>
 

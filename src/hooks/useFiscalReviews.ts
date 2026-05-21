@@ -60,6 +60,9 @@ export const useFiscalReviews = (fiscalReportId: string | undefined) => {
       return data as FiscalReview[];
     },
     enabled: !!fiscalReportId,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   });
 };
 
