@@ -58,6 +58,7 @@ interface FiscalReviewPanelProps {
 const FiscalReviewPanel = ({ reportId, onNavigateToPage }: FiscalReviewPanelProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { data: report, isLoading: reportLoading, refetch: refetchReport } = useFiscalReportById(reportId);
   const { data: reviews = [], isLoading: reviewsLoading } = useFiscalReviews(reportId);
   const { data: signatures = [], refetch: refetchSignatures } = useFiscalSignatures(reportId);
