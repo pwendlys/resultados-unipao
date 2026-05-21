@@ -36,5 +36,5 @@ Adicionar um pequeno botão discreto "Atualizar" no header da lista que chama `q
 
 ## Resultado esperado
 
-- Ao abrir/voltar para o painel fiscal (ou painel do tesoureiro), todas as observações do ADM aparecem imediatamente, inclusive em relatórios já despachados.
+- Ao abrir/voltar para o painel fiscal (ou painel do tesoureiro), todas as observações aparecem imediatamente, inclusive em relatórios já despachados.
 - Edições de observação feitas pelo ADM depois do despacho passam a aparecer via refetch automático (janela em foco) ou via o novo botão Atualizar.
