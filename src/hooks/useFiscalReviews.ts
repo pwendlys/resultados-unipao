@@ -27,6 +27,27 @@ export interface FiscalReview {
 }
 
 export const useFiscalReviews = (fiscalReportId: string | undefined) => {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!fiscalReportId) return;
+
+    const channel = supabase
+      .channel(`fiscal-reviews-transactions-${fiscalReportId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'transactions' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['fiscal-reviews', fiscalReportId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fiscalReportId, queryClient]);
+
   return useQuery({
     queryKey: ['fiscal-reviews', fiscalReportId],
     queryFn: async () => {
