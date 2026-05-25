@@ -37,9 +37,11 @@ const TransactionRow = ({
   onSelect,
   observationValue,
   onObservationChange,
+  onObservationUpdate,
 }: TransactionRowProps) => {
   const [selectedCategory, setSelectedCategory] = useState(transaction.category || '');
   const [localObservation, setLocalObservation] = useState(transaction.observacao || '');
+  const [editedObservation, setEditedObservation] = useState(transaction.observacao || '');
   const isControlled = observationValue !== undefined && !!onObservationChange;
   const observation = isControlled ? (observationValue ?? '') : localObservation;
   const setObservation = (value: string) => {
