@@ -1,40 +1,49 @@
-## Diagnóstico
+## Objetivo
 
-Após a investigação:
+Permitir que o ADM edite o campo "Observação" de uma transação **mesmo após ela já estar categorizada**, com a alteração refletida em tempo real nos painéis Fiscal e Tesoureiro — sem alterar nenhuma função existente (apenas adições/extensões locais).
 
-- A coluna `transactions.observacao` está corretamente preenchida no banco (confirmado: o lançamento "PIX EMITIDO OUTRA IF — R$ 154,00" tem `observacao = "Fonte Notbook"`).
-- A query `useFiscalReviews` já inclui `observacao` no `select` do join com `transactions`.
-- O `FiscalReviewItem.tsx` já renderiza o bloco azul "Observação" tanto no card principal quanto no expand.
-- O salvamento na tela de Categorização (individual e em massa) grava corretamente em `transactions.observacao`.
+## Mudanças propostas
 
-**Conclusão:** o código está correto. O motivo de não aparecer na tela atual é **cache do React Query**: o painel fiscal foi aberto antes da inclusão do campo `observacao` no select, então o cache em memória ainda guarda o objeto `transaction` sem essa coluna. Como o `staleTime` padrão mantém esses dados, novos refetchs só acontecem em invalidações específicas (aprovar/divergente), e mesmo assim a sessão atual pode reusar dados antigos.
+### 1. Edição da observação após categorização (tela Categorização)
 
-Além disso, observações editadas pelo ADM **depois** que o relatório foi despachado ao fiscal não disparam nenhuma invalidação no painel fiscal — então o fiscal/tesoureiro que estiver com o painel aberto não vê a mudança até dar refresh manual.
+**`src/components/categorization/TransactionRow.tsx`** (alteração mínima e localizada)
+- Hoje, quando `status === 'categorizado'`, a célula de observação renderiza apenas um `<span>` somente-leitura.
+- Substituir esse `<span>` por um `<Input>` editável com auto-save no `onBlur` (ou Enter), chamando um novo callback `onObservationUpdate(transactionId, value)`.
+- A categorização em si, o botão de categorizar, o badge "Categorizado", a categoria selecionada e a UI dos não-categorizados **não mudam**.
 
-## Mudanças propostas (somente aditivas, sem alterar fluxos)
+**`src/components/categorization/Categorization.tsx`** (adição de um handler novo)
+- Adicionar nova função `handleObservationUpdate(id, observacao)` que chama `updateTransaction.mutateAsync({ id, observacao })` — **somente** o campo observação, sem mexer em `status` nem `category`.
+- Passar essa função como nova prop `onObservationUpdate` para `TransactionRow`.
+- Manter `handleCategorize` e `handleBulkCategorize` exatamente como estão.
 
-### 1. `src/hooks/useFiscalReviews.ts`
-Forçar dados sempre frescos ao abrir/voltar ao painel, garantindo que qualquer observação salva pelo ADM (antes ou depois do despacho) apareça imediatamente:
+Nenhuma mudança em `useSupabaseData` / `useTransactionsActions` — `updateTransaction` já aceita update parcial.
 
-- Adicionar nas opções do `useQuery`:
-  - `staleTime: 0`
-  - `refetchOnMount: 'always'`
-  - `refetchOnWindowFocus: true`
+### 2. Atualização em tempo real nos painéis Fiscal e Tesoureiro
 
-Nenhuma mutation, schema, RLS ou outro hook é alterado.
+**`src/hooks/useFiscalReviews.ts`** (adição: efeito de Realtime, sem alterar a query atual)
+- Adicionar um `useEffect` que cria uma subscrição Supabase Realtime ao canal de UPDATEs da tabela `transactions`.
+- Quando chegar um UPDATE, chamar `queryClient.invalidateQueries({ queryKey: ['fiscal-reviews', fiscalReportId] })` para recarregar com a nova observação.
+- O hook continua retornando exatamente o mesmo shape; o painel do Tesoureiro consome o mesmo hook → ambos atualizam automaticamente.
+- Já existe `staleTime: 0` + botão "Atualizar" como fallback.
 
-### 2. `src/components/fiscal/FiscalReviewPanel.tsx` (mínimo, opcional)
-Adicionar um pequeno botão discreto "Atualizar" no header da lista que chama `queryClient.invalidateQueries({ queryKey: ['fiscal-reviews', reportId] })`, para que o fiscal/tesoureiro consiga forçar a releitura quando o ADM editar a observação com o painel aberto. Não substitui nenhum botão existente.
+### 3. Migration leve para habilitar Realtime na tabela `transactions`
+
+Sem alterar schema/colunas/RLS — apenas:
+- `ALTER TABLE public.transactions REPLICA IDENTITY FULL;`
+- `ALTER PUBLICATION supabase_realtime ADD TABLE public.transactions;` (idempotente / com guard)
+
+Isso permite que os eventos UPDATE cheguem ao cliente. Não afeta nenhuma função, trigger, política ou dado existente.
 
 ## O que NÃO muda
 
-- Schema do banco, RLS, triggers, edge functions.
-- Tela de Categorização do ADM e suas mutations.
-- Hooks `useFiscalReports`, `useFiscalReviewsActions`, `useFiscalUserReviews`.
-- Fluxo de assinatura, geração de PDF, painel do tesoureiro (consome os mesmos componentes — passa a refletir as observações automaticamente).
-- Lógica de aprovação, divergência, diligência ou contagem 0/3.
+- Schema/colunas de `transactions`, RLS, triggers, edge functions
+- Fluxo de categorização (individual e em massa)
+- `useFiscalReports`, `useFiscalReviewsActions`, `useFiscalUserReviews`
+- `FiscalReviewItem` / `FiscalReviewPanel` (já exibem `transaction.observacao` corretamente)
+- Geração de PDF, assinaturas, despacho, painel do tesoureiro (consome os mesmos componentes)
 
-## Resultado esperado
+## Resultado
 
-- Ao abrir/voltar para o painel fiscal (ou painel do tesoureiro), todas as observações aparecem imediatamente, inclusive em relatórios já despachados.
-- Edições de observação feitas pelo ADM depois do despacho passam a aparecer via refetch automático (janela em foco) ou via o novo botão Atualizar.
+- ADM pode editar a observação de qualquer transação categorizada direto na tabela.
+- O save vai ao banco imediatamente.
+- Painéis Fiscal e Tesoureiro abertos recebem o novo valor via Supabase Realtime sem precisar recarregar.
