@@ -218,6 +218,7 @@ const Categorization = () => {
         onSelectAll={handleSelectAll}
         observations={observations}
         onObservationChange={handleObservationChange}
+        onObservationUpdate={handleObservationUpdate}
       />
 
       {/* Pagination */}
