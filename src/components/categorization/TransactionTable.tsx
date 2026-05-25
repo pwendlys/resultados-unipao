@@ -27,6 +27,7 @@ const TransactionTable = ({
   onSelectAll,
   observations,
   onObservationChange,
+  onObservationUpdate,
 }: TransactionTableProps) => {
   const allSelected = transactions.length > 0 && transactions.every(t => selectedTransactions.has(t.id));
   const someSelected = transactions.some(t => selectedTransactions.has(t.id));
