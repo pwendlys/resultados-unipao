@@ -52,6 +52,10 @@ const TransactionRow = ({
     }
   };
 
+  useEffect(() => {
+    setEditedObservation(transaction.observacao || '');
+  }, [transaction.observacao]);
+
   const handleCategorize = () => {
     if (selectedCategory) {
       onCategorize(transaction.id, selectedCategory, observation);
