@@ -137,7 +137,26 @@ const TransactionRow = ({
       </td>
       <td className="px-4 py-3 text-sm">
         {transaction.status === 'categorizado' ? (
-          <span className="text-gray-600">{transaction.observacao || '-'}</span>
+          onObservationUpdate ? (
+            <Input
+              value={editedObservation}
+              onChange={(e) => setEditedObservation(e.target.value)}
+              onBlur={() => {
+                if (editedObservation !== (transaction.observacao || '')) {
+                  onObservationUpdate(transaction.id, editedObservation);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+              placeholder="Observação (opcional)"
+              className="w-full"
+            />
+          ) : (
+            <span className="text-gray-600">{transaction.observacao || '-'}</span>
+          )
         ) : (
           <Input
             value={observation}
