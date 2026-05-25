@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Transaction } from '@/hooks/useSupabaseData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ interface TransactionRowProps {
   onSelect: (selected: boolean) => void;
   observationValue?: string;
   onObservationChange?: (transactionId: string, value: string) => void;
+  onObservationUpdate?: (transactionId: string, value: string) => void | Promise<void>;
 }
 
 const TransactionRow = ({ 
@@ -36,9 +37,11 @@ const TransactionRow = ({
   onSelect,
   observationValue,
   onObservationChange,
+  onObservationUpdate,
 }: TransactionRowProps) => {
   const [selectedCategory, setSelectedCategory] = useState(transaction.category || '');
   const [localObservation, setLocalObservation] = useState(transaction.observacao || '');
+  const [editedObservation, setEditedObservation] = useState(transaction.observacao || '');
   const isControlled = observationValue !== undefined && !!onObservationChange;
   const observation = isControlled ? (observationValue ?? '') : localObservation;
   const setObservation = (value: string) => {
@@ -48,6 +51,10 @@ const TransactionRow = ({
       setLocalObservation(value);
     }
   };
+
+  useEffect(() => {
+    setEditedObservation(transaction.observacao || '');
+  }, [transaction.observacao]);
 
   const handleCategorize = () => {
     if (selectedCategory) {
@@ -134,7 +141,26 @@ const TransactionRow = ({
       </td>
       <td className="px-4 py-3 text-sm">
         {transaction.status === 'categorizado' ? (
-          <span className="text-gray-600">{transaction.observacao || '-'}</span>
+          onObservationUpdate ? (
+            <Input
+              value={editedObservation}
+              onChange={(e) => setEditedObservation(e.target.value)}
+              onBlur={() => {
+                if (editedObservation !== (transaction.observacao || '')) {
+                  onObservationUpdate(transaction.id, editedObservation);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+              placeholder="Observação (opcional)"
+              className="w-full"
+            />
+          ) : (
+            <span className="text-gray-600">{transaction.observacao || '-'}</span>
+          )
         ) : (
           <Input
             value={observation}

@@ -14,6 +14,7 @@ interface TransactionTableProps {
   onSelectAll: (selected: boolean) => void;
   observations?: Record<string, string>;
   onObservationChange?: (transactionId: string, value: string) => void;
+  onObservationUpdate?: (transactionId: string, value: string) => void | Promise<void>;
 }
 
 const TransactionTable = ({ 
@@ -26,6 +27,7 @@ const TransactionTable = ({
   onSelectAll,
   observations,
   onObservationChange,
+  onObservationUpdate,
 }: TransactionTableProps) => {
   const allSelected = transactions.length > 0 && transactions.every(t => selectedTransactions.has(t.id));
   const someSelected = transactions.some(t => selectedTransactions.has(t.id));
@@ -95,6 +97,7 @@ const TransactionTable = ({
                 onSelect={(selected) => onSelectTransaction(transaction.id, selected)}
                 observationValue={observations ? (observations[transaction.id] ?? transaction.observacao ?? '') : undefined}
                 onObservationChange={onObservationChange}
+                onObservationUpdate={onObservationUpdate}
               />
             ))}
           </tbody>
