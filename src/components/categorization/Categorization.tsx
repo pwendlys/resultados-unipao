@@ -71,6 +71,27 @@ const Categorization = () => {
     }
   };
 
+  const handleObservationUpdate = async (transactionId: string, observacao: string) => {
+    try {
+      await updateTransaction.mutateAsync({
+        id: transactionId,
+        observacao: observacao,
+      });
+      toast({
+        title: "Observação atualizada",
+        description: "A observação foi salva com sucesso.",
+      });
+      refetch();
+    } catch (error) {
+      console.error('Erro ao atualizar observação:', error);
+      toast({
+        title: "Erro ao atualizar observação",
+        description: "Ocorreu um erro ao salvar a observação. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSelectTransaction = (transactionId: string, selected: boolean) => {
     const newSelected = new Set(selectedTransactions);
     if (selected) {
