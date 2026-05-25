@@ -14,6 +14,7 @@ interface TransactionTableProps {
   onSelectAll: (selected: boolean) => void;
   observations?: Record<string, string>;
   onObservationChange?: (transactionId: string, value: string) => void;
+  onObservationUpdate?: (transactionId: string, value: string) => void | Promise<void>;
 }
 
 const TransactionTable = ({ 
