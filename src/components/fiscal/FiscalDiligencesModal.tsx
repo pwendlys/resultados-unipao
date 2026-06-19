@@ -216,6 +216,8 @@ const FiscalDiligencesModal = ({
               </TableBody>
             </Table>
           )}
+          </div>
+          <ScrollBar orientation="horizontal" />
         </ScrollArea>
 
         <DialogFooter>
