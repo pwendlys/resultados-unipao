@@ -37,7 +37,7 @@ const useReportTransactions = (reportId: string | undefined, transactionIds: str
       
       const { data, error } = await supabase
         .from('transactions')
-        .select('id, date, description, amount, type')
+        .select('id, date, description, amount, type, observacao')
         .in('id', transactionIds);
 
       if (error) {
@@ -46,7 +46,7 @@ const useReportTransactions = (reportId: string | undefined, transactionIds: str
       }
 
       // Map by id for quick lookup
-      const map: Record<string, { date: string; description: string; amount: number; type: string }> = {};
+      const map: Record<string, { date: string; description: string; amount: number; type: string; observacao: string | null }> = {};
       for (const tx of data || []) {
         map[tx.id] = tx;
       }
@@ -87,6 +87,7 @@ const FiscalDiligencesModal = ({
         description: tx?.description || 'Carregando...',
         amount: tx?.amount || 0,
         type: tx?.type || 'unknown',
+        observacaoAdm: tx?.observacao || '',
         observation: d.divergentObservation || 'Sem observação',
         createdBy: d.diligenceCreatorName || 'Desconhecido',
         createdAt: d.diligenceCreatedAt,
@@ -158,6 +159,7 @@ const FiscalDiligencesModal = ({
                 <TableRow>
                   <TableHead className="min-w-[200px]">Transação</TableHead>
                   <TableHead className="min-w-[180px]">Motivo</TableHead>
+                  <TableHead className="min-w-[180px]">Observação</TableHead>
                   <TableHead>Marcado por</TableHead>
                   <TableHead>Data</TableHead>
                   <TableHead className="text-center">Status</TableHead>
@@ -182,6 +184,11 @@ const FiscalDiligencesModal = ({
                     </TableCell>
                     <TableCell>
                       <p className="text-sm line-clamp-3">{entry.observation}</p>
+                    </TableCell>
+                    <TableCell>
+                      <p className="text-sm line-clamp-3 text-muted-foreground">
+                        {entry.observacaoAdm || '—'}
+                      </p>
                     </TableCell>
                     <TableCell className="text-sm">{entry.createdBy}</TableCell>
                     <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
