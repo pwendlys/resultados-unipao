@@ -238,7 +238,20 @@ const createFiscalPDFDocument = (
         yPos += obsLines.length * 4;
         doc.setTextColor(0, 0, 0);
       }
-      
+
+      const admObs = (transaction as any)?.observacao;
+      if (admObs && String(admObs).trim()) {
+        doc.setTextColor(80, 80, 80);
+        const admLines = doc.splitTextToSize(`   Obs. ADM: ${admObs}`, pageWidth - 28);
+        if (yPos + admLines.length * 4 > 280) {
+          doc.addPage();
+          yPos = 20;
+        }
+        doc.text(admLines, 14, yPos);
+        yPos += admLines.length * 4;
+        doc.setTextColor(0, 0, 0);
+      }
+
       yPos += 8;
     });
     
