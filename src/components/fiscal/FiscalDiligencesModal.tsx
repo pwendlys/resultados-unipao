@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import {
   Table,
   TableBody,
@@ -129,7 +129,7 @@ const FiscalDiligencesModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh]">
+      <DialogContent className="max-w-5xl w-[95vw] max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-orange-500" />
@@ -146,7 +146,8 @@ const FiscalDiligencesModal = ({
           </Badge>
         </div>
 
-        <ScrollArea className="h-[500px]">
+        <ScrollArea className="h-[500px] max-h-[60vh] w-full">
+          <div className="min-w-[900px]">
           {diligenceEntries.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Check className="h-12 w-12 mb-4 text-green-500" />
@@ -215,6 +216,8 @@ const FiscalDiligencesModal = ({
               </TableBody>
             </Table>
           )}
+          </div>
+          <ScrollBar orientation="horizontal" />
         </ScrollArea>
 
         <DialogFooter>
