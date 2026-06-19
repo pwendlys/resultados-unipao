@@ -1,38 +1,25 @@
 ## Objetivo
-Incluir a "Observação" do ADM (campo `transactions.observacao`) no PDF do Conselho Fiscal, especificamente na seção **DILIGÊNCIAS REGISTRADAS**, para justificar/esclarecer cada diligência — sem alterar qualquer outro comportamento.
+Exibir o valor de **Juros** (campo `transactions.juros`) para os fiscais antes da aprovação, no modal de diligências do tesoureiro e no PDF do relatório fiscal — sem alterar nenhuma função/fluxo existente.
 
-## Análise
-- O hook `useFiscalReviews` já carrega `transaction.observacao`, então o dado já está disponível em `review.transaction.observacao` dentro de `fiscalPdfGenerator.ts`.
-- Na seção de Diligências (linhas ~199-243), exibimos hoje: data/descrição, valor, marcado por, e o "Motivo" (observação divergente do fiscal). **Não exibimos a observação do ADM**, que é o campo que esclarece o que é a transação.
-- Na tabela principal de transações o pedido é apenas referente ao PDF de diligências (justificar). Não vamos mexer na tabela principal para não alterar layout/funcionalidades existentes.
+## Alterações (todas aditivas)
 
-## Mudança (mínima e aditiva)
-**Arquivo:** `src/utils/fiscalPdfGenerator.ts`
+### 1. `src/hooks/useFiscalReviews.ts`
+Adicionar `juros` no `select(...)` da query de `transactions` e no tipo `FiscalReview.transaction` (campo opcional `juros: number | null`). Nenhuma lógica muda — apenas um campo a mais é carregado.
 
-Dentro do loop `diligentTransactions.forEach(...)`, **após** o bloco do "Motivo" (`diligenceInfo.divergentObservation`) e **antes** do `yPos += 8` final, adicionar:
+### 2. `src/components/fiscal/FiscalReviewItem.tsx`
+Adicionar uma exibição visual quando `transaction.juros > 0`, ao lado/abaixo do valor (R$), no formato:
+`Juros: R$ XX,XX`
+Apenas leitura. Sem mudar botões Aprovar/Divergente nem estado.
 
-```ts
-const admObs = transaction?.observacao;
-if (admObs && admObs.trim()) {
-  doc.setTextColor(80, 80, 80);
-  const admLines = doc.splitTextToSize(`   Obs. ADM: ${admObs}`, pageWidth - 28);
-  // quebra de página se necessário
-  if (yPos + admLines.length * 4 > 280) {
-    doc.addPage();
-    yPos = 20;
-  }
-  doc.text(admLines, 14, yPos);
-  yPos += admLines.length * 4;
-  doc.setTextColor(0, 0, 0);
-}
-```
+### 3. `src/components/fiscal/FiscalDiligencesModal.tsx`
+Acrescentar uma coluna **"Juros"** na tabela (entre "Valor" e "Categoria"), exibindo `R$ X,XX` quando houver, ou `—`. Coluna puramente informativa para o tesoureiro.
+
+### 4. `src/utils/fiscalPdfGenerator.ts`
+- Na linha de cada transação na tabela principal: quando `transaction.juros > 0`, anexar `" (Juros: R$ X,XX)"` após o `amountStr` na mesma célula de Valor (sem mover colunas).
+- Na seção **DILIGÊNCIAS REGISTRADAS**: adicionar uma linha extra abaixo de "Valor: ... | Confirmação: x/3" exibindo `Juros: R$ X,XX` apenas quando `juros > 0`, respeitando a paginação (`yPos > 280 → addPage`).
 
 ## O que NÃO muda
-- Tabela principal de transações do PDF (layout idêntico).
-- Hooks, queries, schema do banco.
-- Modal de diligências, painel fiscal, painel tesoureiro.
-- Ordem/contagem de diligências, assinaturas, ack 3/3.
-- Nenhuma função existente é renomeada ou reestruturada — apenas inserção de um bloco aditivo dentro do forEach.
+- Schema do banco, RLS, hooks de actions, ordem `entry_index`, contagem de aprovações, diligência 3/3, assinaturas, fluxo de PDF (geração/save/blob), layout das demais colunas, modal de observação fiscal, painel do tesoureiro fora do modal, navegação.
 
-## Resultado
-Cada diligência no PDF passa a exibir, abaixo do "Motivo", a "Obs. ADM" com o texto completo (com quebra de linha automática via `splitTextToSize`), permitindo ao leitor entender o contexto que o ADM registrou para aquela transação.
+## Detalhe técnico
+`juros` já existe em `transactions` (ver `integrations/supabase/types.ts`). Hoje a query de `useFiscalReviews` não o retorna — daí a invisibilidade. Carregá-lo no select propaga automaticamente para `FiscalReviewItem` (via `useFiscalReviews`) e para o `fiscalPdfGenerator` (via `review.transaction`). O `FiscalDiligencesModal` consome a mesma estrutura, então basta renderizar a coluna nova.
