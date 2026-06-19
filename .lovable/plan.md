@@ -1,19 +1,33 @@
 ## Problema
-No modal **Diligências** (`FiscalDiligencesModal`, usado por fiscais e tesoureiro) só aparecem: Transação, Motivo (observação da diligência), Marcado por, Data e Status. O campo **Observação do ADM** (`transactions.observacao` — onde o ADM esclarece o que é cada lançamento) não é exibido.
+No mobile/tablet, o conteúdo da tabela do modal **Diligências** ultrapassa a largura da tela (textos "Descrição incomple...", coluna Status cortada). Hoje a `ScrollArea` rola só verticalmente — não há scroll horizontal. Faltam também as colunas Observação/Marcado por/Data/Status, escondidas no overflow.
 
-## Solução (aditiva)
-Adicionar uma coluna **"Observação"** ao modal, lendo `transactions.observacao`. Mudança isolada em `FiscalDiligencesModal.tsx` — não altera hooks, RLS, fluxo de diligências, contagens 3/3 nem nada relacionado.
+## Solução (aditiva, somente UI)
+Mudança isolada em `src/components/fiscal/FiscalDiligencesModal.tsx`. Sem tocar em dados, hooks, queries ou colunas.
 
-### Edits em `src/components/fiscal/FiscalDiligencesModal.tsx`
-1. No `select` de `useReportTransactions`, incluir `observacao`:
-   `.select('id, date, description, amount, type, observacao')`
-2. Tipar o map com `observacao: string | null`.
-3. No `diligenceEntries.map`, adicionar `observacaoAdm: tx?.observacao || ''`.
-4. Na `<TableHeader>`, adicionar `<TableHead className="min-w-[180px]">Observação</TableHead>` entre "Motivo" e "Marcado por".
-5. Na `<TableBody>`, adicionar célula correspondente exibindo `entry.observacaoAdm` (ou texto suave "—" se vazio) com `line-clamp-3 text-sm`.
+### Edits
+1. **DialogContent**: aumentar largura máxima e prever overflow:
+   - `className="max-w-5xl w-[95vw] max-h-[85vh] flex flex-col"`
+2. **ScrollArea vertical** já existe; envolver a `<Table>` em um wrapper com scroll horizontal:
+   ```tsx
+   <ScrollArea className="h-[500px] max-h-[60vh] w-full">
+     <div className="min-w-[900px]">
+       <Table>…</Table>
+     </div>
+     <ScrollBar orientation="horizontal" />
+   </ScrollArea>
+   ```
+   - Importar `ScrollBar` de `@/components/ui/scroll-area`.
+   - O `min-w-[900px]` força a tabela a manter a largura natural; o `ScrollBar horizontal` permite arrastar para o lado tanto no desktop quanto no mobile (touch).
+3. Manter `min-w-[...]` em cada `<TableHead>` (já existe) para garantir colunas legíveis.
+4. Remover `line-clamp-3` das células de texto? **Não** — manter, apenas o usuário pode arrastar para ver tudo (e o tooltip já vem do `line-clamp`). Sem alteração nas células.
+5. Header do diálogo: nada muda.
 
 ## O que NÃO muda
-- Hooks (`useTransactionDiligenceStatus`, `useReportTransactions` mantém mesma chave de cache).
-- Tabela `transactions`, RLS, realtime.
-- Fluxo de diligências, ack 3/3, painel fiscal, geração de PDF.
-- Modal continua usado igualmente por fiscal e tesoureiro (ambos verão a observação).
+- Dados, hooks `useTransactionDiligenceStatus` / `useReportTransactions`.
+- Colunas, ordem, formato dos campos.
+- Fluxo de diligências, contagem 3/3, ações.
+- Nenhum outro modal/componente.
+
+## Resultado
+- Desktop: modal mais largo (até `max-w-5xl`), todas as colunas visíveis; se faltar largura, scroll horizontal aparece.
+- Mobile/tablet: usuário arrasta a tabela lateralmente (touch ou barra) e vê Transação, Motivo, Observação, Marcado por, Data e Status integralmente.
