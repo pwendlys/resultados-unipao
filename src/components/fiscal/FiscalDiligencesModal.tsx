@@ -37,7 +37,7 @@ const useReportTransactions = (reportId: string | undefined, transactionIds: str
       
       const { data, error } = await supabase
         .from('transactions')
-        .select('id, date, description, amount, type, observacao')
+        .select('id, date, description, amount, type, observacao, juros')
         .in('id', transactionIds);
 
       if (error) {
@@ -46,9 +46,9 @@ const useReportTransactions = (reportId: string | undefined, transactionIds: str
       }
 
       // Map by id for quick lookup
-      const map: Record<string, { date: string; description: string; amount: number; type: string; observacao: string | null }> = {};
+      const map: Record<string, { date: string; description: string; amount: number; type: string; observacao: string | null; juros: number | null }> = {};
       for (const tx of data || []) {
-        map[tx.id] = tx;
+        map[tx.id] = tx as any;
       }
       return map;
     },
@@ -87,6 +87,7 @@ const FiscalDiligencesModal = ({
         description: tx?.description || 'Carregando...',
         amount: tx?.amount || 0,
         type: tx?.type || 'unknown',
+        juros: Number(tx?.juros) || 0,
         observacaoAdm: tx?.observacao || '',
         observation: d.divergentObservation || 'Sem observação',
         createdBy: d.diligenceCreatorName || 'Desconhecido',
@@ -159,6 +160,7 @@ const FiscalDiligencesModal = ({
               <TableHeader>
                 <TableRow>
                   <TableHead className="min-w-[200px]">Transação</TableHead>
+                  <TableHead className="min-w-[100px]">Juros</TableHead>
                   <TableHead className="min-w-[180px]">Motivo</TableHead>
                   <TableHead className="min-w-[180px]">Observação</TableHead>
                   <TableHead>Marcado por</TableHead>
@@ -182,6 +184,15 @@ const FiscalDiligencesModal = ({
                           </span>
                         </div>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {entry.juros > 0 ? (
+                        <Badge variant="outline" className="text-xs border-amber-500 text-amber-700 bg-amber-50 whitespace-nowrap">
+                          {formatCurrency(entry.juros)}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <p className="text-sm line-clamp-3">{entry.observation}</p>

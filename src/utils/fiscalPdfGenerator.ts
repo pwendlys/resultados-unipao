@@ -125,8 +125,10 @@ const createFiscalPDFDocument = (
     }
     
     const amount = transaction?.amount || 0;
-    const amountStr = `${transaction?.type === 'saida' ? '-' : ''}R$ ${amount.toFixed(2)}`;
+    const juros = Number((transaction as any)?.juros) || 0;
+    const amountStr = `${transaction?.type === 'saida' ? '-' : ''}R$ ${amount.toFixed(2)}${juros > 0 ? ` (J: R$ ${juros.toFixed(2)})` : ''}`;
     doc.text(amountStr, 130, yPos);
+    
     
     doc.text(statusText, 160, yPos);
     
@@ -220,6 +222,18 @@ const createFiscalPDFDocument = (
       const amountStr = `${transaction?.type === 'saida' ? '-' : ''}R$ ${amount.toFixed(2)}`;
       doc.text(`   Valor: ${amountStr} | Confirmação: ${diligenceInfo.ackCount}/3`, 14, yPos);
       yPos += 5;
+
+      const jurosVal = Number((transaction as any)?.juros) || 0;
+      if (jurosVal > 0) {
+        if (yPos > 280) {
+          doc.addPage();
+          yPos = 20;
+        }
+        doc.setTextColor(150, 100, 0);
+        doc.text(`   Juros: R$ ${jurosVal.toFixed(2)}`, 14, yPos);
+        doc.setTextColor(0, 0, 0);
+        yPos += 5;
+      }
 
       // Who marked it - use profile name if available
       if (diligenceInfo.diligenceCreatedBy) {
