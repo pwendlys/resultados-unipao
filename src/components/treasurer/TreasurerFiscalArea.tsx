@@ -39,6 +39,8 @@ import { useFiscalSignatures } from '@/hooks/useFiscalSignatures';
 import { useTransactionDiligenceStatus } from '@/hooks/useFiscalUserReviews';
 import { useTreasurerSignature, useTreasurerSignatureActions } from '@/hooks/useTreasurerSignature';
 import { useProfilesByIds, useProfile } from '@/hooks/useProfile';
+import { useFiscalUserProfile, useSaveDefaultSignature } from '@/hooks/useFiscalUserProfile';
+import { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { generateFiscalPDF, generateFiscalPDFBlob } from '@/utils/fiscalPdfGenerator';
 import { supabase } from '@/integrations/supabase/client';
@@ -247,6 +249,16 @@ const TreasurerSignatureModalWrapper = ({
 }: TreasurerSignatureModalWrapperProps) => {
   const { createSignature } = useTreasurerSignatureActions();
   const { data: profile } = useProfile();
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) setUserId(session.user.id);
+    });
+  }, []);
+
+  const { data: fiscalProfile } = useFiscalUserProfile(userId);
+  const saveDefaultSignature = useSaveDefaultSignature();
 
   const handleSubmit = async (signatureData: string) => {
     await createSignature.mutateAsync({
@@ -257,6 +269,11 @@ const TreasurerSignatureModalWrapper = ({
     onOpenChange(false);
   };
 
+  const handleSaveAsDefault = (signatureData: string) => {
+    if (!userId) return;
+    saveDefaultSignature.mutate({ userId, signatureData });
+  };
+
   return (
     <TreasurerSignatureModal
       open={open}
@@ -264,6 +281,8 @@ const TreasurerSignatureModalWrapper = ({
       onSubmit={handleSubmit}
       isSubmitting={createSignature.isPending}
       reportTitle={reportTitle}
+      savedSignature={fiscalProfile?.default_signature_data ?? null}
+      onSaveAsDefault={userId ? handleSaveAsDefault : undefined}
     />
   );
 };
