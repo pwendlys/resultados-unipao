@@ -197,14 +197,20 @@ const FiscalReviewItem = ({
               {transaction?.description || 'Sem descrição'}
             </p>
             
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className={cn(
                 "font-semibold",
                 transaction?.type === 'entrada' ? 'text-green-600' : 'text-red-600'
               )}>
                 {formatCurrency(transaction?.amount || 0)}
               </span>
-              
+
+              {Number(transaction?.juros) > 0 && (
+                <Badge variant="outline" className="text-xs border-amber-500 text-amber-700 bg-amber-50">
+                  Juros: {formatCurrency(Number(transaction?.juros))}
+                </Badge>
+              )}
+
               {transaction?.category && (
                 <Badge variant="outline" className="text-xs">
                   <Folder className="h-3 w-3 mr-1" />

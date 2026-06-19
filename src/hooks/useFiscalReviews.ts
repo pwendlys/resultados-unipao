@@ -23,6 +23,7 @@ export interface FiscalReview {
     category: string | null;
     entry_index: number | null;
     observacao: string | null;
+    juros: number | null;
   } | null;
 }
 
@@ -68,7 +69,8 @@ export const useFiscalReviews = (fiscalReportId: string | undefined) => {
             type,
             category,
             entry_index,
-            observacao
+            observacao,
+            juros
           )
         `)
         .eq('fiscal_report_id', fiscalReportId);
